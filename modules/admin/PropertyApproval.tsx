@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -709,7 +710,7 @@ const PropertyApproval = () => {
               <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[52px]" />
+                        <TableHead className="w-[72px]" />
                         <TableHead className="w-[72px]">
                           <button
                             type="button"
@@ -808,12 +809,16 @@ const PropertyApproval = () => {
                     <TableBody>
                       {filteredRows.map((p) => (
                         <TableRow key={p.id}>
-                          <TableCell className="p-2">
-                            <img
-                              src={thumb(p)}
-                              alt=""
-                              className="h-10 w-10 rounded-md object-cover"
-                            />
+                          <TableCell className="w-[72px] p-2 align-middle">
+                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                              <Image
+                                src={thumb(p)}
+                                alt={p.title || "Property"}
+                                fill
+                                sizes="56px"
+                                className="object-cover"
+                              />
+                            </div>
                           </TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">{p.id}</TableCell>
                           <TableCell className="max-w-[200px] truncate font-medium" title={p.title}>
@@ -907,11 +912,21 @@ const PropertyApproval = () => {
           </DialogHeader>
           {selectedProperty && (
             <div className="space-y-4">
-              <img
-                src={selectedProperty.image}
-                alt={selectedProperty.title}
-                className="h-48 w-full rounded-lg object-cover"
-              />
+              <div className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-muted">
+                {selectedProperty.image ? (
+                  <Image
+                    src={selectedProperty.image}
+                    alt={selectedProperty.title}
+                    fill
+                    sizes="(max-width: 512px) 100vw, 512px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                    No image
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="rounded-lg bg-muted p-3">
                   <p className="text-sm font-medium">{selectedProperty.bedrooms} Bed</p>
