@@ -85,3 +85,8 @@ export function useServiceAuthModal() {
   }
   return context;
 }
+
+/** Safe for Navbar — returns null when the provider is not mounted (e.g. /browse guest chrome). */
+export function useServiceAuthModalOptional() {
+  return useContext(ServiceAuthModalContext);
+}

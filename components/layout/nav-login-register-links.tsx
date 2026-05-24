@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { buildLoginAndRegisterHrefs, isServiceAuthModalPath } from "@/lib/auth-redirect";
-import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
+import { useServiceAuthModalOptional } from "@/contexts/service-auth-modal-context";
 
 type Props = {
   onNavigate?: () => void;
@@ -13,17 +13,17 @@ type Props = {
 
 /**
  * Login / Sign Up links with `?from=` so post-auth returns to the current page.
- * On service pages, opens the in-page auth modal instead of navigating away.
+ * On service pages with {@link ServiceAuthModalProvider}, opens the in-page auth modal.
  * Must render under a React `Suspense` boundary (see `Navbar`).
  */
 export function NavLoginRegisterLinks({ onNavigate, className }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { loginHref, registerHref } = buildLoginAndRegisterHrefs(pathname, searchParams);
-  const { openLogin, openRegister } = useServiceAuthModal();
-  const useModal = isServiceAuthModalPath(pathname);
+  const serviceAuth = useServiceAuthModalOptional();
+  const useModal = isServiceAuthModalPath(pathname) && serviceAuth != null;
 
-  if (useModal) {
+  if (useModal && serviceAuth) {
     return (
       <div className={`flex gap-2 ${className ?? ""}`}>
         <Button
@@ -33,7 +33,7 @@ export function NavLoginRegisterLinks({ onNavigate, className }: Props) {
           type="button"
           onClick={() => {
             onNavigate?.();
-            openLogin();
+            serviceAuth.openLogin();
           }}
         >
           Log In
@@ -44,7 +44,7 @@ export function NavLoginRegisterLinks({ onNavigate, className }: Props) {
           type="button"
           onClick={() => {
             onNavigate?.();
-            openRegister();
+            serviceAuth.openRegister();
           }}
         >
           Sign Up

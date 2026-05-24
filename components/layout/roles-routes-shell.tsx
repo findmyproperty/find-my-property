@@ -7,6 +7,7 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import DashboardHeader from "@/components/layout/DashboardHeader";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { ServiceAuthModalProvider } from "@/contexts/service-auth-modal-context";
 import { useAuth } from "@/contexts/auth-context";
 import { getNavItemsForRole, getDashboardTitleForRole } from "@/config/roleNav";
 import { UserRole } from "@/end-points/types";
@@ -20,11 +21,13 @@ function isMarketplacePath(pathname: string) {
 function MarketplacePublicChrome({ children, isPropertyPage = false }: { children: ReactNode, isPropertyPage?: boolean }) {
   const padding = isPropertyPage ? "px-20 pt-18" : "px-10";
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
-      <Navbar />
-      <div className={cn("min-h-0 flex-1", padding)}>{children}</div>
-      <Footer />
-    </div>
+    <ServiceAuthModalProvider>
+      <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
+        <Navbar />
+        <div className={cn("min-h-0 flex-1", padding)}>{children}</div>
+        <Footer />
+      </div>
+    </ServiceAuthModalProvider>
   );
 }
 
