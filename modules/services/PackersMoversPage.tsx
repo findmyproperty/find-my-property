@@ -29,6 +29,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/auth-context";
+import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitPackersMovers } from "@/hooks/use-service-requests";
 import {
   BHK_OPTIONS,
@@ -44,6 +45,7 @@ import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import StopList from "./StopList";
 import TripEstimate from "./TripEstimate";
+import { useRouter } from "next/navigation";
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -76,7 +78,9 @@ const EMPTY_STOP: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
 
 export default function PackersMoversPage() {
   const { user, isAuthReady } = useAuth();
+  const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitPackersMovers();
+  const router = useRouter();
 
   const form = useForm<PackersMoversFormValues>({
     resolver: zodResolver(packersMoversSchema),
@@ -155,6 +159,12 @@ export default function PackersMoversPage() {
 
   const isSubmitted = mutation.isSuccess && !form.formState.isDirty;
 
+  const handleRequestCallback = () => {
+    requireAuth(() => {
+      void form.handleSubmit(onSubmit)();
+    });
+  };
+
   return (
     <main className="pb-20">
       <ServiceHero
@@ -162,6 +172,7 @@ export default function PackersMoversPage() {
         title="Moving homes? Leave the heavy lifting to us."
         subtitle="Verified local and intercity movers, transparent pricing, and caring packing. Tell us where you're going — we'll handle the rest."
         Illustration={Truck}
+        onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 
       <HowItWorks
@@ -203,8 +214,8 @@ export default function PackersMoversPage() {
                     </Link>
                   </Button>
                 ) : (
-                  <Button asChild>
-                    <Link href="/login">Log in to track this request</Link>
+                  <Button type="button" onClick={openAuthModal}>
+                    Log in to track this request
                   </Button>
                 )}
                 <Button
@@ -221,7 +232,10 @@ export default function PackersMoversPage() {
           ) : (
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleRequestCallback();
+                }}
                 className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8"
               >
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -250,7 +264,6 @@ export default function PackersMoversPage() {
                         <FormLabel required>Phone</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="+91 98765 43210"
                             autoComplete="tel"
                             inputMode="tel"
                             {...field}
@@ -530,9 +543,10 @@ export default function PackersMoversPage() {
                     By submitting, you agree to be contacted by our move specialist.
                   </p>
                   <Button
-                    type="submit"
+                    type="button"
                     size="lg"
-                    disabled={mutation.isPending}
+                    disabled={mutation.isPending || !isAuthReady}
+                    onClick={handleRequestCallback}
                   >
                     {mutation.isPending ? "Submitting..." : "Request a callback"}
                     <ArrowRight className="ml-2 h-4 w-4" />

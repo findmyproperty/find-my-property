@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitPaintingCleaning } from "@/hooks/use-service-requests";
 import {
   PROPERTY_TYPE_OPTIONS,
@@ -48,6 +49,7 @@ import {
 import { ServiceHero } from "./ServiceHero";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
+import { useRouter } from "next/navigation";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
 
@@ -80,7 +82,9 @@ const STEPS: HowItWorksStep[] = [
 
 export default function PaintingCleaningPage() {
   const { user, isAuthReady } = useAuth();
+  const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitPaintingCleaning();
+  const router = useRouter();
 
   const form = useForm<PaintingCleaningFormValues>({
     resolver: zodResolver(paintingCleaningSchema),
@@ -155,6 +159,12 @@ export default function PaintingCleaningPage() {
 
   const isSubmitted = mutation.isSuccess && !form.formState.isDirty;
 
+  const handleRequestCallback = () => {
+    requireAuth(() => {
+      void form.handleSubmit(onSubmit)();
+    });
+  };
+
   return (
     <main className="pb-20">
       <ServiceHero
@@ -162,6 +172,7 @@ export default function PaintingCleaningPage() {
         title="A fresh coat. A spotless home. One booking."
         subtitle="Professional painters, deep cleaners, and sanitisation crews — vetted, insured, and ready to transform your space."
         Illustration={PaintBucket}
+        onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 
       <HowItWorks
@@ -203,8 +214,8 @@ export default function PaintingCleaningPage() {
                     </Link>
                   </Button>
                 ) : (
-                  <Button asChild>
-                    <Link href="/login">Log in to track this request</Link>
+                  <Button type="button" onClick={openAuthModal}>
+                    Log in to track this request
                   </Button>
                 )}
                 <Button
@@ -221,7 +232,10 @@ export default function PaintingCleaningPage() {
           ) : (
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleRequestCallback();
+                }}
                 className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8"
               >
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -250,7 +264,6 @@ export default function PaintingCleaningPage() {
                         <FormLabel required>Phone</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="+91 98765 43210"
                             autoComplete="tel"
                             inputMode="tel"
                             {...field}
@@ -540,9 +553,10 @@ export default function PaintingCleaningPage() {
                     By submitting, you agree to be contacted about your service request.
                   </p>
                   <Button
-                    type="submit"
+                    type="button"
                     size="lg"
-                    disabled={mutation.isPending}
+                    disabled={mutation.isPending || !isAuthReady}
+                    onClick={handleRequestCallback}
                   >
                     {mutation.isPending ? "Submitting..." : "Request a callback"}
                     <ArrowRight className="ml-2 h-4 w-4" />

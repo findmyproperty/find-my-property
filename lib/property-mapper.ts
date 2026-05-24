@@ -70,6 +70,7 @@ export function mapBackendProperty(property: BackendProperty): Property {
     furnishing: normalizeFurnishing(property.furnishing),
     ownerName: creator?.name?.trim() || "Owner",
     ownerPhone: creator?.phone?.trim() || undefined,
+    ownerRole: creator?.role,
     agentName: agent?.name?.trim() || undefined,
     agentPhone: agent?.phone?.trim() || undefined,
     amenities: amenities.length ? amenities : undefined,

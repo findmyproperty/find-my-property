@@ -5,7 +5,8 @@ import { buildPropertyPath } from "@/lib/property-slug";
 import { FurnishingStatus } from "@/modules/properties/PropertyCard";
 import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
 import { useProperties } from "@/hooks/use-properties";
-import { useState, useMemo } from "react";
+import { useBrowseLocation } from "@/hooks/use-browse-location";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   useQueryStates,
@@ -15,7 +16,7 @@ import {
   parseAsStringLiteral,
 } from "nuqs";
 import { Input } from "@/components/ui/input";
-import { Search, SlidersHorizontal, X, Map, LayoutGrid } from "lucide-react";
+import { Search, SlidersHorizontal, X, Map, LayoutGrid, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import PropertiesMap from "@/modules/properties/PropertiesMap";
 import { useAuth } from "@/contexts/auth-context";
 import { buildAreaFilterOptions, matchesAreaFilter } from "@/lib/property-location-options";
+import { sortPropertiesByDistance, propertyDistanceKm } from "@/lib/property-distance";
+
+const PAGE_SIZE = 12;
 
 const bhkOptions = [1, 2, 3, 4] as const;
 const furnishingOptions: { value: FurnishingStatus; label: string }[] = [
@@ -55,11 +59,13 @@ const propertyFilterParsers = {
   max: parseAsInteger,
   budget: parseAsString,
   view: parseAsStringLiteral(["list", "map"] as const).withDefault("list"),
+  page: parseAsInteger.withDefault(1),
 };
 
 const Properties = () => {
   const { data, isLoading } = useProperties();
   const { isAuthenticated } = useAuth();
+  const { location: browseLocation, isResolving: isLocationResolving } = useBrowseLocation();
   const allProperties = data ?? [];
   const router = useRouter();
   const [
@@ -73,6 +79,7 @@ const Properties = () => {
       max: priceMax,
       budget: selectedBudgetPreset,
       view: viewMode,
+      page: currentPage,
     },
     setQuery,
   ] = useQueryStates(propertyFilterParsers, { history: "replace", shallow: true });
@@ -126,6 +133,7 @@ const Properties = () => {
       min: null,
       max: null,
       budget: null,
+      page: 1,
     });
   };
 
@@ -154,22 +162,85 @@ const Properties = () => {
     }));
   };
 
-  const filtered = allProperties.filter((p) => {
-    const matchType = filter === "all" || p.type === filter;
-    const matchSearch =
-      !search ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.location.toLowerCase().includes(search.toLowerCase());
-    const matchSearchLocation =
-      !searchLocation ||
-      p.location.toLowerCase().includes(searchLocation.toLowerCase());
-    const matchBHK = selectedBHK.length === 0 || selectedBHK.includes(p.bedrooms);
-    const matchLocality = matchesAreaFilter(p, locality);
-    const matchFurnishing =
-      selectedFurnishing.length === 0 || selectedFurnishing.includes(p.furnishing);
-    const matchPrice = p.priceValue >= priceRange[0] && p.priceValue <= priceRange[1];
-    return matchType && matchSearch && matchSearchLocation && matchBHK && matchLocality && matchFurnishing && matchPrice;
-  });
+  const filtered = useMemo(
+    () =>
+      allProperties.filter((p) => {
+        const matchType = filter === "all" || p.type === filter;
+        const matchSearch =
+          !search ||
+          p.title.toLowerCase().includes(search.toLowerCase()) ||
+          p.location.toLowerCase().includes(search.toLowerCase());
+        const matchSearchLocation =
+          !searchLocation || p.location.toLowerCase().includes(searchLocation.toLowerCase());
+        const matchBHK = selectedBHK.length === 0 || selectedBHK.includes(p.bedrooms);
+        const matchLocality = matchesAreaFilter(p, locality);
+        const matchFurnishing =
+          selectedFurnishing.length === 0 || selectedFurnishing.includes(p.furnishing);
+        const matchPrice = p.priceValue >= priceRange[0] && p.priceValue <= priceRange[1];
+        return (
+          matchType &&
+          matchSearch &&
+          matchSearchLocation &&
+          matchBHK &&
+          matchLocality &&
+          matchFurnishing &&
+          matchPrice
+        );
+      }),
+    [
+      allProperties,
+      filter,
+      search,
+      searchLocation,
+      selectedBHK,
+      locality,
+      selectedFurnishing,
+      priceRange,
+    ],
+  );
+
+  const sortedFiltered = useMemo(() => {
+    if (!browseLocation) return filtered;
+    return sortPropertiesByDistance(filtered, browseLocation);
+  }, [filtered, browseLocation]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedList = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return sortedFiltered.slice(start, start + PAGE_SIZE);
+  }, [sortedFiltered, safePage]);
+
+  useEffect(() => {
+    if (currentPage !== safePage) {
+      void setQuery({ page: safePage });
+    }
+  }, [currentPage, safePage, setQuery]);
+
+  const filterSignature = useMemo(
+    () =>
+      JSON.stringify({
+        filter,
+        search,
+        locality,
+        bhk: selectedBHK,
+        furn: selectedFurnishing,
+        min: priceMin,
+        max: priceMax,
+      }),
+    [filter, search, locality, selectedBHK, selectedFurnishing, priceMin, priceMax],
+  );
+
+  const prevFilterSignature = useRef(filterSignature);
+
+  useEffect(() => {
+    if (prevFilterSignature.current === filterSignature) return;
+    prevFilterSignature.current = filterSignature;
+    if (currentPage !== 1) {
+      void setQuery({ page: 1 });
+    }
+  }, [filterSignature, currentPage, setQuery]);
 
   const renderFilterFields = () => (
     <>
@@ -443,31 +514,92 @@ const Properties = () => {
       </div>
     ) : null;
 
+  const locationBanner =
+    browseLocation && !isLocationResolving ? (
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
+        <MapPin className="h-4 w-4 shrink-0 text-primary" />
+        <span>
+          Sorted by distance from{" "}
+          <span className="font-medium">
+            {browseLocation.label ??
+              (browseLocation.source === "gps" ? "your current location" : "your saved profile location")}
+          </span>
+        </span>
+      </div>
+    ) : isLocationResolving ? (
+      <div className="mb-4 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        Finding your location…
+      </div>
+    ) : null;
+
+  const paginationControls =
+    sortedFiltered.length > PAGE_SIZE && viewMode === "list" ? (
+      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Page {safePage} of {totalPages} · showing {(safePage - 1) * PAGE_SIZE + 1}–
+          {Math.min(safePage * PAGE_SIZE, sortedFiltered.length)} of {sortedFiltered.length}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={safePage <= 1}
+            onClick={() => void setQuery({ page: safePage - 1 })}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={safePage >= totalPages}
+            onClick={() => void setQuery({ page: safePage + 1 })}
+          >
+            Next
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ) : null;
+
   const resultsBlock = (
     <>
+      {locationBanner}
       {isLoading ? (
         <PropertyGridSkeleton count={6} columns="list" />
-      ) : filtered.length > 0 ? (
+      ) : sortedFiltered.length > 0 ? (
         <>
           {viewMode === "list" && (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((property, i) => (
-                <div
-                  key={property.id}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.push(buildPropertyPath(property.id, property.title));
-                  }}
-                >
-                  <PropertyCard property={property} index={i} />
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {paginatedList.map((property, i) => (
+                  <div
+                    key={property.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(buildPropertyPath(property.id, property.title));
+                    }}
+                  >
+                      <PropertyCard
+                        property={property}
+                        index={i}
+                        distanceKm={
+                          browseLocation ? propertyDistanceKm(property, browseLocation) : null
+                        }
+                      />
+                  </div>
+                ))}
+              </div>
+              {paginationControls}
+            </>
           )}
           {viewMode === "map" && (
             <PropertiesMap
-              properties={filtered}
+              properties={sortedFiltered}
               height={520}
+              userCenter={browseLocation}
               onPropertyClick={(p) => router.push(buildPropertyPath(p.id, p.title))}
             />
           )}
@@ -510,7 +642,7 @@ const Properties = () => {
               {viewModeGroup}
             </div>
             <p className="min-w-0 text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+              <span className="font-semibold text-foreground">{sortedFiltered.length}</span> of{" "}
               <span className="text-foreground">{allProperties.length}</span> properties
               {isFiltered ? (
                 <span className="ml-1.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
@@ -536,13 +668,13 @@ const Properties = () => {
                 <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
                   <span className="font-medium">Filtered results</span>
                   <span className="text-muted-foreground">
-                    {filtered.length} of {allProperties.length} properties match
+                    {sortedFiltered.length} of {allProperties.length} properties match
                   </span>
                 </div>
               )}
               <div className="mb-4 hidden flex-row items-center justify-between gap-3 lg:flex">
                 <p className="min-w-0 text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+                  <span className="font-semibold text-foreground">{sortedFiltered.length}</span> of{" "}
                   <span className="text-foreground">{allProperties.length}</span> shown
                   {!isFiltered ? <span className="ml-1 text-xs">(no filters)</span> : null}
                 </p>
@@ -582,7 +714,7 @@ const Properties = () => {
               <X className="mr-2 h-4 w-4" /> {isFiltered ? "Clear all filters" : "No filters to clear"}
             </Button>
             <Button className="w-full" onClick={() => setFiltersOpen(false)}>
-              {isFiltered ? `Show ${filtered.length} filtered results` : "Show all results"}
+              {isFiltered ? `Show ${sortedFiltered.length} filtered results` : "Show all results"}
             </Button>
           </div>
         </SheetContent>

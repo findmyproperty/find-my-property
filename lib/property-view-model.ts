@@ -1,4 +1,5 @@
 import type { ListingType, PropertyStatus, PropertyType } from "@/schema/property";
+import type { UserRole } from "@/schema/user";
 
 /**
  * Furnishing — not yet on `PropertyRow`; kept for UI until API adds it.
@@ -36,6 +37,8 @@ export type Property = {
   isVerified?: boolean;
   ownerName?: string;
   ownerPhone?: string;
+  /** Role of the user who created / owns the listing (`creator.role` from API). */
+  ownerRole?: UserRole;
   agentName?: string;
   agentPhone?: string;
   furnishing: FurnishingStatus;

@@ -1,15 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { ServiceAuthModalProvider } from "@/contexts/service-auth-modal-context";
 
-export default function PublicLayout({ children }: { children: ReactNode }) {
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
-      <Navbar />
-      {children}
-      <Footer />
-    </div>
+    <ServiceAuthModalProvider>
+      <div className="min-h-screen overflow-x-hidden bg-background">
+        <Navbar />
+        {children}
+        <Footer />
+      </div>
+    </ServiceAuthModalProvider>
   );
 }

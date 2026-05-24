@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import PackersMoversPage from "@/modules/services/PackersMoversPage";
 import { getBranding } from "@/lib/branding/server";
@@ -19,5 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function Page() {
-  return <PackersMoversPage />;
+  return (
+      <PackersMoversPage />
+  );
 }

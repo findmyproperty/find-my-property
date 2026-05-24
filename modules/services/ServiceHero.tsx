@@ -17,6 +17,8 @@ interface ServiceHeroProps {
   subtitle: string;
   ctaLabel?: string;
   ctaHref?: string;
+  /** When set, CTA runs this instead of navigating (e.g. open auth intercept). */
+  onCtaClick?: () => void;
   trust?: Array<{ icon: LucideIcon; label: string }>;
   Illustration: LucideIcon;
 }
@@ -27,6 +29,7 @@ export function ServiceHero({
   subtitle,
   ctaLabel = "Request a callback",
   ctaHref = "#request-form",
+  onCtaClick,
   trust = DEFAULT_TRUST,
   Illustration,
 }: ServiceHeroProps) {
@@ -62,12 +65,19 @@ export function ServiceHero({
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button size="lg" asChild>
-              <a href={ctaHref}>
+            {onCtaClick ? (
+              <Button size="lg" type="button" onClick={onCtaClick}>
                 {ctaLabel}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
+              </Button>
+            ) : (
+              <Button size="lg" asChild>
+                <a href={ctaHref}>
+                  {ctaLabel}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            )}
             <Button size="lg" variant="outline" asChild>
               <a href="#how-it-works">See how it works</a>
             </Button>

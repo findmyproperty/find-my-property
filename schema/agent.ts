@@ -5,7 +5,7 @@ import {
   userPublicSchema,
 } from "@/schema/user";
 
-/** Property summary included on `GET /agents` (`properties` field). */
+/** Property summary included on `GET /agents` — listings the agent created. */
 export const agentAssignedPropertySchema = z.object({
   id: z.number().int(),
   title: z.string(),

@@ -1,9 +1,7 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   UserPlus,
   Mail,
@@ -16,11 +14,10 @@ import {
   MoreVertical,
   Search,
   Loader2,
-  Building2,
 } from "lucide-react";
 import { useAgents } from "@/hooks/use-agents";
-import { useAdminProperties } from "@/hooks/use-properties";
-import { api, type Agent } from "@/lib/api";
+import { type Agent } from "@/lib/api";
+import type { AgentAssignedProperty } from "@/schema/agent";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -41,34 +38,105 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { normalizePhone } from "@/helpers";
 import { buildPropertyPath } from "@/lib/property-slug";
-import { invalidatePropertyQueries } from "@/lib/invalidate-property-queries";
-import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
+
+type AgentForm = { name: string; email: string; phone: string };
+
+const emptyAgentForm = (): AgentForm => ({ name: "", email: "", phone: "" });
+
+const agentToForm = (agent: Agent): AgentForm => ({
+  name: agent.name ?? "",
+  email: agent.email ?? "",
+  phone: agent.phone ?? "",
+});
+
+const PROPERTIES_OVERFLOW_THRESHOLD = 3;
+const PROPERTIES_VISIBLE_WHEN_OVERFLOW = 2;
+
+function AgentPropertiesCell({ properties }: { properties: AgentAssignedProperty[] }) {
+  if (properties.length === 0) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  const hasOverflow = properties.length > PROPERTIES_OVERFLOW_THRESHOLD;
+  const visible = hasOverflow
+    ? properties.slice(0, PROPERTIES_VISIBLE_WHEN_OVERFLOW)
+    : properties;
+  const overflowCount = hasOverflow ? properties.length - PROPERTIES_VISIBLE_WHEN_OVERFLOW : 0;
+
+  const cellBody = (
+    <div className="flex min-w-0 w-full max-w-[9rem] flex-col gap-0.5 sm:max-w-[12rem]">
+      {visible.map((p) => (
+        <Link
+          key={p.id}
+          href={buildPropertyPath(p.id, p.title)}
+          className="truncate text-left text-xs font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {p.title}
+        </Link>
+      ))}
+      {overflowCount > 0 ? (
+        <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+          +{overflowCount}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  if (!hasOverflow) {
+    return cellBody;
+  }
+
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>
+        <div className="min-w-0 w-full cursor-default">{cellBody}</div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-[min(20rem,calc(100vw-2rem))] p-2"
+      >
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          All properties ({properties.length})
+        </p>
+        <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+          {properties.map((p) => (
+            <li key={p.id} className="min-w-0">
+              <Link
+                href={buildPropertyPath(p.id, p.title)}
+                className="block truncate text-xs font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {p.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const AgentManagement = () => {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { data: agents, isLoading, createAgent, deleteAgent, isCreating } = useAgents();
-  const { data: rawProperties, isLoading: isLoadingProperties } = useAdminProperties();
+  const {
+    data: agents,
+    isLoading,
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    isCreating,
+    isUpdating,
+  } = useAgents();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newAgent, setNewAgent] = useState({ name: "", email: "", phone: "" });
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignAgent, setAssignAgent] = useState<Agent | null>(null);
-  const [assignPropertyId, setAssignPropertyId] = useState<string>("");
-  const [isAssigning, setIsAssigning] = useState(false);
+  const [newAgent, setNewAgent] = useState<AgentForm>(emptyAgentForm());
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [editForm, setEditForm] = useState<AgentForm>(emptyAgentForm());
 
   const filteredAgents = agents?.filter((agent) => {
     const q = searchTerm.toLowerCase();
@@ -79,48 +147,43 @@ const AgentManagement = () => {
 
   const handleAddAgent = async () => {
     try {
-      const payload = { 
+      const payload = {
         name: newAgent.name,
         email: newAgent.email,
         phone: normalizePhone(newAgent.phone),
-      }
+      };
       await createAgent(payload);
       setIsAddModalOpen(false);
-      setNewAgent({ name: "", email: "", phone: "" });
+      setNewAgent(emptyAgentForm());
     } catch {
       // Toast handled in hook
     }
   };
 
-  const handleAssignProperty = async () => {
-    if (!assignAgent || !assignPropertyId) return;
-    setIsAssigning(true);
+  const openEditDialog = useCallback((agent: Agent) => {
+    setEditingAgent(agent);
+    setEditForm(agentToForm(agent));
+    setEditOpen(true);
+  }, []);
+
+  const handleEditAgent = async () => {
+    if (!editingAgent) return;
     try {
-      await api.updateProperty(assignPropertyId, { assignedAgentId: assignAgent.id });
-      await revalidatePropertyListingCache(assignPropertyId);
-      await invalidatePropertyQueries(queryClient, assignPropertyId);
-      await queryClient.invalidateQueries({ queryKey: ["agents"] });
-      router.refresh();
-      toast({ title: "Property assigned", description: "The listing agent has been updated." });
-      setAssignOpen(false);
-      setAssignAgent(null);
-      setAssignPropertyId("");
-    } catch (e) {
-      toast({
-        title: "Could not assign property",
-        description: e instanceof Error ? e.message : "Request failed",
-        variant: "destructive",
+      await updateAgent({
+        id: editingAgent.id,
+        data: {
+          name: editForm.name,
+          email: editForm.email,
+          phone: normalizePhone(editForm.phone),
+        },
       });
-    } finally {
-      setIsAssigning(false);
+      setEditOpen(false);
+      setEditingAgent(null);
+      setEditForm(emptyAgentForm());
+    } catch {
+      // Toast handled in hook
     }
   };
-
-  const openAssignDialog = useCallback((agent: Agent) => {
-    setAssignAgent(agent);
-    setAssignPropertyId("");
-    setAssignOpen(true);
-  }, []);
 
   const getStatusBadge = useCallback((agent: Agent) => {
     if (!agent.isEmailVerified) {
@@ -161,29 +224,10 @@ const AgentManagement = () => {
       },
       {
         id: "properties",
-        header: "Assigned properties",
-        cell: ({ row }) => {
-          const list = row.original.properties ?? [];
-          if (list.length === 0) {
-            return <span className="text-xs text-muted-foreground">—</span>;
-          }
-          return (
-            <div className="flex max-w-[220px] flex-col gap-1">
-              {list.slice(0, 4).map((p) => (
-                <Link
-                  key={p.id}
-                  href={buildPropertyPath(p.id, p.title)}
-                  className="truncate text-left text-xs font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  {p.title}
-                </Link>
-              ))}
-              {list.length > 4 ? (
-                <span className="text-[10px] text-muted-foreground">+{list.length - 4} more</span>
-              ) : null}
-            </div>
-          );
-        },
+        header: "Properties",
+        cell: ({ row }) => (
+          <AgentPropertiesCell properties={row.original.properties ?? []} />
+        ),
       },
       {
         id: "location",
@@ -229,17 +273,14 @@ const AgentManagement = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem className="cursor-pointer gap-2">
-                    <Edit2 className="w-3.5 h-3.5" /> Edit Details
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer gap-2"
                     onSelect={(e) => {
                       e.preventDefault();
-                      openAssignDialog(agent);
+                      openEditDialog(agent);
                     }}
                   >
-                    <Building2 className="w-3.5 h-3.5" /> Assign property
+                    <Edit2 className="w-3.5 h-3.5" /> Edit Details
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer gap-2 text-destructive focus:text-destructive"
@@ -254,7 +295,7 @@ const AgentManagement = () => {
         },
       },
     ],
-    [deleteAgent, getStatusBadge, openAssignDialog],
+    [deleteAgent, getStatusBadge, openEditDialog],
   );
 
   return (
@@ -287,37 +328,39 @@ const AgentManagement = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={newAgent.name} 
-                    onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
-                    placeholder="John Doe" 
+                  <Input
+                    id="name"
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                    placeholder="John Doe"
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={newAgent.email} 
-                    onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
-                    placeholder="john@example.com" 
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newAgent.email}
+                    onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
+                    placeholder="john@example.com"
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input 
-                    id="phone" 
+                  <Input
+                    id="phone"
                     type="tel"
-                    value={newAgent.phone} 
-                    onChange={(e) => setNewAgent({...newAgent, phone: e.target.value})}
-                    placeholder="+91 ..." 
+                    value={newAgent.phone}
+                    onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
+                    placeholder="+91 ..."
                     required
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={isCreating}>
                   {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Send Invitation
@@ -328,77 +371,89 @@ const AgentManagement = () => {
         </Dialog>
 
         <Dialog
-          open={assignOpen}
+          open={editOpen}
           onOpenChange={(open) => {
-            setAssignOpen(open);
+            setEditOpen(open);
             if (!open) {
-              setAssignAgent(null);
-              setAssignPropertyId("");
+              setEditingAgent(null);
+              setEditForm(emptyAgentForm());
             }
           }}
         >
-          <DialogContent className="sm:max-w-md">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign property</DialogTitle>
+              <DialogTitle>Edit Agent</DialogTitle>
               <DialogDescription>
-                Link a listing to{" "}
-                <span className="font-medium text-foreground">{assignAgent?.name ?? "this agent"}</span>.
-                They will receive leads for that property.
+                Update details for{" "}
+                <span className="font-medium text-foreground">{editingAgent?.name ?? "this agent"}</span>.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="assign-property">Property</Label>
-                <Select
-                  value={assignPropertyId}
-                  onValueChange={setAssignPropertyId}
-                  disabled={isLoadingProperties}
-                >
-                  <SelectTrigger id="assign-property" className="w-full">
-                    <SelectValue placeholder={isLoadingProperties ? "Loading properties…" : "Select a property"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(rawProperties ?? []).map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.title}
-                        {p.city ? ` — ${p.city}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <form
+              className="contents"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleEditAgent();
+              }}
+            >
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">Full Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-email">Email Address</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">Phone Number</Label>
+                  <Input
+                    id="edit-phone"
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="+91 ..."
+                    required
+                  />
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setAssignOpen(false);
-                  setAssignAgent(null);
-                  setAssignPropertyId("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={!assignPropertyId || isAssigning}
-                onClick={() => void handleAssignProperty()}
-              >
-                {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Assign
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditingAgent(null);
+                    setEditForm(emptyAgentForm());
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isUpdating}>
+                  {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Search & Stats */}
       <div className="bg-card border border-border rounded-xl p-1 shadow-sm">
         <div className="flex items-center px-3 py-2">
           <Search className="w-4 h-4 text-muted-foreground mr-2" />
-          <Input 
-            placeholder="Search by name or email..." 
+          <Input
+            placeholder="Search by name or email..."
             className="border-0 focus-visible:ring-0 bg-transparent"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -406,7 +461,6 @@ const AgentManagement = () => {
         </div>
       </div>
 
-      {/* Agents Table */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <DataTable
           columns={columns}

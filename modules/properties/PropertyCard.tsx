@@ -10,7 +10,15 @@ import Image from "next/image";
 
 export type { FurnishingStatus, Property } from "@/lib/property-view-model";
 
-const PropertyCard = ({ property, index = 0 }: { property: Property; index?: number }) => {
+const PropertyCard = ({
+  property,
+  index = 0,
+  distanceKm = null,
+}: {
+  property: Property;
+  index?: number;
+  distanceKm?: number | null;
+}) => {
   const primaryImage = property.image || property.images?.[0];
 
   return (
@@ -74,6 +82,14 @@ const PropertyCard = ({ property, index = 0 }: { property: Property; index?: num
                 {property.location ? property.location.split(",")[0] : "—"}
               </span>
             </span>
+            {distanceKm != null ? (
+              <>
+                <span className="text-border shrink-0">•</span>
+                <span className="shrink-0 text-xs font-medium text-primary">
+                  {distanceKm < 1 ? "< 1 km" : `${distanceKm.toFixed(1)} km`}
+                </span>
+              </>
+            ) : null}
             <span className="text-border shrink-0">•</span>
             <span className="flex items-center gap-1 shrink-0">
               <Bed className="w-3.5 h-3.5" /> {property.bedrooms} BHK

@@ -37,6 +37,13 @@ export function useAgents() {
       queryClient.invalidateQueries({ queryKey: ["agents"] });
       toast({ title: "Agent updated" });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating agent",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils";
 import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
 import { getMarkerPosition, MAP_DEFAULT_CENTER } from "@/lib/property-map-coords";
 import { getThemeMarkerSymbol } from "@/lib/map-marker";
+import { isPointInBounds, type GeoPoint } from "@/lib/geo";
 import type { Property } from "@/components/property/PropertyCard";
 
 const DEFAULT_ZOOM = 11;
+const USER_ZOOM = 12;
 
 const containerStyle: React.CSSProperties = {
   width: "100%",
@@ -22,32 +24,51 @@ const containerStyle: React.CSSProperties = {
 export interface PropertiesMapProps {
   properties: Property[];
   onPropertyClick?: (property: Property) => void;
+  onVisibleCountChange?: (count: number) => void;
   className?: string;
   height?: number;
+  /** When set, map opens centred on the user and only draws markers in the current viewport. */
+  userCenter?: GeoPoint | null;
 }
 
 const PropertiesMap = ({
   properties,
   onPropertyClick,
+  onVisibleCountChange,
   className,
   height = 480,
+  userCenter = null,
 }: PropertiesMapProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const idleListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+  const [zoom, setZoom] = useState(userCenter ? USER_ZOOM : DEFAULT_ZOOM);
+  const [visibleProperties, setVisibleProperties] = useState<Property[]>(properties);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded, loadError } = useJsApiLoader(getGoogleMapsLoaderOptions(apiKey));
 
-  const onLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-  }, []);
+  const positions = useMemo(
+    () => properties.map((p) => ({ property: p, ...getMarkerPosition(p) })),
+    [properties],
+  );
 
-  const onUnmount = useCallback(() => {
-    mapRef.current = null;
-  }, []);
-
-  const positions = properties.map((p) => ({ property: p, ...getMarkerPosition(p) }));
   const approximateCount = positions.filter((x) => x.approximate).length;
+
+  const syncVisibleToViewport = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const bounds = map.getBounds();
+    if (!bounds) {
+      setVisibleProperties(properties);
+      return;
+    }
+    const next = properties.filter((p) => {
+      const { lat, lng } = getMarkerPosition(p);
+      return isPointInBounds({ lat, lng }, bounds);
+    });
+    setVisibleProperties(next);
+    onVisibleCountChange?.(next.length);
+  }, [properties, onVisibleCountChange]);
 
   const fitAllProperties = useCallback(() => {
     if (positions.length === 0 || !mapRef.current) return;
@@ -56,14 +77,44 @@ const PropertiesMap = ({
     mapRef.current.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
   }, [positions]);
 
-  const didAutoFit = useRef(false);
-  /** Once when the map loads with markers, zoom to fit (manual "Fit all" still works). */
+  const onLoad = useCallback(
+    (map: google.maps.Map) => {
+      mapRef.current = map;
+
+      idleListenerRef.current?.remove();
+      idleListenerRef.current = map.addListener("idle", () => {
+        syncVisibleToViewport();
+        setZoom(map.getZoom() ?? DEFAULT_ZOOM);
+      });
+
+      if (userCenter) {
+        map.setCenter(userCenter);
+        map.setZoom(USER_ZOOM);
+      } else if (positions.length > 0) {
+        const bounds = new google.maps.LatLngBounds();
+        positions.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+        map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+      }
+
+      window.setTimeout(() => syncVisibleToViewport(), 100);
+    },
+    [userCenter, positions, syncVisibleToViewport],
+  );
+
+  const onUnmount = useCallback(() => {
+    idleListenerRef.current?.remove();
+    idleListenerRef.current = null;
+    mapRef.current = null;
+  }, []);
+
   useEffect(() => {
-    if (!isLoaded || positions.length === 0 || didAutoFit.current) return;
-    didAutoFit.current = true;
-    const t = window.setTimeout(() => fitAllProperties(), 150);
-    return () => window.clearTimeout(t);
-  }, [isLoaded, positions.length, fitAllProperties]);
+    if (!mapRef.current) {
+      setVisibleProperties(properties);
+      onVisibleCountChange?.(properties.length);
+      return;
+    }
+    syncVisibleToViewport();
+  }, [properties, syncVisibleToViewport, onVisibleCountChange]);
 
   const zoomIn = useCallback(() => {
     if (mapRef.current) {
@@ -81,12 +132,20 @@ const PropertiesMap = ({
     }
   }, []);
 
+  const mapMarkers = useMemo(() => {
+    const source = userCenter ? visibleProperties : properties;
+    return source.map((p) => ({ property: p, ...getMarkerPosition(p) }));
+  }, [userCenter, visibleProperties, properties]);
+
+  const initialCenter = userCenter ?? MAP_DEFAULT_CENTER;
+  const initialZoom = userCenter ? USER_ZOOM : DEFAULT_ZOOM;
+
   if (!apiKey) {
     return (
       <div
         className={cn(
-          "rounded-xl border border-border bg-muted/30 flex items-center justify-center p-8 text-sm text-muted-foreground",
-          className
+          "flex items-center justify-center rounded-xl border border-border bg-muted/30 p-8 text-sm text-muted-foreground",
+          className,
         )}
         style={{ height }}
       >
@@ -99,8 +158,8 @@ const PropertiesMap = ({
     return (
       <div
         className={cn(
-          "rounded-xl border border-border bg-destructive/10 text-destructive flex items-center justify-center p-8 text-sm",
-          className
+          "flex items-center justify-center rounded-xl border border-border bg-destructive/10 p-8 text-sm text-destructive",
+          className,
         )}
         style={{ height }}
       >
@@ -113,8 +172,8 @@ const PropertiesMap = ({
     return (
       <div
         className={cn(
-          "rounded-xl border border-border bg-muted/30 flex items-center justify-center text-muted-foreground text-sm",
-          className
+          "flex items-center justify-center rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground",
+          className,
         )}
         style={{ height }}
       >
@@ -123,18 +182,20 @@ const PropertiesMap = ({
     );
   }
 
-  console.log({positions})
-
   return (
     <div className={cn("space-y-3", className)}>
       {approximateCount > 0 && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-          {approximateCount} listing{approximateCount === 1 ? "" : "s"} use an approximate position (no saved map coordinates). Add a map pin when listing a property for exact placement.
+          {approximateCount} listing{approximateCount === 1 ? "" : "s"} use an approximate position (no saved map
+          coordinates). Add a map pin when listing a property for exact placement.
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
-          Zoom: {zoom} | {positions.length} propert{positions.length === 1 ? "y" : "ies"} on map
+          Zoom: {zoom} |{" "}
+          {userCenter
+            ? `${mapMarkers.length} in view · ${properties.length} total`
+            : `${mapMarkers.length} propert${mapMarkers.length === 1 ? "y" : "ies"} on map`}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -165,8 +226,8 @@ const PropertiesMap = ({
       <div className="relative overflow-hidden rounded-xl border border-border" style={{ height }}>
         <GoogleMap
           mapContainerStyle={{ ...containerStyle, height, minHeight: height }}
-          center={MAP_DEFAULT_CENTER}
-          zoom={DEFAULT_ZOOM}
+          center={initialCenter}
+          zoom={initialZoom}
           onLoad={onLoad}
           onUnmount={onUnmount}
           options={{
@@ -176,7 +237,7 @@ const PropertiesMap = ({
             zoomControl: false,
           }}
         >
-          {positions.map(({ property: p, lat, lng, approximate }) => {
+          {mapMarkers.map(({ property: p, lat, lng, approximate }) => {
             const label =
               p.priceValue >= 10000000
                 ? `₹${(p.priceValue / 10000000).toFixed(1)}Cr`
@@ -189,7 +250,7 @@ const PropertiesMap = ({
                 position={{ lat, lng }}
                 icon={getThemeMarkerSymbol({ scale: 1.3, withLabel: true })}
                 label={{
-                  text: label.length > 8 ? label.slice(0, 7) + "…" : label,
+                  text: label.length > 8 ? `${label.slice(0, 7)}…` : label,
                   color: "#fff",
                   fontSize: "10px",
                   fontWeight: "bold",

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -40,14 +40,12 @@ export default function DashboardHeader({ title }: DashboardHeaderProps) {
               href="/profile"
               className="flex items-center gap-2 rounded-full p-1 pr-2 hover:bg-muted/50 transition-colors min-w-0"
             >
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={user.name}
+                avatarUrl={user.avatarUrl}
+                className="h-8 w-8 shrink-0"
+                fallbackClassName="text-xs"
+              />
               <span className="hidden sm:inline text-sm font-medium text-foreground truncate max-w-[120px]">
                 {user.name}
               </span>

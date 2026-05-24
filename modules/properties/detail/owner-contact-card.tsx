@@ -59,7 +59,7 @@ export function OwnerContactCard({ property }: OwnerContactCardProps) {
             </div>
           ) : (
             <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
-              Owner phone is not listed for this property. Use the agent enquiry above or check back later.
+              Owner phone is not listed for this property. Check back later.
             </p>
           )}
         </div>

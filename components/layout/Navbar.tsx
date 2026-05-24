@@ -8,7 +8,7 @@ import { Menu, X, Building2, LogOut, ChevronDown, Truck, PaintBucket } from "luc
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
@@ -107,11 +107,12 @@ const Navbar = () => {
             <>
               <Button variant="ghost" size="sm" asChild>
                 <Link href={getDashboardLink()} className="flex items-center gap-2 min-w-0">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                      {user?.name.split(" ").map((n) => n[0]).join("")}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    name={user?.name ?? "User"}
+                    avatarUrl={user?.avatarUrl}
+                    className="h-6 w-6"
+                    fallbackClassName="text-[10px]"
+                  />
                   Dashboard
                 </Link>
               </Button>

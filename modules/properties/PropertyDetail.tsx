@@ -65,8 +65,7 @@ const PropertyDetail = () => {
   const similarProperties = allProperties.filter((p) => p.id !== id).slice(0, 4);
   const amenities = property.amenities ?? [];
   const floorPlans = property.floorPlans ?? [];
-  const hasAssignedAgent =
-    property.assignedAgentId != null && Number(property.assignedAgentId) > 0;
+  const isAgentOwner = property.ownerRole === "agent";
 
   return (
     <div className="pb-20 pt-6">
@@ -94,9 +93,12 @@ const PropertyDetail = () => {
 
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
-              {hasAssignedAgent ? (
+              {isAgentOwner ? (
                 <AgentContactCard
-                  property={property}
+                  property={{
+                    ...property,
+                    agentName: property.agentName ?? property.ownerName,
+                  }}
                   canEnquireAsTenant={canEnquireAsTenant}
                   isAuthReady={isAuthReady}
                   userRole={user?.role}
@@ -107,8 +109,9 @@ const PropertyDetail = () => {
                   onEnquiryMessageChange={setEnquiryMessage}
                   createLead={createLead}
                 />
-              ) : null}
-              <OwnerContactCard property={property} />
+              ) : (
+                <OwnerContactCard property={property} />
+              )}
             </div>
           </div>
         </div>
