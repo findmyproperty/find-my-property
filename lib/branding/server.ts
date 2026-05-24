@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { cacheLife } from "next/cache";
 
 import { DEFAULT_SITE_NAME } from "@/lib/branding";
 import { getApiBaseUrl } from "@/end-points/http";
@@ -31,10 +32,11 @@ const REVALIDATE_SECONDS = 600;
  * constants so SSR never blocks on a flaky settings endpoint.
  */
 export const getBranding = cache(async (): Promise<Branding> => {
+  "use cache";
+  cacheLife({ revalidate: REVALIDATE_SECONDS });
+
   try {
-    const res = await fetch(`${getApiBaseUrl()}/settings`, {
-      next: { revalidate: REVALIDATE_SECONDS, tags: ["settings"] },
-    });
+    const res = await fetch(`${getApiBaseUrl()}/settings`);
     if (!res.ok) return FALLBACK;
     const data = (await res.json()) as Partial<Branding> | null;
     return {

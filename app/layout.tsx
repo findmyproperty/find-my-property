@@ -12,6 +12,7 @@ const SITE_DESCRIPTION =
   "Find verified rental and sale listings in India. Browse by city and budget, contact owners directly — without broker commission.";
 
 export async function generateMetadata(): Promise<Metadata> {
+  "use cache";
   const { siteName, faviconUrl } = await getBranding();
 
   return {
