@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -56,6 +57,11 @@ export function ServiceAuthModal({
       <DialogContent className="max-h-[min(92vh,720px)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {mode === "login"
+              ? "Log in with your phone to request a callback on this page."
+              : "Create an account with your phone to request a callback on this page."}
+          </DialogDescription>
         </DialogHeader>
         <Suspense fallback={null}>
           {mode === "login" ? (
