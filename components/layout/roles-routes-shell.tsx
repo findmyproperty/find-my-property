@@ -19,7 +19,7 @@ function isMarketplacePath(pathname: string) {
 }
 
 function MarketplacePublicChrome({ children, isPropertyPage = false }: { children: ReactNode, isPropertyPage?: boolean }) {
-  const padding = isPropertyPage ? "px-20 pt-18" : "px-10";
+  const padding = isPropertyPage ? "px-20 pt-18" : "px-5 md:px-10";
   return (
     <ServiceAuthModalProvider>
       <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">

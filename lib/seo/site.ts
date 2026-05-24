@@ -28,10 +28,7 @@ export function toAbsoluteImageUrl(src: string | null | undefined): string | und
   return s;
 }
 
+/** Site origin string for Next.js `metadata.metadataBase` (must be plain, not a URL instance). */
 export function metadataBase(): Metadata["metadataBase"] {
-  try {
-    return new URL(getSiteUrl());
-  } catch {
-    return new URL("http://localhost:3000");
-  }
+  return getSiteUrl();
 }
