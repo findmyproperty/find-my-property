@@ -156,7 +156,7 @@ export default function RegisterPanel({
             <div className="relative">
               <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
               <Input
-                placeholder="+91 98765 43210"
+                placeholder="+91"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
