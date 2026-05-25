@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type Settings } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { revalidateBranding } from "@/app/(roles-routes)/admin/settings/actions";
+import { applyFavicon } from "@/lib/branding/client";
 
 export function useAdminSettings() {
   const queryClient = useQueryClient();
@@ -21,8 +22,8 @@ export function useAdminSettings() {
     mutationFn: api.updateSettings,
     onSuccess: async (updated) => {
       queryClient.setQueryData(["admin-settings"], updated);
-      // Refresh the public branding query so Navbar/Footer/Sidebar pick up the
-      // new value immediately on the same client without a hard reload.
+      queryClient.setQueryData(["global-settings"], updated);
+      applyFavicon(updated.faviconUrl);
       queryClient.invalidateQueries({ queryKey: ["global-settings"] });
       try {
         // Bust the SSR data cache (`revalidateTag('settings')`) so server

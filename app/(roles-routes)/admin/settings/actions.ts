@@ -2,6 +2,8 @@
 
 import { updateTag } from "next/cache";
 
+import { TAGS } from "@/config/tags";
+
 /**
  * Bust the SSR data cache for the `settings` tag. Called from the admin
  * settings hook after a successful PATCH so the next request re-renders
@@ -13,5 +15,5 @@ import { updateTag } from "next/cache";
  * profile/expiry argument to maintain.
  */
 export async function revalidateBranding() {
-  updateTag("settings");
+  updateTag(TAGS.settings);
 }

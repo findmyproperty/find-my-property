@@ -10,24 +10,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Mail, Phone, FileText, Shield } from "lucide-react";
 import type { UserRole } from "@/contexts/auth-context";
+import { normalizePhone } from "@/helpers";
 
 const AgentProfile = () => {
-  const { user, profile, updateUser, updateProfileLocal, updateProfile } = useAuth();
+  const { user, profile, updateProfileLocal, updateProfile } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name ?? "");
-  const [phone, setPhone] = useState(profile.phone ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setName(user?.name ?? "");
-    setPhone(profile.phone ?? "");
+    setPhone(user?.phone ?? "");
     setBio(profile.bio ?? "");
-  }, [user?.name, profile.phone, profile.bio]);
+  }, [user?.name, user?.phone, profile.bio]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({ name: name.trim() || user?.name });
-    updateProfileLocal({ phone: phone.trim() || undefined, bio: bio.trim() || undefined });
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast({
+        title: "Name required",
+        description: "Please enter your full name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+    const payload: { name: string; phone?: string } = { name: trimmed };
+    if (normalizedPhone && normalizedPhone !== (user?.phone ?? "")) {
+      payload.phone = normalizedPhone;
+    }
+
+    setIsSaving(true);
+    const res = await updateProfile(payload);
+    setIsSaving(false);
+
+    if (!res.success) {
+      toast({
+        title: "Couldn't save profile",
+        description: res.error || "Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateProfileLocal({ bio: bio.trim() || undefined });
     toast({
       title: "Profile updated",
       description: "Your agent profile has been saved.",
@@ -137,11 +167,12 @@ const AgentProfile = () => {
                 rows={4}
                 className="bg-background resize-none"
               />
+              <p className="text-xs text-muted-foreground">Bio is saved on this device only.</p>
             </div>
           </div>
         </div>
-        <Button type="submit" className="w-full sm:w-auto">
-          Save Changes
+        <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save Changes"}
         </Button>
       </form>
     </div>

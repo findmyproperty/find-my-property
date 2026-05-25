@@ -15,7 +15,7 @@ type SuccessResult = { success: true; requiresOnboarding: boolean };
 type FailedResult = { success: false; error: string };
 type AuthResult = SuccessResult | FailedResult;
 
-/** Extended profile stored per user (phone, bio, etc.) */
+/** Client-only extras (not stored on the user API). Phone lives on `user.phone` after save. */
 export interface UserProfile {
   phone?: string;
   bio?: string;
@@ -63,7 +63,7 @@ interface AuthContextType {
   }) => Promise<AuthResult>;
   deleteAccount: () => Promise<{ success: true } | FailedResult>;
   logout: () => Promise<void>;
-  updateUser: (updates: Partial<Pick<User, "name">>) => void;
+  /** Local-only profile extras (bio, etc.) — not synced to the API. */
   updateProfileLocal: (updates: UserProfile) => void;
   isAuthenticated: boolean;
   /** True after client has read session from localStorage (matches SSR until then). */
@@ -222,13 +222,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateUser = (updates: Partial<Pick<User, "name">>) => {
-    if (!user) return;
-    const next = { ...user, ...updates };
-    setUser(next);
-    localStorage.setItem("nb_user", JSON.stringify(next));
-  };
-
   const updateProfileLocal = (updates: UserProfile) => {
     if (!user) return;
     const next = { ...profile, ...updates };
@@ -255,7 +248,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         updateProfile,
         deleteAccount,
         logout,
-        updateUser,
         updateProfileLocal,
         isAuthenticated: !!user && !!token,
         isAuthReady,

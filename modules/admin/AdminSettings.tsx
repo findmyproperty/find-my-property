@@ -204,7 +204,7 @@ const AdminSettings = () => {
           <SectionCard
             icon={<Palette className="h-4 w-4 text-primary" />}
             title="Logo & favicon"
-            subtitle="Upload your brand marks. Images are stored on the media server and served from a stable URL."
+            subtitle="Upload your brand marks via Cloudinary. Save changes to apply across the site."
           >
             <div className="grid gap-6 md:grid-cols-2">
               <ImageUploadField

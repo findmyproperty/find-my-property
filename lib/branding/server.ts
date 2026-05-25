@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
+
+import { TAGS } from "@/config/tags";
 
 import { DEFAULT_SITE_NAME } from "@/lib/branding";
 import { getApiBaseUrl } from "@/end-points/http";
@@ -33,6 +35,7 @@ const REVALIDATE_SECONDS = 600;
  */
 export const getBranding = cache(async (): Promise<Branding> => {
   "use cache";
+  cacheTag(TAGS.settings);
   cacheLife({ revalidate: REVALIDATE_SECONDS });
 
   try {

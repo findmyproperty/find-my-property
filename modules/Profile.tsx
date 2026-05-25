@@ -25,10 +25,11 @@ import { useRouter } from "next/navigation";
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
 const Profile = () => {
-  const { user, profile, updateUser, updateProfileLocal, updateProfile, requestPhoneOtp } = useAuth();
+  const { user, updateProfile, requestPhoneOtp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const [name, setName] = useState(user?.name ?? "");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [phoneDraft, setPhoneDraft] = useState("");
@@ -44,7 +45,7 @@ const Profile = () => {
     setName(user?.name ?? "");
   }, [user?.name]);
 
-  const displayPhone = (user?.phone ?? profile.phone ?? "").trim();
+  const displayPhone = (user?.phone ?? "").trim();
 
   const resetPhoneDialog = () => {
     setOtpSent(false);
@@ -121,7 +122,6 @@ const Profile = () => {
       return;
     }
 
-    updateProfileLocal({ phone: formatted });
     toast({
       title: "Phone updated",
       description: "Your phone number has been verified and saved.",
@@ -130,9 +130,31 @@ const Profile = () => {
     resetPhoneDialog();
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({ name: name.trim() || user?.name });
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast({
+        title: "Name required",
+        description: "Please enter your full name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    const res = await updateProfile({ name: trimmed });
+    setIsSaving(false);
+
+    if (!res.success) {
+      toast({
+        title: "Couldn't save profile",
+        description: res.error || "Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Profile updated",
       description: "Your changes have been saved.",
@@ -377,8 +399,15 @@ const Profile = () => {
             </div>
           </div>
         </div>
-        <Button type="submit" className="w-full sm:w-auto">
-          Save Changes
+        <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              Saving…
+            </>
+          ) : (
+            "Save Changes"
+          )}
         </Button>
       </form>
 

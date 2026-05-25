@@ -5,4 +5,5 @@
 export const TAGS = {
   properties: "properties",
   property: (id: string) => `property:${id}`,
+  settings: "settings",
 } as const;

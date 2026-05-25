@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect } from "react";
 import { api, type Settings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { applyFavicon } from "@/lib/branding/client";
 import { SITE_NAME } from "@/lib/branding";
 
 interface SettingsContextType {
@@ -11,29 +12,6 @@ interface SettingsContextType {
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
-
-/**
- * Replace (or create) the `<link rel="icon">` tag so the browser tab updates
- * live when admins upload a new favicon. We prefer mutating an existing link
- * element over appending duplicates to keep the head tidy.
- */
-function applyFavicon(url: string | null | undefined) {
-  if (typeof document === "undefined") return;
-  const head = document.head;
-  const existing = head.querySelector<HTMLLinkElement>('link[rel~="icon"]');
-  if (!url) {
-    // Nothing to apply — leave whatever the framework rendered as default.
-    return;
-  }
-  if (existing) {
-    existing.setAttribute("href", url);
-  } else {
-    const link = document.createElement("link");
-    link.rel = "icon";
-    link.href = url;
-    head.appendChild(link);
-  }
-}
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: settings, isLoading } = useQuery({
