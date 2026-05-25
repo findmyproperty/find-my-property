@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -12,7 +12,13 @@ import {
   Pencil,
   Search,
 } from "lucide-react";
-import { useAdminProperties } from "@/hooks/use-properties";
+import {
+  parseAsInteger,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryStates,
+} from "nuqs";
+import { useAdminPropertiesList } from "@/hooks/use-properties";
 import { useAgents } from "@/hooks/use-agents";
 import type { BackendProperty } from "@/lib/property-mapper";
 import { buildPropertyPath } from "@/lib/property-slug";
@@ -28,6 +34,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+const PAGE_SIZE = 20;
+
 type SortKey =
   | "id"
   | "title"
@@ -39,6 +48,24 @@ type SortKey =
   | "bathrooms"
   | "area"
   | "status";
+
+const filterParsers = {
+  q: parseAsString.withDefault(""),
+  page: parseAsInteger.withDefault(1),
+  sortBy: parseAsStringLiteral([
+    "id",
+    "title",
+    "city",
+    "listingType",
+    "propertyType",
+    "price",
+    "bedrooms",
+    "bathrooms",
+    "area",
+    "status",
+  ] as const).withDefault("id"),
+  sortDir: parseAsStringLiteral(["asc", "desc"] as const).withDefault("desc"),
+};
 
 function formatPrice(p: BackendProperty) {
   return new Intl.NumberFormat("en-IN", {
@@ -74,59 +101,40 @@ function statusBadge(status?: string) {
   );
 }
 
-function compareRows(a: BackendProperty, b: BackendProperty, key: SortKey, dir: "asc" | "desc") {
-  const mul = dir === "asc" ? 1 : -1;
-  switch (key) {
-    case "id":
-      return (a.id - b.id) * mul;
-    case "price":
-      return ((Number(a.price) || 0) - (Number(b.price) || 0)) * mul;
-    case "bedrooms":
-      return ((Number(a.bedrooms) || 0) - (Number(b.bedrooms) || 0)) * mul;
-    case "bathrooms":
-      return ((Number(a.bathrooms) || 0) - (Number(b.bathrooms) || 0)) * mul;
-    case "area":
-      return (areaSqFt(a) - areaSqFt(b)) * mul;
-    default: {
-      const av = String(
-        key === "title"
-          ? a.title
-          : key === "city"
-            ? a.city
-            : key === "listingType"
-              ? a.listingType
-              : key === "propertyType"
-                ? a.propertyType
-                : key === "status"
-                  ? a.status ?? ""
-                  : "",
-      );
-      const bv = String(
-        key === "title"
-          ? b.title
-          : key === "city"
-            ? b.city
-            : key === "listingType"
-              ? b.listingType
-              : key === "propertyType"
-                ? b.propertyType
-                : key === "status"
-                  ? b.status ?? ""
-                  : "",
-      );
-      return av.localeCompare(bv, undefined, { sensitivity: "base" }) * mul;
-    }
-  }
-}
-
 const AdminPropertiesList = () => {
-  const { data: rows = [], isLoading, isError, error } = useAdminProperties();
-  const { data: agents = [] } = useAgents();
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "id",
-    dir: "desc",
+  const [{ q, page, sortBy, sortDir }, setQuery] = useQueryStates(filterParsers, {
+    history: "replace",
+    shallow: true,
   });
+  const [searchDraft, setSearchDraft] = useState(q);
+
+  useEffect(() => setSearchDraft(q), [q]);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      if (searchDraft !== q) {
+        setQuery({ q: searchDraft, page: 1 });
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchDraft, q, setQuery]);
+
+  const listQuery = useMemo(
+    () => ({
+      q: q || undefined,
+      page,
+      limit: PAGE_SIZE,
+      sortBy,
+      sortDir,
+    }),
+    [q, page, sortBy, sortDir],
+  );
+
+  const { data, isLoading, isError, error, isFetching } = useAdminPropertiesList(listQuery);
+  const { data: agents = [] } = useAgents();
+
+  const rows = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const agentNameById = useMemo(() => {
     const m = new Map<number, string>();
@@ -137,44 +145,17 @@ const AdminPropertiesList = () => {
     return m;
   }, [agents]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((p) => {
-      const agentLabel =
-        p.assignedAgentId != null ? agentNameById.get(p.assignedAgentId) ?? String(p.assignedAgentId) : "";
-      const hay = [
-        String(p.id),
-        p.title,
-        p.city,
-        p.address,
-        p.locality ?? "",
-        String(p.listingType ?? ""),
-        String(p.propertyType ?? ""),
-        String(p.status ?? ""),
-        agentLabel,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [rows, search, agentNameById]);
-
-  const sorted = useMemo(() => {
-    const copy = [...filtered];
-    copy.sort((a, b) => compareRows(a, b, sort.key, sort.dir));
-    return copy;
-  }, [filtered, sort]);
-
   const toggleSort = (key: SortKey) => {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
+    setQuery({
+      sortBy: key,
+      sortDir: sortBy === key && sortDir === "asc" ? "desc" : "asc",
+      page: 1,
+    });
   };
 
   const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sort.key !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />;
-    return sort.dir === "asc" ? (
+    if (sortBy !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />;
+    return sortDir === "asc" ? (
       <ArrowUp className="ml-1 h-3.5 w-3.5" />
     ) : (
       <ArrowDown className="ml-1 h-3.5 w-3.5" />
@@ -187,15 +168,17 @@ const AdminPropertiesList = () => {
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">All properties</h2>
           <p className="text-sm text-muted-foreground">
-            Search, sort, and open any listing. {rows.length > 0 && `${rows.length} total.`}
+            Search, sort, and open any listing.
+            {total > 0 && ` ${total.toLocaleString("en-IN")} total.`}
+            {isFetching && !isLoading ? " Refreshing…" : null}
           </p>
         </div>
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by ID, title, city, address, type, status…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -212,9 +195,9 @@ const AdminPropertiesList = () => {
           <Loader2 className="h-6 w-6 animate-spin" />
           Loading properties…
         </div>
-      ) : sorted.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          {search.trim() ? "No properties match your search." : "No properties yet."}
+          {q.trim() ? "No properties match your search." : "No properties yet."}
         </p>
       ) : (
         <motion.div
@@ -331,7 +314,7 @@ const AdminPropertiesList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((p) => (
+              {rows.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">{p.id}</TableCell>
                   <TableCell className="font-medium max-w-[220px] truncate" title={p.title}>
@@ -392,6 +375,32 @@ const AdminPropertiesList = () => {
           </Table>
         </motion.div>
       )}
+
+      {total > PAGE_SIZE ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {totalPages} · {total.toLocaleString("en-IN")} total
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setQuery({ page: Math.max(1, page - 1) })}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setQuery({ page: page + 1 })}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

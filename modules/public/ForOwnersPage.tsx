@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/auth-context";
-import { useAdminProperties } from "@/hooks/use-properties";
+import { useAdminPropertiesList } from "@/hooks/use-properties";
 import { buildPropertyPath } from "@/lib/property-slug";
 
 const steps = [
@@ -28,7 +28,14 @@ export default function ForOwnersPage() {
   const { user, isAuthReady } = useAuth();
   const isAdmin = isAuthReady && user?.role === "admin";
   const isTenant = isAuthReady && user?.role === "tenant";
-  const { data: adminProperties = [] } = useAdminProperties({ enabled: isAdmin });
+  const { data: adminPreview } = useAdminPropertiesList({
+    page: 1,
+    limit: PREVIEW_LIMIT,
+    sortBy: "id",
+    sortDir: "desc",
+  });
+  const adminProperties = adminPreview?.items ?? [];
+  const adminPropertyTotal = adminPreview?.total ?? 0;
 
   return (
     <main className="pb-20 pt-24">
@@ -152,7 +159,7 @@ export default function ForOwnersPage() {
                 Recent listings
               </p>
               <ul className="flex flex-col gap-1.5">
-                {adminProperties.slice(0, PREVIEW_LIMIT).map((p) => (
+                {adminProperties.map((p) => (
                   <li key={p.id} className="min-w-0">
                     <Link
                       href={buildPropertyPath(p.id, p.title)}
@@ -163,12 +170,12 @@ export default function ForOwnersPage() {
                   </li>
                 ))}
               </ul>
-              {adminProperties.length > PREVIEW_LIMIT ? (
+              {adminPropertyTotal > PREVIEW_LIMIT ? (
                 <Link
                   href="/properties"
                   className="mt-2 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  View all {adminProperties.length} properties
+                  View all {adminPropertyTotal.toLocaleString("en-IN")} properties
                 </Link>
               ) : (
                 <Link

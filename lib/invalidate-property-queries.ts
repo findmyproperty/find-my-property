@@ -7,6 +7,7 @@ export async function invalidatePropertyQueries(
 ) {
   await queryClient.invalidateQueries({ queryKey: ["properties"] });
   await queryClient.invalidateQueries({ queryKey: ["properties", "raw"] });
+  await queryClient.invalidateQueries({ queryKey: ["properties", "admin"] });
   await queryClient.invalidateQueries({ queryKey: ["properties", "my"] });
   if (propertyId) {
     await queryClient.invalidateQueries({ queryKey: ["property", propertyId] });

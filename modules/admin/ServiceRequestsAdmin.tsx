@@ -404,7 +404,7 @@ export default function ServiceRequestsAdmin() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={s.variant} className="text-[10px] uppercase">
+                      <Badge variant={s.variant} className="text-[10px] uppercase text-white">
                         {s.label}
                       </Badge>
                     </TableCell>

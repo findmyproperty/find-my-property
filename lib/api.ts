@@ -25,5 +25,11 @@ export type {
   AdminUpdateServiceRequestInput,
   ServiceRequestStats,
 } from "@/end-points/service-requests";
+export type {
+  AdminListPropertiesQuery,
+  AdminPropertyStatsQuery,
+  AdminListPropertiesResponse,
+  AdminPropertyStats,
+} from "@/end-points/properties";
 
 export { api, type Api } from "@/end-points";

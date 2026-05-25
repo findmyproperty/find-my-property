@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAdminProperties } from "@/hooks/use-properties";
+import { useAdminPropertiesList, useAdminPropertyStats } from "@/hooks/use-properties";
 import { useAgents } from "@/hooks/use-agents";
 import { api, type Agent } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +99,19 @@ type SortKey =
 
 type StatusTab = "pending" | "approved" | "rejected";
 
+const PAGE_SIZE = 20;
+
+function statusTabToApi(tab: StatusTab): string {
+  if (tab === "pending") return PropertyStatus.PENDING;
+  if (tab === "approved") return PropertyStatus.APPROVED;
+  return PropertyStatus.REJECTED;
+}
+
+function parseOptionalPrice(value: string): number | undefined {
+  const n = value.trim() === "" ? NaN : Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function formatPrice(p: BackendProperty) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -118,59 +131,6 @@ function isRentListing(p: BackendProperty) {
 
 function rowStatus(p: BackendProperty) {
   return (p.status ?? PropertyStatus.PENDING) as string;
-}
-
-function filterByTab(rows: BackendProperty[], tab: StatusTab) {
-  const want =
-    tab === "pending"
-      ? PropertyStatus.PENDING
-      : tab === "approved"
-        ? PropertyStatus.APPROVED
-        : PropertyStatus.REJECTED;
-  return rows.filter((p) => rowStatus(p) === want);
-}
-
-function compareRows(a: BackendProperty, b: BackendProperty, key: SortKey, dir: "asc" | "desc") {
-  const mul = dir === "asc" ? 1 : -1;
-  switch (key) {
-    case "id":
-      return (a.id - b.id) * mul;
-    case "price":
-      return ((Number(a.price) || 0) - (Number(b.price) || 0)) * mul;
-    case "bedrooms":
-      return (
-        ((Number(a.bedrooms) || 0) - (Number(b.bedrooms) || 0)) * mul
-      );
-    case "bathrooms":
-      return ((Number(a.bathrooms) || 0) - (Number(b.bathrooms) || 0)) * mul;
-    case "area":
-      return (areaSqFt(a) - areaSqFt(b)) * mul;
-    default: {
-      const av = String(
-        key === "title"
-          ? a.title
-          : key === "city"
-            ? a.city
-            : key === "listingType"
-              ? a.listingType
-              : key === "propertyType"
-                ? a.propertyType
-                : "",
-      );
-      const bv = String(
-        key === "title"
-          ? b.title
-          : key === "city"
-            ? b.city
-            : key === "listingType"
-              ? b.listingType
-              : key === "propertyType"
-                ? b.propertyType
-                : "",
-      );
-      return av.localeCompare(bv, undefined, { sensitivity: "base" }) * mul;
-    }
-  }
 }
 
 function statusBadge(status: string) {
@@ -200,14 +160,15 @@ const PropertyApproval = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: rawRows = [], isLoading, isError, error } = useAdminProperties();
   const { data: agents, isLoading: agentsLoading } = useAgents();
   /** API returns agents as `User[]` in types; runtime matches `Agent`. */
   const agentsList = agents as Agent[] | undefined;
   const { toast } = useToast();
 
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusTab>("pending");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [listingFilter, setListingFilter] = useState<"all" | "rent" | "sale">("all");
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
   const [cityFilter, setCityFilter] = useState("");
@@ -235,6 +196,73 @@ const PropertyApproval = () => {
   /** All agent-role users from the API; listing assignment does not use legacy agent status. */
   const assignableAgents = agentsList ?? [];
 
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedSearch,
+    cityFilter,
+    listingFilter,
+    propertyTypeFilter,
+    priceMin,
+    priceMax,
+    agentFilter,
+    statusFilter,
+  ]);
+
+  const filterBase = useMemo(
+    () => ({
+      q: debouncedSearch || undefined,
+      city: cityFilter.trim() || undefined,
+      listing: listingFilter !== "all" ? listingFilter : undefined,
+      propertyType: propertyTypeFilter !== "all" ? propertyTypeFilter : undefined,
+      priceMin: parseOptionalPrice(priceMin),
+      priceMax: parseOptionalPrice(priceMax),
+      assignedAgentId:
+        agentFilter !== "all" && Number.isFinite(Number(agentFilter))
+          ? Number(agentFilter)
+          : undefined,
+    }),
+    [
+      debouncedSearch,
+      cityFilter,
+      listingFilter,
+      propertyTypeFilter,
+      priceMin,
+      priceMax,
+      agentFilter,
+    ],
+  );
+
+  const listQuery = useMemo(
+    () => ({
+      ...filterBase,
+      status: statusTabToApi(statusFilter),
+      page,
+      limit: PAGE_SIZE,
+      sortBy: sort.key,
+      sortDir: sort.dir,
+    }),
+    [filterBase, statusFilter, page, sort.key, sort.dir],
+  );
+
+  const { data, isLoading, isError, error, isFetching } =
+    useAdminPropertiesList(listQuery);
+  const { data: stats } = useAdminPropertyStats(filterBase);
+
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const statusCounts = {
+    pending: stats?.pending ?? 0,
+    approved: stats?.approved ?? 0,
+    rejected: stats?.rejected ?? 0,
+  };
+
   const setApproveQuery = (id: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (id) params.set("approve", id);
@@ -243,91 +271,11 @@ const PropertyApproval = () => {
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   };
 
-  /** Search + drawer filters only (status tab applied per panel below). */
-  const preparedRows = useMemo(() => {
-    let rows = rawRows;
-
-    const q = search.trim().toLowerCase();
-    if (q) {
-      rows = rows.filter((p) => {
-        const hay = [
-          String(p.id),
-          p.title,
-          p.city,
-          p.address,
-          p.locality ?? "",
-          String(p.listingType ?? ""),
-          String(p.propertyType ?? ""),
-          String(p.status ?? ""),
-          p.assignedAgentId != null ? String(p.assignedAgentId) : "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(q);
-      });
-    }
-
-    if (cityFilter.trim()) {
-      const c = cityFilter.trim().toLowerCase();
-      rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
-    }
-
-    if (listingFilter !== "all") {
-      rows = rows.filter((p) =>
-        listingFilter === "rent" ? isRentListing(p) : !isRentListing(p),
-      );
-    }
-
-    if (propertyTypeFilter !== "all") {
-      rows = rows.filter(
-        (p) => String(p.propertyType ?? "").toLowerCase() === propertyTypeFilter.toLowerCase(),
-      );
-    }
-
-    const min = priceMin.trim() === "" ? null : Number(priceMin);
-    const max = priceMax.trim() === "" ? null : Number(priceMax);
-    if (min !== null && Number.isFinite(min)) {
-      rows = rows.filter((p) => (Number(p.price) || 0) >= min);
-    }
-    if (max !== null && Number.isFinite(max)) {
-      rows = rows.filter((p) => (Number(p.price) || 0) <= max);
-    }
-
-    if (agentFilter !== "all") {
-      const aid = Number(agentFilter);
-      rows = rows.filter((p) => p.assignedAgentId === aid);
-    }
-
-    return rows;
-  }, [
-    rawRows,
-    search,
-    cityFilter,
-    listingFilter,
-    propertyTypeFilter,
-    priceMin,
-    priceMax,
-    agentFilter,
-  ]);
-
-  const statusCounts = useMemo(() => {
-    const pending = preparedRows.filter((p) => rowStatus(p) === PropertyStatus.PENDING).length;
-    const approved = preparedRows.filter((p) => rowStatus(p) === PropertyStatus.APPROVED).length;
-    const rejected = preparedRows.filter((p) => rowStatus(p) === PropertyStatus.REJECTED).length;
-    return { pending, approved, rejected };
-  }, [preparedRows]);
-
-  const filteredRows = useMemo(() => {
-    const rows = filterByTab(preparedRows, statusFilter);
-    const copy = [...rows];
-    copy.sort((a, b) => compareRows(a, b, sort.key, sort.dir));
-    return copy;
-  }, [preparedRows, statusFilter, sort]);
-
   const toggleSort = (key: SortKey) => {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
+    setPage(1);
   };
 
   const SortIcon = ({ column }: { column: SortKey }) => {
@@ -693,7 +641,7 @@ const PropertyApproval = () => {
             </div>
           </div>
 
-          {filteredRows.length === 0 ? (
+          {items.length === 0 ? (
             <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
               <Clock className="mx-auto mb-3 h-10 w-10 opacity-50" />
               <p className="font-medium text-foreground">
@@ -807,7 +755,7 @@ const PropertyApproval = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRows.map((p) => (
+                      {items.map((p) => (
                         <TableRow key={p.id}>
                           <TableCell className="w-[72px] p-2 align-middle">
                             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -899,6 +847,33 @@ const PropertyApproval = () => {
                   </Table>
             </motion.div>
           )}
+
+          {total > PAGE_SIZE ? (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages} · {total.toLocaleString("en-IN")} in this tab
+                {isFetching && !isLoading ? " · Refreshing…" : null}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
 

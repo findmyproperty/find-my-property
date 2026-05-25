@@ -2,6 +2,66 @@ import type { Property } from "@/components/property/PropertyCard";
 import { mapBackendProperty, type BackendProperty } from "@/lib/property-mapper";
 import { getStoredToken, request } from "@/end-points/http";
 
+export type AdminListPropertiesQuery = {
+  q?: string;
+  status?: string;
+  city?: string;
+  listing?: "rent" | "sale";
+  propertyType?: string;
+  priceMin?: number;
+  priceMax?: number;
+  assignedAgentId?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+};
+
+export type AdminPropertyStatsQuery = Omit<
+  AdminListPropertiesQuery,
+  "status" | "sortBy" | "sortDir" | "page" | "limit"
+>;
+
+export type AdminListPropertiesResponse = {
+  items: BackendProperty[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type AdminPropertyStats = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
+};
+
+function buildAdminPropertiesQuery(
+  q: AdminListPropertiesQuery | AdminPropertyStatsQuery,
+): string {
+  const params = new URLSearchParams();
+  if (q.q?.trim()) params.set("q", q.q.trim());
+  if ("status" in q && q.status) params.set("status", q.status);
+  if (q.city?.trim()) params.set("city", q.city.trim());
+  if (q.listing) params.set("listing", q.listing);
+  if (q.propertyType?.trim()) params.set("propertyType", q.propertyType.trim());
+  if (q.priceMin != null && Number.isFinite(q.priceMin)) {
+    params.set("priceMin", String(q.priceMin));
+  }
+  if (q.priceMax != null && Number.isFinite(q.priceMax)) {
+    params.set("priceMax", String(q.priceMax));
+  }
+  if (q.assignedAgentId != null && q.assignedAgentId > 0) {
+    params.set("assignedAgentId", String(q.assignedAgentId));
+  }
+  if ("sortBy" in q && q.sortBy) params.set("sortBy", q.sortBy);
+  if ("sortDir" in q && q.sortDir) params.set("sortDir", q.sortDir);
+  if ("page" in q && q.page) params.set("page", String(q.page));
+  if ("limit" in q && q.limit) params.set("limit", String(q.limit));
+  const str = params.toString();
+  return str ? `?${str}` : "";
+}
+
 export const properties = {
   async getProperties() {
     const rows = await request<BackendProperty[]>("/properties");
@@ -11,6 +71,22 @@ export const properties = {
   /** Raw backend rows for admin tables (same endpoint as getProperties). */
   async getRawProperties() {
     return request<BackendProperty[]>("/properties");
+  },
+
+  /** Admin: paginated property list with server-side filters and sort. */
+  async adminListProperties(query: AdminListPropertiesQuery = {}) {
+    return request<AdminListPropertiesResponse>(
+      `/properties/admin${buildAdminPropertiesQuery(query)}`,
+      { token: getStoredToken() },
+    );
+  },
+
+  /** Admin: status tab counts for the same filters (excluding status). */
+  async adminPropertyStats(query: AdminPropertyStatsQuery = {}) {
+    return request<AdminPropertyStats>(
+      `/properties/admin/stats${buildAdminPropertiesQuery(query)}`,
+      { token: getStoredToken() },
+    );
   },
 
   async getMyProperties() {
