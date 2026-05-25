@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export default function LoginPanel({
   const { toast } = useToast();
   const { settings } = useSettings();
   const siteName = settings?.siteName?.trim() || SITE_NAME;
+  const logoUrl = settings?.primaryLogoUrl?.trim() || null;
   const isModal = variant === "modal";
 
   const handleSendOtp = async (e?: React.SubmitEvent<HTMLFormElement>) => {
@@ -126,8 +128,23 @@ export default function LoginPanel({
     <>
       {!isModal ? (
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-tr from-primary to-primary-foreground/90 shadow-lg shadow-primary/20">
-            <Building2 className="h-7 w-7 text-primary-foreground" />
+          <div className="mb-6 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary/20">
+            {logoUrl ? (
+              <span className="relative inline-flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-muted">
+                <Image
+                  src={logoUrl}
+                  alt={siteName}
+                  fill
+                  sizes="56px"
+                  unoptimized
+                  className="object-contain"
+                />
+              </span>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-linear-to-tr from-primary to-primary-foreground/90">
+                <Building2 className="h-7 w-7 text-primary-foreground" />
+              </div>
+            )}
           </div>
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
           <p className="text-sm text-muted-foreground">
