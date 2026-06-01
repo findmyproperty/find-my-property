@@ -21,7 +21,7 @@ const Login = () => {
           className="object-cover"
           sizes="(max-width: 1023px) 0px, 50vw"
         />
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -37,7 +37,7 @@ const Login = () => {
               <p className="text-xs text-muted-foreground">Software Engineer, Bangalore</p>
             </div>
           </div>
-        </motion.div>
+        </motion.div> */}
       </div>
 
       <div className="relative flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden bg-muted/10 p-6 lg:p-12">
