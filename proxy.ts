@@ -20,6 +20,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/verify-agent")) return true;
   if (pathname === "/about") return true;
   if (pathname === "/contact") return true;
+  if (pathname === "/terms-and-conditions") return true;
   if (pathname === "/browse") return true;
   if (pathname === "/owner") return true;
   if (pathname.startsWith("/property/")) return true;
