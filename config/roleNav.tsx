@@ -11,6 +11,11 @@ import {
   Sparkles,
   Activity,
   Settings as SettingsIcon,
+  Wallet,
+  Store,
+  CreditCard,
+  LifeBuoy,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/contexts/auth-context";
@@ -40,10 +45,24 @@ const agentNav: NavItem[] = [
   { title: "Profile", url: "/profile", icon: UserCircle },
 ];
 
+const vendorNav: NavItem[] = [
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Leads", url: "/leads", icon: Users },
+  { title: "Wallet", url: "/wallet", icon: Wallet },
+  { title: "Alerts", url: "/alerts", icon: Bell },
+  { title: "Support", url: "/support", icon: LifeBuoy },
+  { title: "Profile", url: "/profile", icon: UserCircle },
+];
+
 const adminNav: NavItem[] = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Property Approval", url: "/approvals", icon: CheckSquare },
   { title: "Agent Management", url: "/agents", icon: Users },
+  { title: "Vendor Partners", url: "/admin/vendors", icon: Store },
+  { title: "Vendor Leads", url: "/admin/vendor-leads", icon: ClipboardList },
+  { title: "Vendor Payments", url: "/admin/payments", icon: CreditCard },
+  { title: "Complaints", url: "/admin/complaints", icon: LifeBuoy },
+  { title: "Alerts", url: "/alerts", icon: Bell },
   { title: "Service Requests", url: "/admin/service-requests", icon: Sparkles },
   { title: "Activity Log", url: "/admin/activity", icon: Activity },
   { title: "Browse", url: "/browse", icon: Search },
@@ -57,6 +76,7 @@ const dashboardTitles: Record<UserRole, string> = {
   tenant: "Tenant Dashboard",
   agent: "Agent Dashboard",
   admin: "Admin Dashboard",
+  vendor: "Partner Dashboard",
 };
 
 export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
@@ -67,6 +87,8 @@ export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
       return agentNav;
     case "admin":
       return adminNav;
+    case "vendor":
+      return vendorNav;
     default:
       return tenantNav;
   }
@@ -77,4 +99,4 @@ export function getDashboardTitleForRole(role: UserRole | undefined): string {
   return dashboardTitles[role];
 }
 
-export { tenantNav, agentNav, adminNav };
+export { tenantNav, agentNav, adminNav, vendorNav };

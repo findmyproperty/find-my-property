@@ -59,6 +59,7 @@ import {
   useAdminServiceRequests,
   useAdminUpdateServiceRequest,
 } from "@/hooks/use-service-requests";
+import { useAdminVendorSelect } from "@/hooks/use-vendor-leads";
 import type {
   PackersMoversDetails,
   PaintingCleaningDetails,
@@ -174,16 +175,23 @@ export default function ServiceRequestsAdmin() {
   const { data, isLoading, isError, error } = useAdminServiceRequests(query);
   const { data: stats } = useAdminServiceRequestStats();
   const updateMutation = useAdminUpdateServiceRequest();
+  const { data: vendorOptions } = useAdminVendorSelect();
 
   const [selected, setSelected] = useState<ServiceRequestDTO | null>(null);
   const [internalNotes, setInternalNotes] = useState("");
   const [draftStatus, setDraftStatus] =
     useState<ServiceRequestStatus>("new");
+  const [draftVendorId, setDraftVendorId] = useState<string>("");
 
   useEffect(() => {
     if (selected) {
       setInternalNotes(selected.internalNotes ?? "");
       setDraftStatus(selected.status);
+      setDraftVendorId(
+        selected.assignedVendorUserId != null
+          ? String(selected.assignedVendorUserId)
+          : "",
+      );
     }
   }, [selected]);
 
@@ -208,6 +216,10 @@ export default function ServiceRequestsAdmin() {
     if (draftStatus !== selected.status) input.status = draftStatus;
     if ((internalNotes ?? "") !== (selected.internalNotes ?? "")) {
       input.internalNotes = internalNotes;
+    }
+    const vendorId = draftVendorId ? Number(draftVendorId) : null;
+    if (vendorId !== (selected.assignedVendorUserId ?? null)) {
+      input.assignedVendorUserId = vendorId;
     }
     if (Object.keys(input).length === 0) return;
     await updateMutation.mutateAsync({ id: selected.id, input });
@@ -594,6 +606,27 @@ export default function ServiceRequestsAdmin() {
                     </Select>
                   </div>
                   <div>
+                    <Label className="text-xs">Assign vendor</Label>
+                    <Select
+                      value={draftVendorId || "none"}
+                      onValueChange={(v) =>
+                        setDraftVendorId(v === "none" ? "" : v)
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {vendorOptions?.map((v) => (
+                          <SelectItem key={v.userId} value={String(v.userId)}>
+                            {v.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label className="text-xs">Internal notes</Label>
                     <Textarea
                       rows={4}
@@ -610,7 +643,9 @@ export default function ServiceRequestsAdmin() {
                         updateMutation.isPending ||
                         (draftStatus === selected.status &&
                           (internalNotes ?? "") ===
-                            (selected.internalNotes ?? ""))
+                            (selected.internalNotes ?? "") &&
+                          (draftVendorId ? Number(draftVendorId) : null) ===
+                            (selected.assignedVendorUserId ?? null))
                       }
                     >
                       {updateMutation.isPending ? "Saving…" : "Save changes"}

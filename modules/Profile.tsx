@@ -21,6 +21,7 @@ import type { UserRole } from "@/contexts/auth-context";
 import { normalizePhone } from "@/helpers";
 import { CldUploadWidget, type CloudinaryUploadWidgetInfo } from "next-cloudinary";
 import { useRouter } from "next/navigation";
+import VendorProfileSection from "@/modules/vendor/VendorProfileSection";
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -371,6 +372,7 @@ const Profile = () => {
                 >
                   <option value="tenant">Tenant</option>
                   <option value="agent">Agent</option>
+                  <option value="vendor">Vendor</option>
                   <option value="admin">Admin</option>
                 </select>
                 <p className="text-xs text-muted-foreground">Instantly switches your role context on the backend and updates your session.</p>
@@ -410,6 +412,8 @@ const Profile = () => {
           )}
         </Button>
       </form>
+
+      {user?.role === "vendor" ? <VendorProfileSection /> : null}
 
       <Dialog open={phoneDialogOpen} onOpenChange={handlePhoneDialogOpenChange}>
         <DialogContent className="sm:max-w-md">

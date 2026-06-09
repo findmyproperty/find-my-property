@@ -71,6 +71,7 @@ export interface ServiceRequestDTO {
   details: PackersMoversDetails | PaintingCleaningDetails | null;
   internalNotes: string | null;
   assignedAdminId: number | null;
+  assignedVendorUserId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +115,7 @@ export interface AdminUpdateServiceRequestInput {
   status?: ServiceRequestStatus;
   internalNotes?: string;
   assignedAdminId?: number | null;
+  assignedVendorUserId?: number | null;
 }
 
 export interface ServiceRequestStats {

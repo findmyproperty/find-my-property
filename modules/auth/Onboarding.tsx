@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useDetectCurrentLocation } from "@/hooks/use-detect-current-location";
 import { getPostAuthRoute } from "@/lib/auth-redirect";
+import { api } from "@/lib/api";
 
 const Onboarding = () => {
   const { user, isAuthenticated, isAuthReady, updateProfile } = useAuth();
@@ -136,8 +137,18 @@ const Onboarding = () => {
       return;
     }
 
-    const latestUser = JSON.parse(localStorage.getItem("nb_user") || "null");
-    router.replace(getPostAuthRoute(latestUser));
+    const nextUser: User | null = user
+      ? { ...user, onboardingCompleted: true }
+      : null;
+    if (nextUser?.role === "vendor") {
+      try {
+        await api.vendors.updateProfile({ about: "Partner onboarding complete" });
+      } catch {
+        /* KYC details can be completed under Profile */
+      }
+    }
+
+    router.replace(getPostAuthRoute(nextUser));
   };
 
   return (

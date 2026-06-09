@@ -195,6 +195,24 @@ const AdminSettings = () => {
                   autoComplete="tel"
                 />
               </Field>
+
+              <Field
+                label="Vendor commission %"
+                htmlFor="vendor-commission"
+                hint="Deducted from job amount when a vendor lead is completed."
+              >
+                <Input
+                  id="vendor-commission"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={draft.vendorCommissionPercent ?? settings?.vendorCommissionPercent ?? 10}
+                  onChange={(e) =>
+                    setField("vendorCommissionPercent", Number(e.target.value))
+                  }
+                />
+              </Field>
             </div>
           </SectionCard>
         </TabsContent>

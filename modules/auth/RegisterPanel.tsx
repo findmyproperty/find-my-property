@@ -212,6 +212,12 @@ export default function RegisterPanel({
         )}
       </form>
 
+      <div className={`text-center text-sm ${isModal ? "mt-4" : "mt-6"}`}>
+        <Link href="/register-vendor" className="text-primary font-medium hover:underline">
+          Register as FMP partner (vendor)
+        </Link>
+      </div>
+
       <div className={`text-center text-sm ${isModal ? "mt-6" : "mt-8"}`}>
         <span className="text-muted-foreground">Already have an account? </span>
         {onSwitchToLogin ? (

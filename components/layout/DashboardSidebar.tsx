@@ -22,6 +22,7 @@ import { LucideIcon } from "lucide-react";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { cn } from "@/lib/utils";
+import { useUnreadNotificationCount } from "@/hooks/use-notifications";
 
 interface NavItem {
   title: string;
@@ -40,6 +41,8 @@ const DashboardSidebar = ({ items }: DashboardSidebarProps) => {
   const collapsed = state === "collapsed";
   const siteName = settings?.siteName?.trim() || SITE_NAME;
   const logoUrl = settings?.primaryLogoUrl?.trim() || null;
+  const { data: unreadData } = useUnreadNotificationCount();
+  const unreadCount = unreadData?.count ?? 0;
 
   return (
     <Sidebar collapsible="icon">
@@ -111,7 +114,14 @@ const DashboardSidebar = ({ items }: DashboardSidebarProps) => {
                       activeClassName="bg-primary/10 text-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="min-w-0 wrap-break-word">{item.title}</span>}
+                      {!collapsed && (
+                        <span className="min-w-0 flex-1 wrap-break-word">{item.title}</span>
+                      )}
+                      {!collapsed && item.url === "/alerts" && unreadCount > 0 ? (
+                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      ) : null}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

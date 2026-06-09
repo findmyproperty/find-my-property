@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const userRoleSchema = z.enum(["admin", "agent", "tenant"]);
+export const userRoleSchema = z.enum(["admin", "agent", "tenant", "vendor"]);
 export type UserRole = z.infer<typeof userRoleSchema>;
 
 /** Full user row (matches persisted entity shape). */

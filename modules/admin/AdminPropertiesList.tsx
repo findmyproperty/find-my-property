@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -184,11 +185,20 @@ const AdminPropertiesList = () => {
         </div>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {(error as Error)?.message ?? "Could not load properties."}
-        </p>
-      )}
+      {isError ? (
+        <div
+          role="alert"
+          className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+        >
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div>
+            <p className="font-medium text-destructive">Could not load properties</p>
+            <p className="mt-1 text-muted-foreground">
+              {(error as Error)?.message ?? "Please refresh the page or try again."}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">

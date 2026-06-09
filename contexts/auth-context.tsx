@@ -45,7 +45,12 @@ interface AuthContextType {
   token: string | null;
   profile: UserProfile;
   requestPhoneOtp: (phone: string) => Promise<{ success: true } | FailedResult>;
-  loginWithPhone: (phone: string, code: string, name?: string) => Promise<AuthResult>;
+  loginWithPhone: (
+    phone: string,
+    code: string,
+    name?: string,
+    role?: UserRole,
+  ) => Promise<AuthResult>;
   refreshUser: () => Promise<void>;
   updateProfile: (payload: {
     email?: string;
@@ -141,9 +146,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     phone: string,
     code: string,
     name?: string,
+    role?: UserRole,
   ): Promise<AuthResult> => {
     try {
-      const result = await api.verifyPhoneOtp({ phone, code, name });
+      const result = await api.verifyPhoneOtp({ phone, code, name, role });
       persistSession(result.user, result.accessToken);
       return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
     } catch (error) {

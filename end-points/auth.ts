@@ -30,7 +30,12 @@ interface AuthApiResponse {
 
 function normalizeRole(role?: string): UserRole {
   const normalized = role?.toLowerCase();
-  if (normalized === "admin" || normalized === "agent" || normalized === "tenant") {
+  if (
+    normalized === "admin" ||
+    normalized === "agent" ||
+    normalized === "tenant" ||
+    normalized === "vendor"
+  ) {
     return normalized;
   }
   return "tenant";
@@ -87,7 +92,12 @@ export const auth = {
     });
   },
 
-  async verifyPhoneOtp(input: { phone: string; code: string; name?: string }) {
+  async verifyPhoneOtp(input: {
+    phone: string;
+    code: string;
+    name?: string;
+    role?: UserRole;
+  }) {
     const response = await request<AuthApiResponse>("/auth/phone-otp/verify", {
       method: "POST",
       body: JSON.stringify(input),

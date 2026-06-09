@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import AlertsFeed from "@/modules/alerts/AlertsFeed";
 
-/** Alerts feature hidden — keep route from 404 for old links. */
-export default function Page() {
-  redirect("/dashboard");
+export default function AlertsPage() {
+  return <AlertsFeed />;
 }

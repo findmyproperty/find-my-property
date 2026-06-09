@@ -18,6 +18,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/register")) return true;
   if (pathname.startsWith("/onboarding")) return true;
   if (pathname.startsWith("/verify-agent")) return true;
+  if (pathname.startsWith("/register-vendor")) return true;
   if (pathname === "/about") return true;
   if (pathname === "/contact") return true;
   if (pathname === "/terms-and-conditions") return true;
@@ -26,6 +27,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/property/")) return true;
   if (pathname === "/packers-movers") return true;
   if (pathname === "/painting-cleaning") return true;
+  if (pathname.startsWith("/vendors/")) return true;
 
   return false;
 }
@@ -33,8 +35,11 @@ function isPublicPath(pathname: string): boolean {
 /** Flat routes only admins may open */
 const ADMIN_ONLY = new Set(["/approvals", "/agents", "/properties", "/admin"]);
 
-/** Agent + admin (not tenant) */
-const AGENT_SCOPED = new Set(["/leads", "/reports"]);
+/** Agent + admin (not tenant/vendor) */
+const AGENT_SCOPED = new Set(["/reports"]);
+
+/** Vendor + admin */
+const VENDOR_SCOPED = new Set(["/wallet", "/support"]);
 
 function pathMatchesSet(pathname: string, prefixes: Set<string>) {
   for (const p of prefixes) {
@@ -73,7 +78,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!r || !["admin", "agent", "tenant"].includes(r)) {
+  if (!r || !["admin", "agent", "tenant", "vendor"].includes(r)) {
     return NextResponse.next();
   }
 
@@ -84,9 +89,21 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathMatchesSet(pathname, AGENT_SCOPED) && r === "tenant") {
+  if (pathMatchesSet(pathname, AGENT_SCOPED) && (r === "tenant" || r === "vendor")) {
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  if (pathMatchesSet(pathname, VENDOR_SCOPED) && r !== "vendor" && r !== "admin") {
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === "/leads" || pathname.startsWith("/leads/")) {
+    if (r === "tenant") {
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

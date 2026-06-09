@@ -1,0 +1,185 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  useAdminPatchSupportTicket,
+  useAdminSupportTickets,
+} from "@/hooks/use-support-tickets";
+import type { SupportTicket, SupportTicketStatus } from "@/schema/support-ticket";
+import { useToast } from "@/hooks/use-toast";
+
+const STATUSES: SupportTicketStatus[] = ["open", "in_progress", "resolved"];
+
+export default function AdminComplaints() {
+  const { data, isLoading } = useAdminSupportTickets({ limit: 50 });
+  const { mutate: patch, isPending } = useAdminPatchSupportTicket();
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<SupportTicket | null>(null);
+  const [draftStatus, setDraftStatus] = useState<SupportTicketStatus>("open");
+  const [adminNotes, setAdminNotes] = useState("");
+
+  useEffect(() => {
+    if (!selected) return;
+    setDraftStatus(selected.status);
+    setAdminNotes(selected.adminNotes ?? "");
+  }, [selected]);
+
+  const save = () => {
+    if (!selected) return;
+    const input: { status?: SupportTicketStatus; adminNotes?: string | null } = {};
+    if (draftStatus !== selected.status) input.status = draftStatus;
+    const notes = adminNotes.trim();
+    if (notes !== (selected.adminNotes ?? "")) {
+      input.adminNotes = notes || null;
+    }
+    if (Object.keys(input).length === 0) return;
+
+    patch(
+      { id: selected.id, input },
+      {
+        onSuccess: (updated) => {
+          setSelected(updated);
+          toast({ title: "Ticket updated" });
+        },
+        onError: (e) =>
+          toast({
+            title: "Update failed",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+      },
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-semibold">Complaints & support</h1>
+        <p className="text-sm text-muted-foreground">
+          Tickets from partners and other users.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Subject</TableHead>
+                <TableHead>From</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Updated</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.items.map((t) => (
+                <TableRow
+                  key={t.id}
+                  className="cursor-pointer"
+                  onClick={() => setSelected(t)}
+                >
+                  <TableCell className="font-medium max-w-[200px] truncate">
+                    {t.subject}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {t.user?.name ?? `User #${t.userId}`}
+                    <span className="block text-xs text-muted-foreground capitalize">
+                      {t.userRole}
+                    </span>
+                  </TableCell>
+                  <TableCell className="capitalize text-sm">
+                    {t.category.replace("_", " ")}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                      {t.status.replace("_", " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{selected?.subject}</SheetTitle>
+          </SheetHeader>
+          {selected ? (
+            <div className="mt-6 space-y-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {selected.body}
+              </p>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={draftStatus}
+                  onValueChange={(v) => setDraftStatus(v as SupportTicketStatus)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => (
+                      <SelectItem key={s} value={s} className="capitalize">
+                        {s.replace("_", " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Admin notes (visible to user on update)</Label>
+                <Textarea
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              <Button disabled={isPending} onClick={save}>
+                {isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}

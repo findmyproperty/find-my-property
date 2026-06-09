@@ -12,6 +12,11 @@ import { admin } from "@/end-points/admin";
 import { contact } from "@/end-points/contact";
 import { serviceRequests } from "@/end-points/service-requests";
 import { uploads } from "@/end-points/uploads";
+import { vendors } from "@/end-points/vendors";
+import { vendorLeads } from "@/end-points/vendor-leads";
+import { vendorWallet } from "@/end-points/vendor-wallet";
+import { notifications } from "@/end-points/notifications";
+import { supportTickets } from "@/end-points/support-tickets";
 
 export const api = {
   ...auth,
@@ -23,6 +28,11 @@ export const api = {
   ...admin,
   ...serviceRequests,
   ...uploads,
+  vendors,
+  vendorLeads,
+  vendorWallet,
+  notifications,
+  supportTickets,
   contact,
 };
 

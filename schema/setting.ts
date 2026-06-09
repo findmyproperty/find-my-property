@@ -24,6 +24,7 @@ export const settingsSchema = z.object({
   cloudinaryApiKey: z.string().nullish(),
   googleMapsKey: z.string().nullish(),
   twoFactorAuthEnforced: z.boolean(),
+  vendorCommissionPercent: z.coerce.number().min(0).max(100).optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
