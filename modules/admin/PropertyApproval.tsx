@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
@@ -19,13 +19,11 @@ import {
   Loader2,
   MoreVertical,
   Search,
-  Users,
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAdminPropertiesList, useAdminPropertyStats } from "@/hooks/use-properties";
-import { useAgents } from "@/hooks/use-agents";
-import { api, type Agent } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
   mapBackendProperty,
@@ -60,8 +58,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -158,12 +154,7 @@ const PROPERTY_TYPE_OPTIONS = ["all", ...Object.values(PropertyType)] as const;
 
 const PropertyApproval = () => {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: agents, isLoading: agentsLoading } = useAgents();
-  /** API returns agents as `User[]` in types; runtime matches `Agent`. */
-  const agentsList = agents as Agent[] | undefined;
   const { toast } = useToast();
 
   const [page, setPage] = useState(1);
@@ -175,7 +166,6 @@ const PropertyApproval = () => {
   const [cityFilter, setCityFilter] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
-  const [agentFilter, setAgentFilter] = useState<string>("all");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -185,17 +175,12 @@ const PropertyApproval = () => {
 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
 
-  const approveIdFromUrl = searchParams.get("approve");
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [isApproving, setIsApproving] = useState(false);
 
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
-
-  /** All agent-role users from the API; listing assignment does not use legacy agent status. */
-  const assignableAgents = agentsList ?? [];
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search), 300);
@@ -211,7 +196,6 @@ const PropertyApproval = () => {
     propertyTypeFilter,
     priceMin,
     priceMax,
-    agentFilter,
     statusFilter,
   ]);
 
@@ -223,10 +207,6 @@ const PropertyApproval = () => {
       propertyType: propertyTypeFilter !== "all" ? propertyTypeFilter : undefined,
       priceMin: parseOptionalPrice(priceMin),
       priceMax: parseOptionalPrice(priceMax),
-      assignedAgentId:
-        agentFilter !== "all" && Number.isFinite(Number(agentFilter))
-          ? Number(agentFilter)
-          : undefined,
     }),
     [
       debouncedSearch,
@@ -235,7 +215,6 @@ const PropertyApproval = () => {
       propertyTypeFilter,
       priceMin,
       priceMax,
-      agentFilter,
     ],
   );
 
@@ -264,14 +243,6 @@ const PropertyApproval = () => {
     rejected: stats?.rejected ?? 0,
   };
 
-  const setApproveQuery = (id: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (id) params.set("approve", id);
-    else params.delete("approve");
-    const q = params.toString();
-    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-  };
-
   const toggleSort = (key: SortKey) => {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
@@ -294,7 +265,6 @@ const PropertyApproval = () => {
     setPropertyTypeFilter("all");
     setPriceMin("");
     setPriceMax("");
-    setAgentFilter("all");
   };
 
   const hasActiveFilters =
@@ -302,66 +272,20 @@ const PropertyApproval = () => {
     listingFilter !== "all" ||
     propertyTypeFilter !== "all" ||
     priceMin.trim() !== "" ||
-    priceMax.trim() !== "" ||
-    agentFilter !== "all";
+    priceMax.trim() !== "";
 
   const openDetail = (p: BackendProperty) => {
     setSelectedProperty(mapBackendProperty(p));
   };
 
-  const openApproveDialog = (id: string) => {
-    setSelectedAgentId("");
-    setApproveQuery(id);
-  };
-
-  const closeApproveDialog = () => {
-    setSelectedAgentId("");
-    setApproveQuery(null);
-  };
-
-  const confirmApprove = async () => {
-    if (!approveIdFromUrl) return;
-    const assignedAgentId = Number(selectedAgentId);
-    if (!Number.isFinite(assignedAgentId) || assignedAgentId <= 0) {
-      toast({
-        title: "Select an agent",
-        description: "Choose who will be the listing agent for this property.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const approveProperty = async (id: string) => {
     setIsApproving(true);
     try {
-      await api.approveProperty(approveIdFromUrl, { assignedAgentId });
-      await revalidatePropertyListingCache(approveIdFromUrl);
-      await invalidatePropertyQueries(queryClient, approveIdFromUrl);
+      await api.approveProperty(id, { skipAgentAssignment: true });
+      await revalidatePropertyListingCache(id);
+      await invalidatePropertyQueries(queryClient, id);
       router.refresh();
-      toast({ title: "Property approved", description: "Listing agent has been assigned." });
-      closeApproveDialog();
-    } catch (err) {
-      toast({
-        title: "Approval failed",
-        description: (err as Error)?.message || "Could not approve property.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsApproving(false);
-    }
-  };
-
-  const confirmApproveSkipAgent = async () => {
-    if (!approveIdFromUrl) return;
-    setIsApproving(true);
-    try {
-      await api.approveProperty(approveIdFromUrl, { skipAgentAssignment: true });
-      await revalidatePropertyListingCache(approveIdFromUrl);
-      await invalidatePropertyQueries(queryClient, approveIdFromUrl);
-      router.refresh();
-      toast({
-        title: "Property approved",
-        description: "Approved without assigning a listing agent. You can assign one later.",
-      });
-      closeApproveDialog();
+      toast({ title: "Property approved" });
     } catch (err) {
       toast({
         title: "Approval failed",
@@ -416,19 +340,12 @@ const PropertyApproval = () => {
     p.propertyImages?.[0] ||
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=200&q=80";
 
-  const agentLabel = (assignedAgentId?: number | null) => {
-    if (assignedAgentId == null) return "—";
-    const a = agentsList?.find((x) => x.id === assignedAgentId);
-    return a ? `${a.name} (#${assignedAgentId})` : `#${assignedAgentId}`;
-  };
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="mb-1 font-heading text-xl font-bold text-foreground">Property Approvals</h2>
         <p className="text-sm text-muted-foreground">
-          Review listings in a sortable table. Use search and the filter drawer to narrow results, then approve with an
-          assigned agent (or skip assignment) or reject with a reason.
+          Review listings in a sortable table. Use search and the filter drawer to narrow results, then approve or reject with a reason.
         </p>
       </div>
 
@@ -528,7 +445,7 @@ const PropertyApproval = () => {
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search ID, title, city, address, type, agent id…"
+                  placeholder="Search ID, title, city, address, or type..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -551,7 +468,7 @@ const PropertyApproval = () => {
                     <SheetHeader className="text-left">
                       <SheetTitle>Filters</SheetTitle>
                       <SheetDescription>
-                        Narrow by city, listing type, property type, price range, or assigned agent.
+                        Narrow by city, listing type, property type, or price range.
                       </SheetDescription>
                     </SheetHeader>
                     <div className="flex flex-1 flex-col gap-4 py-6">
@@ -614,22 +531,6 @@ const PropertyApproval = () => {
                           value={priceMax}
                           onChange={(e) => setPriceMax(e.target.value)}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Listing agent</Label>
-                        <Select value={agentFilter} onValueChange={setAgentFilter}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Any agent" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Any</SelectItem>
-                            {(agentsList ?? []).map((a) => (
-                              <SelectItem key={a.id} value={String(a.id)}>
-                                {a.name} (#{a.id})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
                     </div>
                     <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
@@ -761,7 +662,6 @@ const PropertyApproval = () => {
                             <SortIcon column="area" />
                           </button>
                         </TableHead>
-                        <TableHead className="hidden lg:table-cell">Agent</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -799,9 +699,6 @@ const PropertyApproval = () => {
                           <TableCell className="hidden xl:table-cell text-right text-xs text-muted-foreground">
                             {areaSqFt(p).toLocaleString("en-IN")} sq.ft
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell max-w-[140px] truncate text-xs text-muted-foreground">
-                            {agentLabel(p.assignedAgentId)}
-                          </TableCell>
                           <TableCell>{statusBadge(rowStatus(p))}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -836,7 +733,8 @@ const PropertyApproval = () => {
                                   <DropdownMenuContent align="end" className="w-44">
                                     <DropdownMenuItem
                                       className="gap-2 text-emerald-700 focus:text-emerald-700"
-                                      onClick={() => openApproveDialog(String(p.id))}
+                                      disabled={isApproving}
+                                      onClick={() => void approveProperty(String(p.id))}
                                     >
                                       <Check className="h-4 w-4" />
                                       Approve
@@ -935,80 +833,6 @@ const PropertyApproval = () => {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={!!approveIdFromUrl}
-        onOpenChange={(open) => {
-          if (!open) closeApproveDialog();
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Assign listing agent
-            </DialogTitle>
-            <DialogDescription>
-              Choose an agent to manage this listing after approval. They will receive leads and enquiries for this
-              property.
-            </DialogDescription>
-          </DialogHeader>
-          {agentsLoading ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Loading agents…
-            </div>
-          ) : assignableAgents.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">
-              No agents available. Add agents under <strong>Agent Management</strong> first.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              <Label>Listing agent</Label>
-              <ScrollArea className="h-[min(280px,40vh)] rounded-md border border-border p-3">
-                <RadioGroup value={selectedAgentId} onValueChange={setSelectedAgentId} className="gap-3">
-                  {assignableAgents.map((agent) => (
-                    <label
-                      key={agent.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-2 hover:bg-muted/50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
-                    >
-                      <RadioGroupItem value={String(agent.id)} id={`agent-${agent.id}`} className="mt-1" />
-                      <div className="min-w-0 flex-1 text-sm">
-                        <span className="font-medium text-foreground">{agent.name}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{agent.email}</span>
-                        {agent.locationCity ? (
-                          <span className="text-xs text-muted-foreground">{agent.locationCity}</span>
-                        ) : null}
-                      </div>
-                    </label>
-                  ))}
-                </RadioGroup>
-              </ScrollArea>
-            </div>
-          )}
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <Button variant="outline" type="button" onClick={closeApproveDialog} disabled={isApproving}>
-              Cancel
-            </Button>
-            <Button
-              variant="secondary"
-              type="button"
-              disabled={isApproving}
-              onClick={() => void confirmApproveSkipAgent()}
-            >
-              {isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Skip assignment
-            </Button>
-            <Button
-              type="button"
-              disabled={isApproving || assignableAgents.length === 0}
-              onClick={() => void confirmApprove()}
-            >
-              {isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              Approve & assign
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

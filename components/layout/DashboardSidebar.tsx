@@ -1,64 +1,77 @@
-"use client";
+"use client"
 
-import { Building2, LogOut } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useAuth } from "@/contexts/auth-context";
-import { NavLink } from "@/components/layout/NavLink";
+import { useState } from "react"
+import { Building2, ChevronRight } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { NavLink } from "@/components/layout/NavLink"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LucideIcon } from "lucide-react";
-import { SITE_NAME } from "@/lib/branding";
-import { useSettings } from "@/contexts/settings-context";
-import { cn } from "@/lib/utils";
-import { useUnreadNotificationCount } from "@/hooks/use-notifications";
-
-interface NavItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-}
+} from "@/components/ui/sidebar"
+import { SITE_NAME } from "@/lib/branding"
+import { useSettings } from "@/contexts/settings-context"
+import { cn } from "@/lib/utils"
+import { useUnreadNotificationCount } from "@/hooks/use-notifications"
+import type { NavGroup } from "@/config/roleNav"
 
 interface DashboardSidebarProps {
-  items: NavItem[];
+  groups: NavGroup[]
 }
 
-const DashboardSidebar = ({ items }: DashboardSidebarProps) => {
-  const { user, logout } = useAuth();
-  const { state } = useSidebar();
-  const { settings } = useSettings();
-  const collapsed = state === "collapsed";
-  const siteName = settings?.siteName?.trim() || SITE_NAME;
-  const logoUrl = settings?.primaryLogoUrl?.trim() || null;
-  const { data: unreadData } = useUnreadNotificationCount();
-  const unreadCount = unreadData?.count ?? 0;
+const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
+  const { state } = useSidebar()
+  const [openGroups, setOpenGroups] = useState(
+    () => new Set(groups.map((group) => group.title))
+  )
+  const { settings } = useSettings()
+  const collapsed = state === "collapsed"
+  const siteName = settings?.siteName?.trim() || SITE_NAME
+  const logoUrl = settings?.primaryLogoUrl?.trim() || null
+  const { data: unreadData } = useUnreadNotificationCount()
+  const unreadCount = unreadData?.count ?? 0
+  const toggleGroup = (title: string) => {
+    setOpenGroups((current) => {
+      const next = new Set(current)
+      if (next.has(title)) {
+        next.delete(title)
+      } else {
+        next.add(title)
+      }
+      return next
+    })
+  }
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent >
+      <SidebarContent>
         {/* Logo — collapses to a centered icon tile so it fits the 3rem icon rail */}
         <div
           className={cn(
             "flex h-14 items-center border-b border-border",
-            collapsed ? "justify-center px-0" : "px-4",
+            collapsed ? "justify-center px-0" : "px-4"
           )}
         >
           <Link
             href="/"
             className={cn(
-              "flex items-center gap-2 min-w-0",
-              collapsed && "justify-center",
+              "flex min-w-0 items-center gap-2",
+              collapsed && "justify-center"
             )}
             aria-label={siteName}
           >
@@ -66,7 +79,7 @@ const DashboardSidebar = ({ items }: DashboardSidebarProps) => {
               <span
                 className={cn(
                   "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted",
-                  collapsed ? "h-8 w-8" : "h-9 w-9",
+                  collapsed ? "h-8 w-8" : "h-9 w-9"
                 )}
               >
                 <Image
@@ -81,57 +94,113 @@ const DashboardSidebar = ({ items }: DashboardSidebarProps) => {
             ) : (
               <div
                 className={cn(
-                  "rounded-lg hero-gradient flex items-center justify-center shrink-0",
-                  collapsed ? "w-8 h-8" : "w-9 h-9",
+                  "hero-gradient flex shrink-0 items-center justify-center rounded-lg",
+                  collapsed ? "h-8 w-8" : "h-9 w-9"
                 )}
               >
                 <Building2
                   className={cn(
                     "text-primary-foreground",
-                    collapsed ? "w-4 h-4" : "w-5 h-5",
+                    collapsed ? "h-4 w-4" : "h-5 w-5"
                   )}
                 />
               </div>
             )}
             {!collapsed && (
-              <span className="font-heading font-bold text-lg text-foreground truncate">
+              <span className="truncate font-heading text-lg font-bold text-foreground">
                 {siteName}
               </span>
             )}
           </Link>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item, index) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      href={item.url}
-                      end={index === 0}
-                      className="hover:bg-muted/50 min-w-0"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                      {!collapsed && (
-                        <span className="min-w-0 flex-1 wrap-break-word">{item.title}</span>
+        {groups.map((group) => {
+          const open = openGroups.has(group.title)
+          return (
+            <Collapsible
+              key={group.title}
+              open={collapsed ? true : open}
+              onOpenChange={() => toggleGroup(group.title)}
+            >
+              <SidebarGroup className="py-1.5">
+                <CollapsibleTrigger asChild disabled={collapsed}>
+                  <SidebarGroupLabel
+                    asChild
+                    className="font-heading text-[11px] tracking-wide uppercase"
+                  >
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full justify-between",
+                        collapsed && "pointer-events-none"
                       )}
-                      {!collapsed && item.url === "/alerts" && unreadCount > 0 ? (
-                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      ) : null}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                    >
+                      <span>{group.title}</span>
+                      <ChevronRight
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform",
+                          open && "rotate-90"
+                        )}
+                        aria-hidden
+                      />
+                    </button>
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+                <SidebarGroupContent>
+                  {collapsed ? (
+                    <SidebarMenu>
+                      {group.items.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild tooltip={item.title}>
+                            <NavLink
+                              href={item.url}
+                              end={item.url === "/dashboard"}
+                              className="min-w-0 hover:bg-muted/50"
+                              activeClassName="bg-primary/10 text-primary font-medium"
+                              aria-label={item.title}
+                            >
+                              <item.icon className="h-4 w-4 shrink-0" />
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  ) : (
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="mx-1.5 gap-1 border-l-border/70 px-2">
+                        {group.items.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton asChild>
+                              <NavLink
+                                href={item.url}
+                                end={item.url === "/dashboard"}
+                                className="min-w-0 hover:bg-muted/50"
+                                activeClassName="bg-primary/10 text-primary font-medium"
+                              >
+                                <item.icon className="h-4 w-4 shrink-0" />
+                                <span className="min-w-0 flex-1 wrap-break-word">
+                                  {item.title}
+                                </span>
+                                {item.url === "/alerts" && unreadCount > 0 ? (
+                                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                  </span>
+                                ) : null}
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  )}
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </Collapsible>
+          )
+        })}
       </SidebarContent>
     </Sidebar>
-  );
-};
+  )
+}
 
-export default DashboardSidebar;
+export default DashboardSidebar

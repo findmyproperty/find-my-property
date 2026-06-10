@@ -1,102 +1,210 @@
 import {
-  LayoutDashboard,
-  Search,
-  UserCircle,
-  Building2,
-  LayoutList,
-  Users,
+  Activity,
   BarChart3,
+  Bell,
+  Building2,
   CheckSquare,
   ClipboardList,
-  Sparkles,
-  Activity,
-  Settings as SettingsIcon,
-  Wallet,
-  Store,
   CreditCard,
+  LayoutDashboard,
+  LayoutList,
   LifeBuoy,
-  Bell,
+  Search,
+  Settings as SettingsIcon,
+  Sparkles,
+  Store,
+  UserCircle,
+  Users,
+  Wallet,
   type LucideIcon,
-} from "lucide-react";
-import type { UserRole } from "@/contexts/auth-context";
+} from "lucide-react"
+import type { UserRole } from "@/contexts/auth-context"
 
 export interface NavItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
+  title: string
+  url: string
+  icon: LucideIcon
 }
 
-/** Flat routes under app/(roles-routes); see segment page.tsx files. */
-const tenantNav: NavItem[] = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "My Listings", url: "/listings", icon: Building2 },
-  { title: "Browse", url: "/browse", icon: Search },
-  { title: "My Requests", url: "/my-requests", icon: ClipboardList },
-  { title: "Profile", url: "/profile", icon: UserCircle },
-];
+export interface NavGroup {
+  title: string
+  items: NavItem[]
+}
 
-const agentNav: NavItem[] = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "My Listings", url: "/listings", icon: Building2 },
-  { title: "Browse", url: "/browse", icon: Search },
-  { title: "Leads", url: "/leads", icon: Users },
-  { title: "My Requests", url: "/my-requests", icon: ClipboardList },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Profile", url: "/profile", icon: UserCircle },
-];
+const tenantNavGroups: NavGroup[] = [
+  {
+    title: "Workspace",
+    items: [{ title: "Overview", url: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    title: "Properties",
+    items: [
+      { title: "Browse", url: "/browse", icon: Search },
+      { title: "My Listings", url: "/listings", icon: Building2 },
+    ],
+  },
+  {
+    title: "Services",
+    items: [{ title: "My Requests", url: "/my-requests", icon: ClipboardList }],
+  },
+  {
+    title: "Account",
+    items: [{ title: "Profile", url: "/profile", icon: UserCircle }],
+  },
+]
 
-const vendorNav: NavItem[] = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Leads", url: "/leads", icon: Users },
-  { title: "Wallet", url: "/wallet", icon: Wallet },
-  { title: "Alerts", url: "/alerts", icon: Bell },
-  { title: "Support", url: "/support", icon: LifeBuoy },
-  { title: "Profile", url: "/profile", icon: UserCircle },
-];
+const agentNavGroups: NavGroup[] = [
+  {
+    title: "Workspace",
+    items: [{ title: "Overview", url: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    title: "Properties",
+    items: [
+      { title: "Browse", url: "/browse", icon: Search },
+      { title: "My Listings", url: "/listings", icon: Building2 },
+    ],
+  },
+  {
+    title: "Sales",
+    items: [
+      { title: "Leads", url: "/leads", icon: Users },
+      { title: "Reports", url: "/reports", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Services",
+    items: [{ title: "My Requests", url: "/my-requests", icon: ClipboardList }],
+  },
+  {
+    title: "Account",
+    items: [{ title: "Profile", url: "/profile", icon: UserCircle }],
+  },
+]
 
-const adminNav: NavItem[] = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Property Approval", url: "/approvals", icon: CheckSquare },
-  { title: "Agent Management", url: "/agents", icon: Users },
-  { title: "Vendor Partners", url: "/admin/vendors", icon: Store },
-  { title: "Vendor Leads", url: "/admin/vendor-leads", icon: ClipboardList },
-  { title: "Vendor Payments", url: "/admin/payments", icon: CreditCard },
-  { title: "Complaints", url: "/admin/complaints", icon: LifeBuoy },
-  { title: "Alerts", url: "/alerts", icon: Bell },
-  { title: "Service Requests", url: "/admin/service-requests", icon: Sparkles },
-  { title: "Activity Log", url: "/admin/activity", icon: Activity },
-  { title: "Browse", url: "/browse", icon: Search },
-  { title: "My Listings", url: "/listings", icon: Building2 },
-  { title: "All properties", url: "/properties", icon: LayoutList },
-  { title: "Settings", url: "/admin/settings", icon: SettingsIcon },
-  { title: "Profile", url: "/profile", icon: UserCircle },
-];
+const vendorNavGroups: NavGroup[] = [
+  {
+    title: "Workspace",
+    items: [{ title: "Overview", url: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    title: "Jobs & payments",
+    items: [
+      { title: "Leads", url: "/leads", icon: Users },
+      { title: "Wallet", url: "/wallet", icon: Wallet },
+    ],
+  },
+  {
+    title: "Support",
+    items: [
+      { title: "Alerts", url: "/alerts", icon: Bell },
+      { title: "Support", url: "/support", icon: LifeBuoy },
+    ],
+  },
+  {
+    title: "Account",
+    items: [{ title: "Profile", url: "/profile", icon: UserCircle }],
+  },
+]
+
+const adminNavGroups: NavGroup[] = [
+  {
+    title: "Workspace",
+    items: [
+      { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Activity Log", url: "/admin/activity", icon: Activity },
+      { title: "Alerts", url: "/alerts", icon: Bell },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { title: "Property Approval", url: "/approvals", icon: CheckSquare },
+      { title: "Agent Management", url: "/agents", icon: Users },
+      {
+        title: "Service Requests",
+        url: "/admin/service-requests",
+        icon: Sparkles,
+      },
+      { title: "Complaints", url: "/admin/complaints", icon: LifeBuoy },
+    ],
+  },
+  {
+    title: "Vendors",
+    items: [
+      { title: "Vendor Partners", url: "/admin/vendors", icon: Store },
+      {
+        title: "Vendor Leads",
+        url: "/admin/vendor-leads",
+        icon: ClipboardList,
+      },
+      { title: "Vendor Payments", url: "/admin/payments", icon: CreditCard },
+    ],
+  },
+  {
+    title: "Marketplace",
+    items: [
+      { title: "Browse", url: "/browse", icon: Search },
+      { title: "My Listings", url: "/listings", icon: Building2 },
+      { title: "All properties", url: "/properties", icon: LayoutList },
+    ],
+  },
+  {
+    title: "Account & system",
+    items: [
+      { title: "Settings", url: "/admin/settings", icon: SettingsIcon },
+      { title: "Profile", url: "/profile", icon: UserCircle },
+    ],
+  },
+]
+
+const flattenNavGroups = (groups: NavGroup[]) =>
+  groups.flatMap((group) => group.items)
+
+/** Flat routes under app/(roles-routes); used by sitemap and legacy consumers. */
+const tenantNav: NavItem[] = flattenNavGroups(tenantNavGroups)
+const agentNav: NavItem[] = flattenNavGroups(agentNavGroups)
+const vendorNav: NavItem[] = flattenNavGroups(vendorNavGroups)
+const adminNav: NavItem[] = flattenNavGroups(adminNavGroups)
 
 const dashboardTitles: Record<UserRole, string> = {
   tenant: "Tenant Dashboard",
   agent: "Agent Dashboard",
   admin: "Admin Dashboard",
   vendor: "Partner Dashboard",
-};
+}
 
-export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
+export function getNavGroupsForRole(role: UserRole | undefined): NavGroup[] {
   switch (role) {
     case "tenant":
-      return tenantNav;
+      return tenantNavGroups
     case "agent":
-      return agentNav;
+      return agentNavGroups
     case "admin":
-      return adminNav;
+      return adminNavGroups
     case "vendor":
-      return vendorNav;
+      return vendorNavGroups
     default:
-      return tenantNav;
+      return tenantNavGroups
   }
 }
 
-export function getDashboardTitleForRole(role: UserRole | undefined): string {
-  if (!role) return "Dashboard";
-  return dashboardTitles[role];
+export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
+  return flattenNavGroups(getNavGroupsForRole(role))
 }
 
-export { tenantNav, agentNav, adminNav, vendorNav };
+export function getDashboardTitleForRole(role: UserRole | undefined): string {
+  if (!role) return "Dashboard"
+  return dashboardTitles[role]
+}
+
+export {
+  tenantNav,
+  agentNav,
+  adminNav,
+  vendorNav,
+  tenantNavGroups,
+  agentNavGroups,
+  adminNavGroups,
+  vendorNavGroups,
+}

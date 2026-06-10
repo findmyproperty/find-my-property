@@ -12,6 +12,7 @@ import {
   Loader2,
   MapPin,
   PaintBucket,
+  PartyPopper,
   Phone,
   Route,
   Truck,
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMyServiceRequests } from "@/hooks/use-service-requests";
 import type {
+  EventManagementDetails,
   PackersMoversDetails,
   PaintingCleaningDetails,
   ServiceRequestDTO,
@@ -49,6 +51,26 @@ const SERVICE_META: Record<
     icon: PaintBucket,
     href: "/painting-cleaning",
   },
+  event_management: {
+    label: "Event Management",
+    icon: PartyPopper,
+    href: "/event-management",
+  },
+};
+
+const EVENT_TYPE_LABELS: Record<EventManagementDetails["eventType"], string> = {
+  birthday: "Birthday",
+  wedding: "Wedding",
+  baby_shower: "Baby shower",
+  corporate: "Corporate event",
+};
+
+const BUDGET_RANGE_LABELS: Record<string, string> = {
+  under_50000: "Under 50,000",
+  "50000_100000": "50,000 - 1,00,000",
+  "100000_250000": "1,00,000 - 2,50,000",
+  "250000_500000": "2,50,000 - 5,00,000",
+  above_500000: "Above 5,00,000",
 };
 
 const STATUS_META: Record<
@@ -85,6 +107,14 @@ function detailSummary(r: ServiceRequestDTO): string[] {
       d.bhkOrSqft ?? null,
     ].filter((x): x is string => Boolean(x));
   }
+  if (r.serviceType === "event_management") {
+    const d = r.details as EventManagementDetails;
+    return [
+      d.eventType ? EVENT_TYPE_LABELS[d.eventType] ?? d.eventType : null,
+      d.guestCount ? `${d.guestCount} guests` : null,
+      d.budgetRange ? BUDGET_RANGE_LABELS[d.budgetRange] ?? d.budgetRange : null,
+    ].filter((x): x is string => Boolean(x));
+  }
   return [];
 }
 
@@ -98,7 +128,7 @@ export default function MyServiceRequests() {
           My Service Requests
         </h2>
         <p className="text-sm text-muted-foreground">
-          Track your Packers & Movers and Painting & Cleaning bookings.
+          Track your Packers & Movers, Painting & Cleaning, and Event Management bookings.
         </p>
       </div>
 
@@ -144,6 +174,11 @@ export default function MyServiceRequests() {
             <Button asChild size="sm" variant="outline">
               <Link href="/painting-cleaning">
                 <PaintBucket className="mr-2 h-4 w-4" /> Painting & Cleaning
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/event-management">
+                <PartyPopper className="mr-2 h-4 w-4" /> Event Management
               </Link>
             </Button>
           </div>
@@ -282,6 +317,17 @@ function LocationStrip({ request }: { request: ServiceRequestDTO }) {
   }
   if (request.serviceType === "painting_cleaning") {
     const d = request.details as PaintingCleaningDetails | null;
+    const label = d?.location?.label;
+    if (!label) return null;
+    return (
+      <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+        <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" aria-hidden />
+        <span className="line-clamp-1">{label}</span>
+      </p>
+    );
+  }
+  if (request.serviceType === "event_management") {
+    const d = request.details as EventManagementDetails | null;
     const label = d?.location?.label;
     if (!label) return null;
     return (

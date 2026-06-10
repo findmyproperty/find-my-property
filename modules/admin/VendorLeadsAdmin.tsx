@@ -1,25 +1,25 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from "react"
+import { formatDistanceToNow } from "date-fns"
+import { Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/components/ui/sheet"
 import {
   Table,
   TableBody,
@@ -27,14 +27,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 import {
   useAdminVendorLeads,
   useAdminPatchVendorLead,
-} from "@/hooks/use-vendor-leads";
-import type { VendorLead } from "@/schema/vendor-lead";
-import type { VendorLeadStatus } from "@/schema/vendor-lead";
-import { useToast } from "@/hooks/use-toast";
+  useAdminVendors,
+} from "@/hooks/use-vendor-leads"
+import type { VendorLead } from "@/schema/vendor-lead"
+import type { VendorLeadStatus } from "@/schema/vendor-lead"
+import { useToast } from "@/hooks/use-toast"
 
 const STATUSES: VendorLeadStatus[] = [
   "new",
@@ -42,41 +43,42 @@ const STATUSES: VendorLeadStatus[] = [
   "rejected",
   "in_progress",
   "completed",
-];
+]
 
 export default function VendorLeadsAdmin() {
-  const { data, isLoading } = useAdminVendorLeads({ limit: 50 });
-  const { mutate: patchLead, isPending } = useAdminPatchVendorLead();
-  const { toast } = useToast();
-  const [selected, setSelected] = useState<VendorLead | null>(null);
-  const [draftStatus, setDraftStatus] = useState<VendorLeadStatus>("new");
-  const [jobAmount, setJobAmount] = useState("");
+  const { data, isLoading } = useAdminVendorLeads({ limit: 50 })
+  const { data: vendors } = useAdminVendors({ limit: 100 })
+  const { mutate: patchLead, isPending } = useAdminPatchVendorLead()
+  const { toast } = useToast()
+  const [selected, setSelected] = useState<VendorLead | null>(null)
+  const [draftStatus, setDraftStatus] = useState<VendorLeadStatus>("new")
+  const [jobAmount, setJobAmount] = useState("")
 
-  useEffect(() => {
-    if (!selected) return;
-    setDraftStatus(selected.status);
-    setJobAmount(selected.jobAmount != null ? String(selected.jobAmount) : "");
-  }, [selected]);
+  const openLead = (lead: VendorLead) => {
+    setSelected(lead)
+    setDraftStatus(lead.status)
+    setJobAmount(lead.jobAmount != null ? String(lead.jobAmount) : "")
+  }
 
   const save = () => {
-    if (!selected) return;
-    const input: { status?: VendorLeadStatus; jobAmount?: number | null } = {};
-    if (draftStatus !== selected.status) input.status = draftStatus;
-    const amt = jobAmount.trim() ? Number(jobAmount) : null;
-    if (amt !== selected.jobAmount) input.jobAmount = amt;
-    if (Object.keys(input).length === 0) return;
+    if (!selected) return
+    const input: { status?: VendorLeadStatus; jobAmount?: number | null } = {}
+    if (draftStatus !== selected.status) input.status = draftStatus
+    const amt = jobAmount.trim() ? Number(jobAmount) : null
+    if (amt !== selected.jobAmount) input.jobAmount = amt
+    if (Object.keys(input).length === 0) return
 
     patchLead(
       { id: selected.id, input },
       {
         onSuccess: (updated) => {
-          setSelected(updated);
+          openLead(updated)
           toast({
             title:
               updated.status === "completed" && updated.jobAmount
                 ? "Lead completed — ledger updated"
                 : "Lead saved",
-          });
+          })
         },
         onError: (e) =>
           toast({
@@ -84,25 +86,33 @@ export default function VendorLeadsAdmin() {
             description: e instanceof Error ? e.message : undefined,
             variant: "destructive",
           }),
-      },
-    );
-  };
+      }
+    )
+  }
+
+  const vendorNameById = new Map(
+    (vendors?.items ?? []).map((vendor) => [
+      vendor.userId,
+      vendor.user?.name || vendor.user?.phone || `Vendor #${vendor.userId}`,
+    ])
+  )
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-heading text-xl font-bold">Vendor leads</h2>
         <p className="text-sm text-muted-foreground">
-          Complete jobs with a job amount to post earnings and commission to the vendor wallet.
+          Complete jobs with a job amount to post earnings and commission to the
+          vendor wallet.
         </p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -118,7 +128,17 @@ export default function VendorLeadsAdmin() {
               {data?.items.map((lead) => (
                 <TableRow key={lead.id}>
                   <TableCell>{lead.customerName}</TableCell>
-                  <TableCell className="text-xs">#{lead.vendorUserId}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {vendorNameById.get(lead.vendorUserId) ??
+                          `Vendor #${lead.vendorUserId}`}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ID #{lead.vendorUserId}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{lead.status}</Badge>
                   </TableCell>
@@ -126,10 +146,16 @@ export default function VendorLeadsAdmin() {
                     {lead.jobAmount != null ? `₹${lead.jobAmount}` : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(lead.createdAt), {
+                      addSuffix: true,
+                    })}
                   </TableCell>
                   <TableCell>
-                    <Button size="sm" variant="outline" onClick={() => setSelected(lead)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openLead(lead)}
+                    >
                       Manage
                     </Button>
                   </TableCell>
@@ -137,7 +163,10 @@ export default function VendorLeadsAdmin() {
               ))}
               {data?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="py-8 text-center text-muted-foreground"
+                  >
                     No vendor leads yet. Assign a vendor on a service request.
                   </TableCell>
                 </TableRow>
@@ -191,7 +220,8 @@ export default function VendorLeadsAdmin() {
                     placeholder="Required to complete & settle wallet"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Commission: {selected.commissionPercent}% deducted on complete.
+                    Commission: {selected.commissionPercent}% deducted on
+                    complete.
                   </p>
                 </div>
                 <Button className="w-full" disabled={isPending} onClick={save}>
@@ -202,8 +232,8 @@ export default function VendorLeadsAdmin() {
                   variant="secondary"
                   disabled={isPending || !jobAmount.trim()}
                   onClick={() => {
-                    setDraftStatus("completed");
-                    const amt = Number(jobAmount);
+                    setDraftStatus("completed")
+                    const amt = Number(jobAmount)
                     patchLead(
                       {
                         id: selected.id,
@@ -211,11 +241,13 @@ export default function VendorLeadsAdmin() {
                       },
                       {
                         onSuccess: (updated) => {
-                          setSelected(updated);
-                          toast({ title: "Job completed — wallet entries created" });
+                          openLead(updated)
+                          toast({
+                            title: "Job completed — wallet entries created",
+                          })
                         },
-                      },
-                    );
+                      }
+                    )
                   }}
                 >
                   Mark completed & settle
@@ -226,5 +258,5 @@ export default function VendorLeadsAdmin() {
         </SheetContent>
       </Sheet>
     </div>
-  );
+  )
 }

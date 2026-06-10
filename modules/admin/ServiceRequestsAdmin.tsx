@@ -20,6 +20,7 @@ import {
   Mail,
   MessageCircle,
   PaintBucket,
+  PartyPopper,
   PhoneCall,
   Route,
   Search,
@@ -61,6 +62,7 @@ import {
 } from "@/hooks/use-service-requests";
 import { useAdminVendorSelect } from "@/hooks/use-vendor-leads";
 import type {
+  EventManagementDetails,
   PackersMoversDetails,
   PaintingCleaningDetails,
   ServiceRequestDTO,
@@ -101,6 +103,12 @@ function isPaintingCleaningDetails(
   return !!d && "subType" in d;
 }
 
+function isEventManagementDetails(
+  d: ServiceRequestDTO["details"],
+): d is EventManagementDetails {
+  return !!d && "eventType" in d;
+}
+
 const STATUS_VALUES: ServiceRequestStatus[] = [
   "new",
   "contacted",
@@ -109,7 +117,11 @@ const STATUS_VALUES: ServiceRequestStatus[] = [
   "cancelled",
 ];
 
-const SERVICE_VALUES: ServiceType[] = ["packers_movers", "painting_cleaning"];
+const SERVICE_VALUES: ServiceType[] = [
+  "packers_movers",
+  "painting_cleaning",
+  "event_management",
+];
 
 const STATUS_META: Record<
   ServiceRequestStatus,
@@ -131,6 +143,7 @@ const SERVICE_META: Record<
 > = {
   packers_movers: { label: "Packers & Movers", icon: Truck },
   painting_cleaning: { label: "Painting & Cleaning", icon: PaintBucket },
+  event_management: { label: "Event Management", icon: PartyPopper },
 };
 
 const filterParsers = {
@@ -151,7 +164,6 @@ export default function ServiceRequestsAdmin() {
   });
 
   const [searchDraft, setSearchDraft] = useState(q);
-  useEffect(() => setSearchDraft(q), [q]);
   useEffect(() => {
     const handle = setTimeout(() => {
       if (searchDraft !== q) {
@@ -183,26 +195,16 @@ export default function ServiceRequestsAdmin() {
     useState<ServiceRequestStatus>("new");
   const [draftVendorId, setDraftVendorId] = useState<string>("");
 
-  useEffect(() => {
-    if (selected) {
-      setInternalNotes(selected.internalNotes ?? "");
-      setDraftStatus(selected.status);
-      setDraftVendorId(
-        selected.assignedVendorUserId != null
-          ? String(selected.assignedVendorUserId)
-          : "",
-      );
-    }
-  }, [selected]);
-
-  // Re-sync selected with fresh list (after mutation invalidation)
-  useEffect(() => {
-    if (!selected || !data?.items) return;
-    const fresh = data.items.find((it) => it.id === selected.id);
-    if (fresh && fresh.updatedAt !== selected.updatedAt) {
-      setSelected(fresh);
-    }
-  }, [data?.items, selected]);
+  const openRequest = (request: ServiceRequestDTO) => {
+    setSelected(request);
+    setInternalNotes(request.internalNotes ?? "");
+    setDraftStatus(request.status);
+    setDraftVendorId(
+      request.assignedVendorUserId != null
+        ? String(request.assignedVendorUserId)
+        : "",
+    );
+  };
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -222,7 +224,15 @@ export default function ServiceRequestsAdmin() {
       input.assignedVendorUserId = vendorId;
     }
     if (Object.keys(input).length === 0) return;
-    await updateMutation.mutateAsync({ id: selected.id, input });
+    const updated = await updateMutation.mutateAsync({ id: selected.id, input });
+    setSelected(updated);
+    setInternalNotes(updated.internalNotes ?? "");
+    setDraftStatus(updated.status);
+    setDraftVendorId(
+      updated.assignedVendorUserId != null
+        ? String(updated.assignedVendorUserId)
+        : "",
+    );
   };
 
   return (
@@ -233,11 +243,11 @@ export default function ServiceRequestsAdmin() {
             Service Requests
           </h2>
           <p className="text-sm text-muted-foreground">
-            Triage Packers &amp; Movers and Painting &amp; Cleaning requests.
+            Triage Packers &amp; Movers, Painting &amp; Cleaning, and Event Management requests.
           </p>
         </div>
         {stats ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <StatTile
               icon={ClipboardList}
               label="Open"
@@ -253,6 +263,11 @@ export default function ServiceRequestsAdmin() {
               icon={PaintBucket}
               label="Painting & Cleaning"
               value={stats.totals.painting_cleaning ?? 0}
+            />
+            <StatTile
+              icon={PartyPopper}
+              label="Event Management"
+              value={stats.totals.event_management ?? 0}
             />
           </div>
         ) : null}
@@ -326,9 +341,10 @@ export default function ServiceRequestsAdmin() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              setQuery({ type: "all", status: "all", q: "", page: 1 })
-            }
+            onClick={() => {
+              setSearchDraft("");
+              setQuery({ type: "all", status: "all", q: "", page: 1 });
+            }}
           >
             <X className="mr-1 h-3.5 w-3.5" />
             Reset
@@ -363,7 +379,7 @@ export default function ServiceRequestsAdmin() {
               <TableHead>Name</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>City</TableHead>
-              <TableHead>Trip</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -390,16 +406,22 @@ export default function ServiceRequestsAdmin() {
                 const meta = SERVICE_META[r.serviceType];
                 const s = STATUS_META[r.status] ?? STATUS_META.new;
                 const pm = isPackersMoversDetails(r.details) ? r.details : null;
+                const em = isEventManagementDetails(r.details)
+                  ? r.details
+                  : null;
                 const tripLabel = pm?.trip
                   ? `${pm.trip.distanceKm.toFixed(1)} km · ${formatDuration(pm.trip.durationMin)}`
                   : pm?.drops?.length
                     ? `${pm.drops.length} stop${pm.drops.length === 1 ? "" : "s"}`
                     : "—";
+                const detailLabel = em
+                  ? `${EVENT_TYPE_LABELS[em.eventType] ?? em.eventType} Â· ${em.guestCount} guests`
+                  : tripLabel;
                 return (
                   <TableRow
                     key={r.id}
                     className="cursor-pointer"
-                    onClick={() => setSelected(r)}
+                    onClick={() => openRequest(r)}
                   >
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(r.createdAt), {
@@ -426,7 +448,7 @@ export default function ServiceRequestsAdmin() {
                     <TableCell>{r.phone}</TableCell>
                     <TableCell>{r.city ?? "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {tripLabel}
+                      {detailLabel}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -434,7 +456,7 @@ export default function ServiceRequestsAdmin() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelected(r);
+                          openRequest(r);
                         }}
                       >
                         Open
@@ -581,6 +603,10 @@ export default function ServiceRequestsAdmin() {
                   <PaintingCleaningDetailPanel details={selected.details} />
                 ) : null}
 
+                {isEventManagementDetails(selected.details) ? (
+                  <EventManagementDetailPanel details={selected.details} />
+                ) : null}
+
                 <section className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Admin update
@@ -700,6 +726,49 @@ const PROPERTY_TYPE_LABELS: Record<
   apartment: "Apartment",
   villa: "Villa / Independent house",
   office: "Office / Shop",
+};
+
+const EVENT_TYPE_LABELS: Record<
+  NonNullable<EventManagementDetails["eventType"]>,
+  string
+> = {
+  birthday: "Birthday",
+  wedding: "Wedding",
+  baby_shower: "Baby shower",
+  corporate: "Corporate event",
+};
+
+const VENUE_TYPE_LABELS: Record<
+  NonNullable<EventManagementDetails["venueType"]>,
+  string
+> = {
+  home: "Home",
+  banquet: "Banquet hall",
+  hotel: "Hotel",
+  outdoor: "Outdoor",
+  office: "Office",
+  other: "Other",
+};
+
+const EVENT_SERVICE_LABELS: Record<
+  NonNullable<EventManagementDetails["services"]>[number],
+  string
+> = {
+  decoration: "Decoration",
+  catering: "Catering",
+  photography: "Photography",
+  music: "Music / DJ",
+  hosting: "Host / anchor",
+  return_gifts: "Return gifts",
+  venue_booking: "Venue booking",
+};
+
+const BUDGET_RANGE_LABELS: Record<string, string> = {
+  under_50000: "Under 50,000",
+  "50000_100000": "50,000 - 1,00,000",
+  "100000_250000": "1,00,000 - 2,50,000",
+  "250000_500000": "2,50,000 - 5,00,000",
+  above_500000: "Above 5,00,000",
 };
 
 function PackersMoversDetailPanel({ details }: { details: PackersMoversDetails }) {
@@ -926,6 +995,103 @@ function PaintingCleaningDetailPanel({
   );
 }
 
+function EventManagementDetailPanel({
+  details,
+}: {
+  details: EventManagementDetails;
+}) {
+  const loc = details.location;
+  const services = details.services ?? [];
+  return (
+    <section className="space-y-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Event details
+      </h3>
+      <dl className="grid grid-cols-2 gap-2 text-sm">
+        <Field
+          label="Event type"
+          value={EVENT_TYPE_LABELS[details.eventType] ?? details.eventType}
+        />
+        <Field
+          label="Venue type"
+          value={VENUE_TYPE_LABELS[details.venueType] ?? details.venueType}
+        />
+        <Field label="Guests" value={String(details.guestCount)} />
+        <Field
+          label="Budget"
+          value={
+            details.budgetRange
+              ? BUDGET_RANGE_LABELS[details.budgetRange] ?? details.budgetRange
+              : "Not decided"
+          }
+        />
+        {details.themeOrStyle ? (
+          <div className="col-span-2">
+            <Field label="Theme / style" value={details.themeOrStyle} />
+          </div>
+        ) : null}
+      </dl>
+
+      {services.length > 0 ? (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Services needed
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {services.map((service) => (
+              <Badge key={service} variant="secondary" className="text-xs">
+                {EVENT_SERVICE_LABELS[service] ?? service}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {loc && loc.lat !== 0 && loc.lng !== 0 ? (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  Event location
+                </p>
+                <p className="text-sm font-medium text-foreground break-words">
+                  {loc.label}
+                </p>
+                {loc.notes ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {loc.notes}
+                  </p>
+                ) : null}
+              </div>
+              <a
+                href={openInMapsHref(loc)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
+              >
+                Directions <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </a>
+            </div>
+          </div>
+          <RouteMap pickup={loc} drops={[loc]} height={240} />
+        </div>
+      ) : null}
+
+      {details.notes ? (
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Customer notes
+          </p>
+          <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+            {details.notes}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 interface FieldProps {
   label: string;
   value: string;
@@ -974,7 +1140,7 @@ export function ServiceRequestsOverviewTiles() {
   const { data: stats } = useAdminServiceRequestStats();
   if (!stats) return null;
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-4">
       <StatTile
         icon={Sparkles}
         label="Open service requests"
@@ -990,6 +1156,11 @@ export function ServiceRequestsOverviewTiles() {
         icon={PaintBucket}
         label="Painting & Cleaning"
         value={stats.totals.painting_cleaning ?? 0}
+      />
+      <StatTile
+        icon={PartyPopper}
+        label="Event Management"
+        value={stats.totals.event_management ?? 0}
       />
     </div>
   );

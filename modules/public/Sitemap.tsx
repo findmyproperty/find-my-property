@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import { Building2, Users, UserCircle, LayoutDashboard, FileText, Sparkles, Shield } from "lucide-react";
 import { tenantNav, agentNav, adminNav, type NavItem } from "@/config/roleNav";
 
@@ -31,6 +29,7 @@ const sections: Section[] = [
     links: [
       { href: "/packers-movers", label: "Packers & Movers" },
       { href: "/painting-cleaning", label: "Painting & Cleaning" },
+      { href: "/event-management", label: "Event Management" },
     ],
   },
   {

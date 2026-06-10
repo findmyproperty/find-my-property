@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, Building2, LogOut, ChevronDown, Truck, PaintBucket } from "lucide-react";
+import { Menu, X, Building2, LogOut, ChevronDown, Truck, PaintBucket, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
@@ -86,6 +86,17 @@ const Navbar = () => {
                       <p className="font-medium text-foreground">Painting &amp; Cleaning</p>
                       <p className="text-xs text-muted-foreground">
                         Painting, deep cleaning & more
+                      </p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/event-management" className="flex items-start gap-3">
+                    <PartyPopper className="mt-0.5 h-4 w-4 text-primary" aria-hidden />
+                    <div className="leading-tight">
+                      <p className="font-medium text-foreground">Event Management</p>
+                      <p className="text-xs text-muted-foreground">
+                        Birthdays, weddings & corporate
                       </p>
                     </div>
                   </Link>
@@ -187,6 +198,14 @@ const Navbar = () => {
                 >
                   <PaintBucket className="h-4 w-4 text-primary" aria-hidden />
                   Painting &amp; Cleaning
+                </Link>
+                <Link
+                  href="/event-management"
+                  className="flex items-center gap-2 text-sm text-foreground hover:text-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <PartyPopper className="h-4 w-4 text-primary" aria-hidden />
+                  Event Management
                 </Link>
                 <div className="mt-1 border-t border-border pt-3 flex flex-col gap-2">
                   <Link

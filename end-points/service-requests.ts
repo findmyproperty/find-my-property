@@ -1,6 +1,9 @@
 import { getStoredToken, request } from "@/end-points/http";
 
-export type ServiceType = "packers_movers" | "painting_cleaning";
+export type ServiceType =
+  | "packers_movers"
+  | "painting_cleaning"
+  | "event_management";
 
 export type ServiceRequestStatus =
   | "new"
@@ -55,6 +58,25 @@ export interface PaintingCleaningDetails {
   notes?: string | null;
 }
 
+export interface EventManagementDetails {
+  eventType: "birthday" | "wedding" | "baby_shower" | "corporate";
+  venueType: "home" | "banquet" | "hotel" | "outdoor" | "office" | "other";
+  guestCount: number;
+  budgetRange?: string | null;
+  services: Array<
+    | "decoration"
+    | "catering"
+    | "photography"
+    | "music"
+    | "hosting"
+    | "return_gifts"
+    | "venue_booking"
+  >;
+  location?: Stop;
+  themeOrStyle?: string | null;
+  notes?: string | null;
+}
+
 export interface ServiceRequestDTO {
   id: number;
   serviceType: ServiceType;
@@ -68,7 +90,11 @@ export interface ServiceRequestDTO {
   pincode: string | null;
   preferredDate: string | null;
   preferredSlot: PreferredSlot | null;
-  details: PackersMoversDetails | PaintingCleaningDetails | null;
+  details:
+    | PackersMoversDetails
+    | PaintingCleaningDetails
+    | EventManagementDetails
+    | null;
   internalNotes: string | null;
   assignedAdminId: number | null;
   assignedVendorUserId: number | null;
@@ -94,6 +120,10 @@ export interface PackersMoversInput extends BaseServiceRequestInput {
 
 export interface PaintingCleaningInput extends BaseServiceRequestInput {
   details: PaintingCleaningDetails;
+}
+
+export interface EventManagementInput extends BaseServiceRequestInput {
+  details: EventManagementDetails;
 }
 
 export interface AdminListServiceRequestsQuery {
@@ -150,6 +180,14 @@ export const serviceRequests = {
 
   async submitPaintingCleaning(input: PaintingCleaningInput): Promise<ServiceRequestDTO> {
     return request<ServiceRequestDTO>("/service-requests/painting-cleaning", {
+      method: "POST",
+      body: JSON.stringify(input),
+      token: getStoredToken(),
+    });
+  },
+
+  async submitEventManagement(input: EventManagementInput): Promise<ServiceRequestDTO> {
+    return request<ServiceRequestDTO>("/service-requests/event-management", {
       method: "POST",
       body: JSON.stringify(input),
       token: getStoredToken(),

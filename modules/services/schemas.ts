@@ -98,6 +98,43 @@ export type PaintingCleaningFormValues = z.infer<
   typeof paintingCleaningSchema
 >;
 
+export const eventManagementSchema = baseSchema.extend({
+  eventType: z.enum(["birthday", "wedding", "baby_shower", "corporate"], {
+    required_error: "Pick an event type.",
+  }),
+  venueType: z.enum(["home", "banquet", "hotel", "outdoor", "office", "other"], {
+    required_error: "Pick a venue type.",
+  }),
+  guestCount: z.coerce
+    .number({ invalid_type_error: "Enter guest count." })
+    .int("Guest count must be a whole number.")
+    .min(1, "Enter at least 1 guest.")
+    .max(100000, "Guest count is too high."),
+  budgetRange: z.string().trim().max(80).optional().or(z.literal("")),
+  services: z
+    .array(
+      z.enum([
+        "decoration",
+        "catering",
+        "photography",
+        "music",
+        "hosting",
+        "return_gifts",
+        "venue_booking",
+      ]),
+    )
+    .min(1, "Select at least one service."),
+  location: stopSchema.refine((v) => v.label.trim().length >= 3, {
+    message: "Select the event location.",
+  }),
+  themeOrStyle: z.string().trim().max(160).optional().or(z.literal("")),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type EventManagementFormValues = z.infer<
+  typeof eventManagementSchema
+>;
+
 export const MOVE_TYPE_OPTIONS: Array<{
   value: PackersMoversFormValues["moveType"];
   label: string;
@@ -157,5 +194,65 @@ export const SLOT_OPTIONS = [
   { value: "afternoon", label: "Afternoon (12pm - 4pm)" },
   { value: "evening", label: "Evening (4pm - 8pm)" },
 ] as const;
+
+export const EVENT_TYPE_OPTIONS: Array<{
+  value: EventManagementFormValues["eventType"];
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "birthday",
+    label: "Birthday",
+    description: "Decor, cake table, activities and food.",
+  },
+  {
+    value: "wedding",
+    label: "Wedding",
+    description: "Ceremony, reception, vendors and guest flow.",
+  },
+  {
+    value: "baby_shower",
+    label: "Baby shower",
+    description: "Theme setup, games, gifts and catering.",
+  },
+  {
+    value: "corporate",
+    label: "Corporate",
+    description: "Team events, launches, offsites and meetings.",
+  },
+];
+
+export const VENUE_TYPE_OPTIONS: Array<{
+  value: EventManagementFormValues["venueType"];
+  label: string;
+}> = [
+  { value: "home", label: "Home" },
+  { value: "banquet", label: "Banquet hall" },
+  { value: "hotel", label: "Hotel" },
+  { value: "outdoor", label: "Outdoor" },
+  { value: "office", label: "Office" },
+  { value: "other", label: "Other" },
+];
+
+export const BUDGET_RANGE_OPTIONS = [
+  { value: "under_50000", label: "Under 50,000" },
+  { value: "50000_100000", label: "50,000 - 1,00,000" },
+  { value: "100000_250000", label: "1,00,000 - 2,50,000" },
+  { value: "250000_500000", label: "2,50,000 - 5,00,000" },
+  { value: "above_500000", label: "Above 5,00,000" },
+] as const;
+
+export const EVENT_SERVICE_OPTIONS: Array<{
+  value: EventManagementFormValues["services"][number];
+  label: string;
+}> = [
+  { value: "decoration", label: "Decoration" },
+  { value: "catering", label: "Catering" },
+  { value: "photography", label: "Photography" },
+  { value: "music", label: "Music / DJ" },
+  { value: "hosting", label: "Host / anchor" },
+  { value: "return_gifts", label: "Return gifts" },
+  { value: "venue_booking", label: "Venue booking" },
+];
 
 export const MAX_DROPS = 5;

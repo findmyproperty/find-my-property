@@ -5,6 +5,7 @@ import {
   api,
   type AdminListServiceRequestsQuery,
   type AdminUpdateServiceRequestInput,
+  type EventManagementInput,
   type PackersMoversInput,
   type PaintingCleaningInput,
 } from "@/lib/api";
@@ -63,6 +64,30 @@ export function useSubmitPaintingCleaning() {
         title: "Request received",
         description:
           "Our team will reach out shortly to confirm your Painting & Cleaning request.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not submit request",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useSubmitEventManagement() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (input: EventManagementInput) =>
+      api.submitEventManagement(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.mine });
+      toast({
+        title: "Request received",
+        description:
+          "Our team will reach out shortly to confirm your Event Management request.",
       });
     },
     onError: (error: Error) => {
