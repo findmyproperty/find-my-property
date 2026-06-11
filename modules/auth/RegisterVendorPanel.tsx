@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,10 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
+import { parseSafeReturnPath } from "@/lib/auth-redirect";
+import { SITE_NAME } from "@/lib/branding";
+import { useSettings } from "@/contexts/settings-context";
+import { AuthLogo } from "@/modules/auth/AuthLogo";
 import type { VendorCategory } from "@/schema/vendor";
 
 const normalizePhone = (value: string) => {
@@ -53,6 +55,9 @@ export default function RegisterVendorPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { settings } = useSettings();
+  const siteName = settings?.siteName?.trim() || SITE_NAME;
+  const logoUrl = settings?.primaryLogoUrl?.trim() || null;
 
   const handleSendOtp = async () => {
     if (!name.trim() || !businessName.trim()) {
@@ -101,10 +106,8 @@ export default function RegisterVendorPanel() {
     <div className="min-h-screen flex items-center justify-center p-6 bg-muted/30">
       <div className="w-full max-w-md bg-card rounded-2xl border border-border p-8 shadow-sm space-y-6">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-            <Store className="w-6 h-6 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold">Register as FMP Partner</h1>
+          <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mx-auto mb-4" />
+          <h1 className="text-xl font-bold">Register as {siteName} Partner</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Join as a verified service vendor
           </p>

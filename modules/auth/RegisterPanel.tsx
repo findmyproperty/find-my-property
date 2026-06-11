@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, Smartphone, User as UserIcon } from "lucide-react";
+import { Smartphone, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
+import { AuthLogo } from "@/modules/auth/AuthLogo";
 
 const normalizePhone = (value: string) => {
   const trimmed = value.trim();
@@ -45,6 +46,7 @@ export default function RegisterPanel({
   const { toast } = useToast();
   const { settings } = useSettings();
   const siteName = settings?.siteName?.trim() || SITE_NAME;
+  const logoUrl = settings?.primaryLogoUrl?.trim() || null;
   const isModal = variant === "modal";
 
   const handleSendOtp = async () => {
@@ -122,9 +124,7 @@ export default function RegisterPanel({
     <>
       {!isModal ? (
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-tr from-primary to-primary-foreground/90 shadow-lg shadow-primary/20">
-            <Building2 className="h-7 w-7 text-primary-foreground" />
-          </div>
+          <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Create Account</h1>
           <p className="text-sm text-muted-foreground">Sign up securely with your phone number to get started.</p>
         </div>
