@@ -19,6 +19,8 @@ export const floorPlanDtoSchema = z.object({
   id: z.string().optional(),
   floorName: z.string(),
   customName: z.string().optional(),
+  rooms: z.number().optional(),
+  bathrooms: z.number().optional(),
   imageUrl: z.string(),
 });
 

@@ -19,6 +19,15 @@ const isListingTypeOption = (value: string): value is ListingTypeOption =>
 const isFurnishingOption = (value: string): value is FurnishingOption =>
   (furnishingOptions as readonly string[]).includes(value);
 
+const emptyFloorPlan = {
+  id: "1",
+  floorName: "ground",
+  customName: "",
+  rooms: "",
+  bathrooms: "",
+  imageUrl: "",
+};
+
 export const propertyFormSchema = z.object({
   propertyType: z.enum(propertyTypeOptions, {
     required_error: "Please select a property type.",
@@ -59,7 +68,27 @@ export const propertyFormSchema = z.object({
         id: z.string(),
         floorName: z.string(),
         customName: z.string().optional(),
-        imageUrl: z.string().min(1, "Floor plan image is required if added."),
+        rooms: z.string(),
+        bathrooms: z.string(),
+        imageUrl: z.string(),
+      }).superRefine((floorPlan, ctx) => {
+        if (!floorPlan.imageUrl.trim()) return;
+
+        if (!floorPlan.rooms.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select rooms for this floor plan.",
+            path: ["rooms"],
+          });
+        }
+
+        if (!floorPlan.bathrooms.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select bathrooms for this floor plan.",
+            path: ["bathrooms"],
+          });
+        }
       }),
     )
     .default([]),
@@ -95,23 +124,27 @@ export const getDefaultValues = (initialData?: BackendProperty): Partial<Propert
       id: fp.id ?? String(idx + 1),
       floorName: fp.floorName || "ground",
       customName: fp.customName ?? "",
+      rooms: fp.rooms != null ? String(fp.rooms) : "",
+      bathrooms: fp.bathrooms != null ? String(fp.bathrooms) : "",
       imageUrl: fp.imageUrl ?? "",
     }));
   } else if (typeof floorPlansFromApi === "string") {
     try {
       const parsed = JSON.parse(floorPlansFromApi) as unknown;
       const arr = Array.isArray(parsed) ? parsed : [];
-      floorPlans = arr.map((fp: Record<string, string>, idx: number) => ({
-        id: fp.id ?? String(idx + 1),
-        floorName: fp.floorName || "ground",
-        customName: fp.customName ?? "",
-        imageUrl: fp.imageUrl ?? "",
+      floorPlans = arr.map((fp: Record<string, string | number>, idx: number) => ({
+        id: fp.id != null ? String(fp.id) : String(idx + 1),
+        floorName: String(fp.floorName || "ground"),
+        customName: fp.customName != null ? String(fp.customName) : "",
+        rooms: fp.rooms != null ? String(fp.rooms) : "",
+        bathrooms: fp.bathrooms != null ? String(fp.bathrooms) : "",
+        imageUrl: fp.imageUrl != null ? String(fp.imageUrl) : "",
       }));
     } catch {
-      floorPlans = [{ id: "1", floorName: "ground", customName: "", imageUrl: "" }];
+      floorPlans = [emptyFloorPlan];
     }
   } else {
-    floorPlans = [{ id: "1", floorName: "ground", customName: "", imageUrl: "" }];
+    floorPlans = [emptyFloorPlan];
   }
 
   const images = initialData?.propertyImages?.length ? initialData.propertyImages : [];

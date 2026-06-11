@@ -24,6 +24,11 @@ function normalizeFurnishing(raw: BackendProperty["furnishing"]): FurnishingStat
   return "unfurnished";
 }
 
+function optionalPositiveNumber(raw: unknown): number | undefined {
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 export function mapBackendProperty(property: BackendProperty): Property {
   const isRent = property.listingType === "Rent" || property.listingType === "Lease";
 
@@ -96,7 +101,13 @@ function normalizeFloorPlans(
   raw: BackendProperty["floorPlans"],
 ): Property["floorPlans"] {
   if (!raw) return undefined;
-  let rows: Array<{ floorName?: string; customName?: string; imageUrl?: string }>;
+  let rows: Array<{
+    floorName?: string;
+    customName?: string;
+    rooms?: number | string;
+    bathrooms?: number | string;
+    imageUrl?: string;
+  }>;
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw) as unknown;
@@ -109,10 +120,18 @@ function normalizeFloorPlans(
   }
   const mapped: FloorPlanDto[] = rows
     .filter((fp) => fp?.imageUrl && String(fp.imageUrl).trim())
-    .map((fp) => ({
-      floorName: fp.floorName?.trim() || "Floor",
-      customName: fp.customName?.trim() || undefined,
-      imageUrl: String(fp.imageUrl).trim(),
-    }));
+    .map((fp) => {
+      const customName = fp.customName?.trim();
+      const rooms = optionalPositiveNumber(fp.rooms);
+      const bathrooms = optionalPositiveNumber(fp.bathrooms);
+
+      return {
+        floorName: fp.floorName?.trim() || "Floor",
+        ...(customName ? { customName } : {}),
+        ...(rooms ? { rooms } : {}),
+        ...(bathrooms ? { bathrooms } : {}),
+        imageUrl: String(fp.imageUrl).trim(),
+      };
+    });
   return mapped.length ? mapped : undefined;
 }

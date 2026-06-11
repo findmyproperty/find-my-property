@@ -47,7 +47,13 @@ export type Property = {
   lng?: number;
   amenities?: string[];
   description?: string | null;
-  floorPlans?: Array<{ floorName: string; customName?: string; imageUrl: string }>;
+  floorPlans?: Array<{
+    floorName: string;
+    customName?: string;
+    rooms?: number;
+    bathrooms?: number;
+    imageUrl: string;
+  }>;
   videoUrl?: string | null;
   yearBuilt?: number;
 };

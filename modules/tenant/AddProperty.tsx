@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
@@ -21,7 +21,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useAuth } from "@/contexts/auth-context";
 
 import { propertyFormSchema, getDefaultValues, type PropertyFormValues } from "./add-property-modules/schema";
 import { BasicInformation } from "./add-property-modules/BasicInformation";
@@ -31,7 +30,6 @@ import { DescriptionFields, AmenitiesFields } from "./add-property-modules/Descr
 import { PropertyImagesSection } from "./add-property-modules/PropertyImagesSection";
 import { VideoSection } from "./add-property-modules/VideoSection";
 import { FloorPlansSection } from "./add-property-modules/FloorPlansSection";
-import { AdminAgentAssignment } from "./add-property-modules/AdminAgentAssignment";
 
 const BASE_SECTIONS = [
   "basic",
@@ -48,15 +46,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const isAdmin = user?.role === "admin";
-
-  const defaultOpenSections = useMemo(() => {
-    const s = [...BASE_SECTIONS];
-    if (isAdmin) s.push("basic", "description");
-    return s;
-  }, [isAdmin]);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -67,16 +57,23 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     setLoading(true);
 
     const allImageUrls = [...data.propertyImages];
-    const validFloorPlans = data.floorPlans.filter((fp) => {
-      const url = fp.imageUrl.trim();
-      if (!url) return false;
-      try {
-        new URL(url);
-        return true;
-      } catch {
-        return false;
-      }
-    });
+    const validFloorPlans = data.floorPlans
+      .filter((fp) => {
+        const url = fp.imageUrl.trim();
+        if (!url) return false;
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .map((fp) => ({
+        ...fp,
+        rooms: Number(fp.rooms),
+        bathrooms: Number(fp.bathrooms),
+        imageUrl: fp.imageUrl.trim(),
+      }));
 
     try {
       const payload: Record<string, unknown> = {
@@ -102,13 +99,6 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
         videoUrl: data.videoUrl,
         floorPlans: validFloorPlans,
       };
-
-      if (isAdmin) {
-          const aid = Number(data.assignedAgentId);
-        if (Number.isFinite(aid) && aid > 0) {
-          payload.assignedAgentId = aid;
-        }
-      }
 
       if (
         data.latitude != null &&
@@ -192,75 +182,64 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
         >
           <Accordion
             type="multiple"
-            defaultValue={defaultOpenSections}
+            defaultValue={[...BASE_SECTIONS]}
             className="w-full rounded-xl border border-border bg-card shadow-sm"
           >
             <AccordionItem value="basic" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Basic Information</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4 pt-4">
                 <BasicInformation />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="overview" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Property Overview</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <PropertyOverview />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="location" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Location</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <LocationSection />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="description" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Description</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <DescriptionFields />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="amenities" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Amenities &amp; Features</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <AmenitiesFields />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="images" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Property Images</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <PropertyImagesSection />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="video" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Video</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <VideoSection />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="floorplans" className="border-b border-border last:border-b-0">
               <AccordionTrigger className={triggerClass}>Floor Plans</AccordionTrigger>
-              <AccordionContent className="px-6">
+              <AccordionContent className="px-6 pt-4">
                 <FloorPlansSection />
               </AccordionContent>
             </AccordionItem>
-
-            {isAdmin && (
-              <AccordionItem value="admin-agent" className="border-b border-border last:border-b-0 border-t-2 border-primary/20">
-                <AccordionTrigger className={triggerClass}>
-                  Listing agent <span className="ml-2 text-xs font-normal text-primary">(admin only)</span>
-                </AccordionTrigger>
-                <AccordionContent className="px-6">
-                  <AdminAgentAssignment />
-                </AccordionContent>
-              </AccordionItem>
-            )}
           </Accordion>
 
           <div className="flex gap-3">

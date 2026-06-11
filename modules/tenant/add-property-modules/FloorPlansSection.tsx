@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { Loader2, Upload, Trash2, Plus } from "lucide-react";
+import { Bath, Bed, Upload, Trash2, Plus } from "lucide-react";
 import {
   FormControl,
   FormField,
@@ -18,8 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
 import type { PropertyFormValues } from "./schema";
 import { CldUploadWidget } from "next-cloudinary";
 
@@ -39,8 +36,6 @@ export const FloorPlansSection = () => {
     control,
     name: "floorPlans",
   });
-  const [uploadingFloorPlanId, setUploadingFloorPlanId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const getFloorDisplayLabel = (index: number) => {
     const fp = watch(`floorPlans.${index}`);
@@ -104,6 +99,60 @@ export const FloorPlansSection = () => {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={control}
+                  name={`floorPlans.${index}.rooms`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
+                        <Bed className="w-3.5 h-3.5" /> Rooms (BHK)
+                      </FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="BHK" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n} BHK
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={control}
+                  name={`floorPlans.${index}.bathrooms`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
+                        <Bath className="w-3.5 h-3.5" /> Bath
+                      </FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Bath" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n} Bath{n > 1 ? "s" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 {floorName === "other" && (
                   <FormField
@@ -128,11 +177,7 @@ export const FloorPlansSection = () => {
                 render={({ field: inputField }) => (
                   <FormItem>
                     <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 flex flex-col items-center justify-center gap-3 min-h-[160px] relative mt-2">
-                      {uploadingFloorPlanId === field.id ? (
-                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                      ) : (
-                        <Upload className="w-10 h-10 text-muted-foreground" />
-                      )}
+                      <Upload className="w-10 h-10 text-muted-foreground" />
                       <FormControl>
                         <Input
                           placeholder={`Floor plan image URL for ${getFloorDisplayLabel(index)} floor`}
@@ -145,8 +190,10 @@ export const FloorPlansSection = () => {
                         options={{ multiple: false, clientAllowedFormats: ["image"] }}
                         onSuccess={(result) => {
                           if (result.event === "success" && result.info) {
-                            const info = result.info as any;
-                            setValue(`floorPlans.${index}.imageUrl`, info.secure_url, { shouldValidate: true });
+                            const info = result.info as { secure_url?: unknown };
+                            if (typeof info.secure_url === "string") {
+                              setValue(`floorPlans.${index}.imageUrl`, info.secure_url, { shouldValidate: true });
+                            }
                           }
                         }}
                       >
@@ -171,7 +218,16 @@ export const FloorPlansSection = () => {
         <Button
           type="button"
           variant="outline"
-          onClick={() => append({ id: String(Date.now()), floorName: "other", customName: "", imageUrl: "" })}
+          onClick={() =>
+            append({
+              id: String(Date.now()),
+              floorName: "other",
+              customName: "",
+              rooms: "",
+              bathrooms: "",
+              imageUrl: "",
+            })
+          }
           className="w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" /> Add another floor

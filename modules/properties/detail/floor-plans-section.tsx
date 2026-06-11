@@ -15,6 +15,10 @@ export function FloorPlansSection({ floorPlans, activeIndex, onFloorChange }: Fl
 
   const safeIndex = Math.min(activeIndex, floorPlans.length - 1);
   const active = floorPlans[safeIndex];
+  const activeMetadata = [
+    active?.rooms ? `${active.rooms} BHK` : undefined,
+    active?.bathrooms ? `${active.bathrooms} Bath` : undefined,
+  ].filter(Boolean);
 
   return (
     <motion.div
@@ -47,12 +51,24 @@ export function FloorPlansSection({ floorPlans, activeIndex, onFloorChange }: Fl
         })}
       </div>
       {active ? (
-        <div className="aspect-[16/10] overflow-hidden rounded-xl bg-primary/10">
-          <img
-            src={active.imageUrl}
-            alt={active.customName || active.floorName || "Floor plan"}
-            className="h-full w-full object-contain"
-          />
+        <div className="flex flex-col gap-3">
+          {activeMetadata.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground">
+              {activeMetadata.map((item, index) => (
+                <span key={item} className="flex items-center gap-2">
+                  {index > 0 ? <span aria-hidden="true">&bull;</span> : null}
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <div className="aspect-[16/10] overflow-hidden rounded-xl bg-primary/10">
+            <img
+              src={active.imageUrl}
+              alt={active.customName || active.floorName || "Floor plan"}
+              className="h-full w-full object-contain"
+            />
+          </div>
         </div>
       ) : null}
     </motion.div>
