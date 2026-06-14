@@ -1,8 +1,25 @@
 "use client";
 
+import { FormEvent, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Wallet } from "lucide-react";
-import { useVendorWalletSummary, useVendorWalletEntries } from "@/hooks/use-vendor-wallet";
+import {
+  CreditCard,
+  Loader2,
+  Plus,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -11,52 +28,358 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  useCreateVendorPayoutAccount,
+  useVendorPayoutAccounts,
+  useVendorWalletEntries,
+  useVendorWalletSummary,
+  useVendorWithdrawals,
+} from "@/hooks/use-vendor-wallet";
+import { useToast } from "@/hooks/use-toast";
+import type { PayoutAccount } from "@/end-points/vendor-wallet";
+
+type AccountType = "vpa" | "bank_account";
+
+function formatCurrency(amount: number | null | undefined) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
+}
+
+function accountTitle(account: PayoutAccount) {
+  if (account.type === "vpa") {
+    return account.vpaAddress ?? "UPI account";
+  }
+
+  const bank = account.bankName ? `${account.bankName} ` : "";
+  return `${bank}account ending ${account.accountNumberLast4 ?? "----"}`;
+}
+
+function accountBadge(account: PayoutAccount) {
+  return account.type === "vpa" ? (
+    <Badge variant="secondary">UPI</Badge>
+  ) : (
+    <Badge variant="outline">Bank</Badge>
+  );
+}
+
+function statusBadge(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized === "processed" || normalized === "settled") {
+    return <Badge className="bg-emerald-600 text-white">Settled</Badge>;
+  }
+  if (["failed", "reversed", "cancelled", "rejected"].includes(normalized)) {
+    return <Badge variant="destructive">{status}</Badge>;
+  }
+  return <Badge variant="secondary">{status}</Badge>;
+}
 
 export default function VendorWallet() {
+  const { toast } = useToast();
+  const [accountType, setAccountType] = useState<AccountType>("vpa");
+  const [beneficiaryName, setBeneficiaryName] = useState("");
+  const [label, setLabel] = useState("");
+  const [vpaAddress, setVpaAddress] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+
   const { data: summary, isLoading: summaryLoading } = useVendorWalletSummary();
   const { data: entries, isLoading: entriesLoading } = useVendorWalletEntries(1);
+  const { data: payoutAccounts, isLoading: accountsLoading } = useVendorPayoutAccounts();
+  const { data: withdrawals, isLoading: withdrawalsLoading } = useVendorWithdrawals(1);
+  const createAccount = useCreateVendorPayoutAccount();
 
   if (summaryLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin" />
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
 
+  const accounts = payoutAccounts ?? [];
   const cards = [
-    { label: "Total earnings", value: summary?.totalEarnings ?? 0 },
-    { label: "Pending settlement", value: summary?.pendingSettlement ?? 0 },
+    { label: "Available", value: summary?.availableBalance ?? summary?.pendingSettlement ?? 0 },
+    { label: "Pending payouts", value: summary?.pendingPayouts ?? 0 },
     { label: "Paid out", value: summary?.paidOut ?? 0 },
-    { label: "Commission deducted", value: summary?.commissionDeducted ?? 0 },
+    { label: "Commission", value: summary?.commissionDeducted ?? 0 },
   ];
+
+  const resetForm = () => {
+    setBeneficiaryName("");
+    setLabel("");
+    setVpaAddress("");
+    setIfsc("");
+    setAccountNumber("");
+  };
+
+  const submitAccount = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (beneficiaryName.trim().length < 3) {
+      toast({
+        title: "Enter beneficiary name",
+        description: "Use the same name linked to your bank account or UPI ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (accountType === "vpa" && !vpaAddress.trim()) {
+      toast({
+        title: "Enter UPI ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (accountType === "bank_account" && (!ifsc.trim() || !accountNumber.trim())) {
+      toast({
+        title: "Enter bank details",
+        description: "IFSC and account number are required for bank payouts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createAccount.mutate(
+      accountType === "vpa"
+        ? {
+            type: "vpa",
+            beneficiaryName: beneficiaryName.trim(),
+            label: label.trim() || undefined,
+            vpaAddress: vpaAddress.trim(),
+          }
+        : {
+            type: "bank_account",
+            beneficiaryName: beneficiaryName.trim(),
+            label: label.trim() || undefined,
+            ifsc: ifsc.trim().toUpperCase(),
+            accountNumber: accountNumber.trim(),
+          },
+      {
+        onSuccess: () => {
+          toast({ title: "Payout account saved" });
+          resetForm();
+        },
+        onError: (error) =>
+          toast({
+            title: "Unable to save payout account",
+            description: error instanceof Error ? error.message : undefined,
+            variant: "destructive",
+          }),
+      },
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-heading text-xl font-bold flex items-center gap-2">
-          <Wallet className="w-5 h-5" />
-          Wallet
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Earnings and settlements (internal ledger)
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-heading flex items-center gap-2 text-xl font-bold">
+            <Wallet className="h-5 w-5" />
+            Wallet
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track earnings and manage the payout account admin will use for settlements.
+          </p>
+        </div>
+        <Badge variant="secondary" className="gap-1">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          RazorpayX payouts
+        </Badge>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((c) => (
-          <div key={c.label} className="bg-card rounded-xl border border-border p-4">
-            <p className="text-sm text-muted-foreground">{c.label}</p>
-            <p className="text-2xl font-bold mt-1">₹{c.value}</p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => (
+          <div key={card.label} className="rounded-lg border border-border bg-card p-4">
+            <p className="text-sm text-muted-foreground">{card.label}</p>
+            <p className="mt-1 text-2xl font-bold">{formatCurrency(card.value)}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <h3 className="font-semibold p-4 border-b border-border">Ledger</h3>
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+        <div className="rounded-lg border border-border bg-card">
+          <div className="border-b border-border p-4">
+            <h3 className="font-semibold">Payout accounts</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Save UPI or bank details before admin can release a payout.
+            </p>
+          </div>
+          <div className="divide-y divide-border">
+            {accountsLoading ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : accounts.length > 0 ? (
+              accounts.map((account) => (
+                <div key={account.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{accountTitle(account)}</p>
+                      {accountBadge(account)}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {account.beneficiaryName}
+                      {account.label ? ` - ${account.label}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant={account.active ? "secondary" : "destructive"}>
+                    {account.active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                No payout account saved yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <form className="rounded-lg border border-border bg-card p-4" onSubmit={submitAccount}>
+          <div className="mb-4 flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold">Add payout account</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label>Account type</Label>
+              <Select value={accountType} onValueChange={(value) => setAccountType(value as AccountType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vpa">UPI ID / VPA</SelectItem>
+                  <SelectItem value="bank_account">Bank account</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="beneficiary-name">Beneficiary name</Label>
+              <Input
+                id="beneficiary-name"
+                value={beneficiaryName}
+                onChange={(event) => setBeneficiaryName(event.target.value)}
+                placeholder="Name as per bank or UPI"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="account-label">Label</Label>
+              <Input
+                id="account-label"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="Primary account"
+              />
+            </div>
+
+            {accountType === "vpa" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="vpa-address">UPI ID</Label>
+                <Input
+                  id="vpa-address"
+                  value={vpaAddress}
+                  onChange={(event) => setVpaAddress(event.target.value)}
+                  placeholder="name@bank"
+                />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="ifsc">IFSC</Label>
+                  <Input
+                    id="ifsc"
+                    value={ifsc}
+                    onChange={(event) => setIfsc(event.target.value)}
+                    placeholder="HDFC0000001"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="account-number">Account number</Label>
+                  <Input
+                    id="account-number"
+                    value={accountNumber}
+                    onChange={(event) => setAccountNumber(event.target.value)}
+                    placeholder="Enter account number"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={createAccount.isPending}>
+              {createAccount.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Save payout account
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </section>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <h3 className="border-b border-border p-4 font-semibold">Withdrawals</h3>
+        {withdrawalsLoading ? (
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Mode</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {withdrawals?.items.map((withdrawal) => (
+                <TableRow key={withdrawal.id}>
+                  <TableCell className="text-xs">
+                    {format(new Date(withdrawal.createdAt), "PP")}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {withdrawal.referenceId}
+                  </TableCell>
+                  <TableCell>{withdrawal.mode}</TableCell>
+                  <TableCell>{statusBadge(withdrawal.status)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(withdrawal.amount)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {withdrawals?.items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    No withdrawals yet.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <h3 className="border-b border-border p-4 font-semibold">Ledger</h3>
         {entriesLoading ? (
-          <div className="p-8 flex justify-center">
-            <Loader2 className="w-5 h-5 animate-spin" />
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : (
           <Table>
@@ -70,26 +393,26 @@ export default function VendorWallet() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries?.items.map((e) => (
-                <TableRow key={e.id}>
+              {entries?.items.map((entry) => (
+                <TableRow key={entry.id}>
                   <TableCell className="text-xs">
-                    {format(new Date(e.createdAt), "PP")}
+                    {format(new Date(entry.createdAt), "PP")}
                   </TableCell>
-                  <TableCell className="capitalize">{e.type}</TableCell>
-                  <TableCell>₹{e.amount}</TableCell>
-                  <TableCell>{e.status}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                    {e.description}
+                  <TableCell className="capitalize">{entry.type}</TableCell>
+                  <TableCell>{formatCurrency(entry.amount)}</TableCell>
+                  <TableCell>{statusBadge(entry.status)}</TableCell>
+                  <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
+                    {entry.description}
                   </TableCell>
                 </TableRow>
               ))}
-              {entries?.items.length === 0 && (
+              {entries?.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No entries yet
+                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    No ledger entries yet.
                   </TableCell>
                 </TableRow>
-              )}
+              ) : null}
             </TableBody>
           </Table>
         )}

@@ -9,6 +9,7 @@ import { properties } from "@/end-points/properties";
 import { settings } from "@/end-points/settings";
 import { systemLogs } from "@/end-points/system-logs";
 import { admin } from "@/end-points/admin";
+import { adminWallet } from "@/end-points/admin-wallet";
 import { contact } from "@/end-points/contact";
 import { serviceRequests } from "@/end-points/service-requests";
 import { uploads } from "@/end-points/uploads";
@@ -26,6 +27,7 @@ export const api = {
   ...agents,
   ...leads,
   ...admin,
+  adminWallet,
   ...serviceRequests,
   ...uploads,
   vendors,

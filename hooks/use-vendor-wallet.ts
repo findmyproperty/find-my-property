@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { AdminPayoutInput } from "@/end-points/vendor-wallet";
+import type {
+  AdminCreatePayoutInput,
+  AdminPayoutInput,
+  CreatePayoutAccountInput,
+  CreateWithdrawalInput,
+} from "@/end-points/vendor-wallet";
 import { useAuth } from "@/contexts/auth-context";
 
 export function useVendorWalletSummary() {
@@ -41,6 +46,56 @@ export function useAdminVendorWalletEntries(vendorUserId: number | null, page = 
   });
 }
 
+export function useVendorPayoutAccounts() {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: ["vendor-payout-accounts"],
+    queryFn: () => api.vendorWallet.listPayoutAccounts(),
+    enabled: isAuthReady && user?.role === "vendor",
+  });
+}
+
+export function useCreateVendorPayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePayoutAccountInput) =>
+      api.vendorWallet.createPayoutAccount(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["vendor-payout-accounts"] });
+    },
+  });
+}
+
+export function useCreateVendorWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateWithdrawalInput) => api.vendorWallet.createWithdrawal(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["vendor-wallet-summary"] });
+      void qc.invalidateQueries({ queryKey: ["vendor-wallet-entries"] });
+      void qc.invalidateQueries({ queryKey: ["vendor-withdrawals"] });
+    },
+  });
+}
+
+export function useVendorWithdrawals(page = 1) {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: ["vendor-withdrawals", page],
+    queryFn: () => api.vendorWallet.listWithdrawals(page),
+    enabled: isAuthReady && user?.role === "vendor",
+  });
+}
+
+export function useAdminVendorPayoutAccounts(vendorUserId: number | null) {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: ["admin-vendor-payout-accounts", vendorUserId],
+    queryFn: () => api.vendorWallet.adminPayoutAccounts(vendorUserId!),
+    enabled: isAuthReady && user?.role === "admin" && vendorUserId != null,
+  });
+}
+
 export function useAdminVendorPayout() {
   const qc = useQueryClient();
   return useMutation({
@@ -52,6 +107,27 @@ export function useAdminVendorPayout() {
       void qc.invalidateQueries({
         queryKey: ["admin-vendor-wallet-entries", input.vendorUserId],
       });
+    },
+  });
+}
+
+export function useAdminCreateVendorPayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AdminCreatePayoutInput) =>
+      api.vendorWallet.adminCreatePayout(input),
+    onSuccess: (_, input) => {
+      void qc.invalidateQueries({
+        queryKey: ["admin-vendor-wallet-summary", input.vendorUserId],
+      });
+      void qc.invalidateQueries({
+        queryKey: ["admin-vendor-wallet-entries", input.vendorUserId],
+      });
+      void qc.invalidateQueries({
+        queryKey: ["admin-vendor-payout-accounts", input.vendorUserId],
+      });
+      void qc.invalidateQueries({ queryKey: ["admin-wallet-summary"] });
+      void qc.invalidateQueries({ queryKey: ["admin-wallet-entries"] });
     },
   });
 }

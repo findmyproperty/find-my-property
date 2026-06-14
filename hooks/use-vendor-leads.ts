@@ -70,6 +70,15 @@ export function useAdminVendorLeads(query: AdminListVendorLeadsQuery = {}) {
   });
 }
 
+export function useAdminVendorLead(id: number | null) {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: ["admin-vendor-lead", id],
+    queryFn: () => api.vendorLeads.getLeadAdmin(id!),
+    enabled: isAuthReady && user?.role === "admin" && id != null,
+  });
+}
+
 export function useAdminVendors(
   query: Parameters<typeof api.vendors.listVendorsAdmin>[0] = {},
 ) {
@@ -123,8 +132,9 @@ export function useAdminPatchVendorLead() {
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: AdminPatchVendorLeadInput }) =>
       api.vendorLeads.adminPatch(id, input),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       void qc.invalidateQueries({ queryKey: ["admin-vendor-leads"] });
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-lead", id] });
     },
   });
 }

@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CheckCheck, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, Check, CheckCheck, ExternalLink, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -23,22 +31,29 @@ function notificationHref(n: Notification): string | null {
   return null;
 }
 
+function formatType(type: string) {
+  return type.replace(/_/g, " ");
+}
+
 export default function AlertsFeed() {
   const { data, isLoading } = useNotifications();
-  const { mutate: markRead } = useMarkNotificationRead();
+  const { mutate: markRead, isPending: markingOne } = useMarkNotificationRead();
   const { mutate: markAll, isPending: markingAll } = useMarkAllNotificationsRead();
 
   const unread = data?.filter((n) => !n.read).length ?? 0;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Bell className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-semibold">Alerts</h1>
-          {unread > 0 ? (
-            <Badge variant="secondary">{unread} unread</Badge>
-          ) : null}
+          <div>
+            <h1 className="font-heading text-xl font-bold">Alerts</h1>
+            <p className="text-sm text-muted-foreground">
+              Updates for leads, payouts, tickets, and account activity.
+            </p>
+          </div>
+          {unread > 0 ? <Badge variant="secondary">{unread} unread</Badge> : null}
         </div>
         {unread > 0 ? (
           <Button
@@ -54,56 +69,79 @@ export default function AlertsFeed() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          Loading alerts...
         </div>
-      ) : !data?.length ? (
-        <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          No alerts yet. You will see updates for leads, payouts, and account status here.
-        </p>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border">
-          {data.map((n) => {
-            const href = notificationHref(n);
-            const content = (
-              <div
-                className={`px-4 py-3 ${!n.read ? "bg-primary/5" : ""}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  if (!n.read) markRead(n.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !n.read) markRead(n.id);
-                }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm">{n.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{n.body}</p>
-                  </div>
-                  {!n.read ? (
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  ) : null}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                </p>
-              </div>
-            );
-            return (
-              <li key={n.id}>
-                {href ? (
-                  <Link href={href} className="block hover:bg-muted/50">
-                    {content}
-                  </Link>
-                ) : (
-                  content
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Alert</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Created</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.map((n) => {
+                const href = notificationHref(n);
+                return (
+                  <TableRow key={n.id} className={!n.read ? "bg-primary/5" : undefined}>
+                    <TableCell className="max-w-[420px]">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium">{n.title}</span>
+                        <span className="line-clamp-2 text-xs text-muted-foreground">{n.body}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize">{formatType(n.type)}</TableCell>
+                    <TableCell>
+                      {n.read ? (
+                        <Badge variant="secondary">Read</Badge>
+                      ) : (
+                        <Badge>Unread</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {!n.read ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={markingOne}
+                            onClick={() => markRead(n.id)}
+                          >
+                            <Check className="mr-1 h-4 w-4" />
+                            Read
+                          </Button>
+                        ) : null}
+                        {href ? (
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link href={href} aria-label={`Open ${n.title}`}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {!data?.length ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    No alerts yet. You will see updates here.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

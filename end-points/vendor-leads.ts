@@ -78,6 +78,13 @@ export const vendorLeads = {
     );
   },
 
+  async getLeadAdmin(id: number): Promise<VendorLead> {
+    return request<VendorLead>(`/admin/vendor-leads/${id}`, {
+      method: "GET",
+      token: getStoredToken(),
+    });
+  },
+
   async adminCreate(input: AdminCreateVendorLeadInput): Promise<VendorLead> {
     return request<VendorLead>("/admin/vendor-leads", {
       method: "POST",

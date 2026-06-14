@@ -314,7 +314,7 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
         />
         <p className="text-xs text-muted-foreground">
           Lowercase letters, numbers, and hyphens only. Used in
-          /vendors/your-slug when verified.
+          /vendors/your-slug when verified. 
         </p>
       </div>
 

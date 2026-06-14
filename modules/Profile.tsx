@@ -1,11 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/auth-context";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CldUploadWidget, type CloudinaryUploadWidgetInfo } from "next-cloudinary";
+import {
+  BadgeCheck,
+  Camera,
+  CheckCircle2,
+  Loader2,
+  Mail,
+  Pencil,
+  Phone,
+  Shield,
+  Trash2,
+  UserCircle,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,22 +34,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
-import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Mail, Phone, Shield, Pencil, Loader2, Camera, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/auth-context";
 import type { UserRole } from "@/contexts/auth-context";
 import { normalizePhone } from "@/helpers";
-import { CldUploadWidget, type CloudinaryUploadWidgetInfo } from "next-cloudinary";
-import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import VendorProfileSection from "@/modules/vendor/VendorProfileSection";
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "U";
+}
+
+function roleLabel(role: string) {
+  return role.replace(/_/g, " ");
+}
 
 const Profile = () => {
   const { user, updateProfile, requestPhoneOtp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const [name, setName] = useState(user?.name ?? "");
+  const [name, setName] = useState(() => user?.name ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
@@ -42,11 +83,13 @@ const Profile = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const cloudinaryPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  useEffect(() => {
-    setName(user?.name ?? "");
-  }, [user?.name]);
+  if (!user) return null;
 
-  const displayPhone = (user?.phone ?? "").trim();
+  const displayName = user.name || "Your profile";
+  const displayPhone = (user.phone ?? "").trim();
+  const avatarUrl = user.avatarUrl ?? null;
+  const initials = getInitials(displayName);
+  const hasNameChanges = name.trim() !== (user.name ?? "").trim();
 
   const resetPhoneDialog = () => {
     setOtpSent(false);
@@ -156,6 +199,7 @@ const Profile = () => {
       return;
     }
 
+    setName(trimmed);
     toast({
       title: "Profile updated",
       description: "Your changes have been saved.",
@@ -174,12 +218,16 @@ const Profile = () => {
     }
     toast({
       title: nextUrl ? "Photo updated" : "Photo removed",
-      description: nextUrl ? "Your new profile picture is live." : "Your profile picture has been cleared.",
+      description: nextUrl
+        ? "Your new profile picture is live."
+        : "Your profile picture has been cleared.",
     });
     return true;
   };
 
-  const handleCloudinarySuccess = async (info: CloudinaryUploadWidgetInfo | undefined) => {
+  const handleCloudinarySuccess = async (
+    info: CloudinaryUploadWidgetInfo | undefined,
+  ) => {
     const url = info?.secure_url;
     if (!url) return;
     setIsUploadingAvatar(true);
@@ -191,7 +239,7 @@ const Profile = () => {
   };
 
   const handleRemoveAvatar = async () => {
-    if (!user?.avatarUrl) return;
+    if (!avatarUrl) return;
     setIsUploadingAvatar(true);
     try {
       await persistAvatar(null);
@@ -200,21 +248,30 @@ const Profile = () => {
     }
   };
 
-  if (!user) return null;
-
-  const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "U";
-  const avatarUrl = user.avatarUrl ?? null;
+  const openAvatarWidget = (open: () => void) => {
+    if (!cloudinaryPreset) {
+      toast({
+        title: "Uploads unavailable",
+        description: "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
+        variant: "destructive",
+      });
+      return;
+    }
+    open();
+  };
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-6">
-      <div className="text-center sm:text-left">
-        <h2 className="font-heading text-xl font-bold text-foreground mb-1">My Profile</h2>
-        <p className="text-sm text-muted-foreground">Manage your account details</p>
+    <div className="flex w-full max-w-5xl flex-col gap-6">
+      <div>
+        <h2 className="font-heading text-2xl font-bold text-foreground">My Profile</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Keep your account information current and verified.
+        </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <div className="bg-card rounded-2xl border border-border p-6 space-y-6">
-          <div className="flex flex-col items-center gap-4 pb-6 border-b border-border text-center sm:flex-row sm:items-center sm:gap-5 sm:text-left">
+      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <Card className="h-fit overflow-hidden">
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
             <CldUploadWidget
               uploadPreset={cloudinaryPreset}
               options={{
@@ -243,190 +300,240 @@ const Profile = () => {
                 setIsUploadingAvatar(false);
               }}
             >
-              {({ open }) => {
-                const openWidget = () => {
-                  if (!cloudinaryPreset) {
-                    toast({
-                      title: "Uploads unavailable",
-                      description: "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  open();
-                };
+              {({ open }) => (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="size-28 ring-2 ring-border">
+                      {avatarUrl ? (
+                        <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
+                      ) : null}
+                      <AvatarFallback className="bg-primary/10 text-2xl font-bold text-primary">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Button
+                      type="button"
+                      size="icon"
+                      className="absolute -bottom-1 -right-1 size-9 rounded-full"
+                      onClick={() => openAvatarWidget(open)}
+                      disabled={isUploadingAvatar}
+                      aria-label={avatarUrl ? "Change profile photo" : "Upload profile photo"}
+                    >
+                      {isUploadingAvatar ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
 
-                return (
-                  <>
-                    <div className="relative">
-                      <Avatar className="h-24 w-24 shrink-0 ring-2 ring-border">
-                        {avatarUrl ? (
-                          <AvatarImage src={avatarUrl} alt={user.name} className="object-cover" />
-                        ) : null}
-                        <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                  <div className="min-w-0">
+                    <h3 className="truncate font-heading text-lg font-semibold text-foreground">
+                      {displayName}
+                    </h3>
+                    <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+                    <div className="mt-2 flex justify-center">
+                      <Badge variant="secondary" className="capitalize">
+                        {roleLabel(user.role)}
+                      </Badge>
+                    </div>
+                  </div>
 
-                      <button
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAvatarWidget(open)}
+                      disabled={isUploadingAvatar}
+                    >
+                      <Camera className="mr-2 h-3.5 w-3.5" />
+                      {avatarUrl ? "Change photo" : "Upload photo"}
+                    </Button>
+                    {avatarUrl ? (
+                      <Button
                         type="button"
-                        onClick={openWidget}
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => void handleRemoveAvatar()}
                         disabled={isUploadingAvatar}
-                        aria-label={avatarUrl ? "Change profile photo" : "Upload profile photo"}
-                        className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        {isUploadingAvatar ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Camera className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-heading font-semibold text-foreground truncate">{user.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                      <span className="inline-block mt-1 text-xs text-muted-foreground capitalize bg-muted px-2 py-0.5 rounded">
-                        {user.role}
-                      </span>
-                      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={openWidget}
-                          disabled={isUploadingAvatar}
-                        >
-                          <Camera className="mr-2 h-3.5 w-3.5" />
-                          {avatarUrl ? "Change photo" : "Upload photo"}
-                        </Button>
-                        {avatarUrl ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => void handleRemoveAvatar()}
-                            disabled={isUploadingAvatar}
-                          >
-                            <Trash2 className="mr-2 h-3.5 w-3.5" />
-                            Remove
-                          </Button>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        JPG, PNG or WebP up to 5 MB. Stored on Cloudinary.
-                      </p>
-                    </div>
-                  </>
-                );
-              }}
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
             </CldUploadWidget>
-          </div>
 
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="tenant-name" className="flex items-center gap-2 text-foreground">
-                <UserCircle className="w-4 h-4" /> Full Name
-              </Label>
-              <Input
-                id="tenant-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                className="bg-background"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tenant-email" className="flex items-center gap-2 text-foreground">
-                <Mail className="w-4 h-4" /> Email
-              </Label>
-              <Input
-                id="tenant-email"
-                value={user.email ?? ""}
-                disabled
-                className="bg-muted/50 text-muted-foreground cursor-not-allowed"
-              />
-              <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
-            </div>
+            <Separator />
 
-            {user.defaultRole === "admin" && (
-              <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <Label className="flex items-center gap-2 text-primary font-semibold">
-                  <Shield className="w-4 h-4" /> Super Admin Role Override
+            <div className="grid w-full gap-3 text-left">
+              <ProfileFact icon={Mail} label="Email" value={user.email ?? "-"} />
+              <ProfileFact icon={Phone} label="Phone" value={displayPhone || "Not verified"} />
+              <ProfileFact icon={Shield} label="Role" value={roleLabel(user.role)} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <form onSubmit={handleSave} className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-lg">Identity</CardTitle>
+              <CardDescription>
+                This name appears across your dashboard and profile surfaces.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="profile-name" className="flex items-center gap-2">
+                  <UserCircle className="h-4 w-4" />
+                  Full name
                 </Label>
-                <select
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                <Input
+                  id="profile-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="profile-email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Label>
+                <Input id="profile-email" value={user.email ?? ""} disabled />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed from this page.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col items-stretch gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {hasNameChanges ? (
+                  <>
+                    <Pencil className="h-3.5 w-3.5" />
+                    Unsaved name change
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Identity is up to date
+                  </>
+                )}
+              </div>
+              <Button type="submit" disabled={isSaving || !hasNameChanges}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    Saving...
+                  </>
+                ) : (
+                  "Save identity"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-lg">Contact Verification</CardTitle>
+              <CardDescription>
+                Your phone number is updated only after OTP verification.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <p className="font-medium text-foreground">
+                      {displayPhone || "No phone number added"}
+                    </p>
+                    {displayPhone ? (
+                      <Badge variant="outline" className="gap-1">
+                        <BadgeCheck className="h-3 w-3" />
+                        Verified
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Change this when your contact number changes.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={openPhoneDialog}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {displayPhone ? "Change phone" : "Add phone"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {user.defaultRole === "admin" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-heading text-lg">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Admin Role Override
+                </CardTitle>
+                <CardDescription>
+                  Switch your current session role for testing role-specific dashboards.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Select
                   value={user.role}
-                  onChange={async (e) => {
-                    const val = e.target.value as UserRole;
+                  onValueChange={async (val: UserRole) => {
                     const res = await updateProfile({ role: val });
                     if (res.success) {
-                      toast({ title: "Role updated", description: `You are now a ${val}. logging out...` });
+                      toast({
+                        title: "Role updated",
+                        description: `You are now a ${val}. Redirecting...`,
+                      });
                       router.push("/");
                       router.refresh();
                     } else {
-                      toast({ title: "Failed", description: res.error || "Unknown error", variant: "destructive" });
+                      toast({
+                        title: "Failed",
+                        description: res.error || "Unknown error",
+                        variant: "destructive",
+                      });
                     }
                   }}
                 >
-                  <option value="tenant">Tenant</option>
-                  <option value="agent">Agent</option>
-                  <option value="vendor">Vendor</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <p className="text-xs text-muted-foreground">Instantly switches your role context on the backend and updates your session.</p>
-              </div>
-            )}
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tenant">Tenant</SelectItem>
+                    <SelectItem value="agent">Agent</SelectItem>
+                    <SelectItem value="vendor">Vendor</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          ) : null}
+        </form>
+      </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="tenant-phone" className="flex items-center gap-2 text-foreground mb-0">
-                  <Phone className="w-4 h-4" /> Phone
-                </Label>
-                <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" onClick={openPhoneDialog} aria-label="Change phone number">
-                  <Pencil className="size-4" />
-                </Button>
-              </div>
-              <Input
-                id="tenant-phone"
-                type="tel"
-                value={displayPhone}
-                placeholder="No phone number yet"
-                disabled
-                readOnly
-                className="bg-muted/50 text-muted-foreground cursor-not-allowed"
-              />
-              <p className="text-xs text-muted-foreground">Use the edit button to verify a new number with OTP.</p>
-            </div>
-          </div>
-        </div>
-        <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Saving…
-            </>
-          ) : (
-            "Save Changes"
-          )}
-        </Button>
-      </form>
-
-      {user?.role === "vendor" ? <VendorProfileSection /> : null}
+      {user.role === "vendor" ? <VendorProfileSection /> : null}
 
       <Dialog open={phoneDialogOpen} onOpenChange={handlePhoneDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update phone number</DialogTitle>
             <DialogDescription>
-              We&apos;ll send a one-time code to verify your number before saving it to your account.
+              We&apos;ll send a one-time code before saving this number.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="phone-change-input">Phone</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="phone-change-input">Phone number</Label>
               <Input
                 id="phone-change-input"
                 type="tel"
@@ -434,13 +541,20 @@ const Profile = () => {
                 value={phoneDraft}
                 onChange={(e) => setPhoneDraft(e.target.value)}
                 disabled={otpSent || sendingOtp}
-                className="bg-background"
               />
+              <p className="text-xs text-muted-foreground">
+                Include the country code so OTP delivery works reliably.
+              </p>
             </div>
 
-            {otpSent && (
-              <div className="space-y-2">
-                <Label>Verification code</Label>
+            {otpSent ? (
+              <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-4">
+                <div>
+                  <Label>Verification code</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Enter the code sent to {phoneDraft}.
+                  </p>
+                </div>
                 <div className="flex justify-center">
                   <InputOTP maxLength={6} value={otp} onChange={setOtp} disabled={verifyingOtp}>
                     <InputOTPGroup>
@@ -457,23 +571,28 @@ const Profile = () => {
                   </InputOTP>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             {!otpSent ? (
-              <Button type="button" className="w-full" onClick={handleSendPhoneOtp} disabled={sendingOtp || !phoneDraft.trim()}>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handleSendPhoneOtp}
+                disabled={sendingOtp || !phoneDraft.trim()}
+              >
                 {sendingOtp ? (
                   <>
-                    <Loader2 className="size-4 animate-spin mr-2" />
-                    Sending…
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Sending...
                   </>
                 ) : (
                   "Send verification code"
                 )}
               </Button>
             ) : (
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex w-full flex-col gap-2">
                 <Button
                   type="button"
                   className="w-full"
@@ -482,15 +601,21 @@ const Profile = () => {
                 >
                   {verifyingOtp ? (
                     <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                      Verifying…
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Verifying...
                     </>
                   ) : (
                     "Verify and update"
                   )}
                 </Button>
-                <Button type="button" variant="outline" className="w-full" onClick={handleSendPhoneOtp} disabled={sendingOtp}>
-                  {sendingOtp ? "Sending…" : "Resend code"}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleSendPhoneOtp}
+                  disabled={sendingOtp}
+                >
+                  {sendingOtp ? "Sending..." : "Resend code"}
                 </Button>
               </div>
             )}
@@ -500,5 +625,25 @@ const Profile = () => {
     </div>
   );
 };
+
+function ProfileFact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Mail;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3 rounded-lg border border-border bg-muted/20 p-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
+      </div>
+    </div>
+  );
+}
 
 export default Profile;

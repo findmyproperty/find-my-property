@@ -6,6 +6,9 @@ import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import {
   ArrowLeft,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
   ExternalLink,
   Flag,
   Home,
@@ -13,12 +16,43 @@ import {
   MapPin,
   PackageCheck,
   PaintBucket,
+  Phone,
+  PlusCircle,
   PartyPopper,
   Truck,
+  Upload,
+  UserRound,
+  WalletCards,
+  X,
+  type LucideIcon,
 } from "lucide-react"
+import {
+  CldUploadWidget,
+  type CloudinaryUploadWidgetInfo,
+} from "next-cloudinary"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -26,8 +60,10 @@ import {
   usePatchVendorLeadStatus,
   useAddVendorLeadUpdate,
 } from "@/hooks/use-vendor-leads"
-import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead"
+
+const MB = 1024 * 1024
 
 const MILESTONES = [
   "Customer contacted",
@@ -211,6 +247,21 @@ function mapsHref(point: LocationPoint): string | null {
   return null
 }
 
+function statusVariant(status: VendorLeadStatus) {
+  if (status === "new") return "default" as const
+  if (status === "accepted" || status === "in_progress") return "secondary" as const
+  if (status === "completed") return "outline" as const
+  return "destructive" as const
+}
+
+function formatStatus(status: VendorLeadStatus) {
+  return status.replace("_", " ")
+}
+
+function canPostWorkUpdate(status: VendorLeadStatus) {
+  return status !== "new" && status !== "rejected"
+}
+
 export default function VendorLeadDetail() {
   const params = useParams()
   const id = Number(params.id)
@@ -225,21 +276,33 @@ export default function VendorLeadDetail() {
   const [note, setNote] = useState("")
   const [uploading, setUploading] = useState(false)
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
+  const [updateSheetOpen, setUpdateSheetOpen] = useState(false)
+  const cloudinaryPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
-  const handleUpload = async (file: File) => {
-    setUploading(true)
-    try {
-      const { url } = await api.uploadFile(file)
-      setPhotoUrls((prev) => [...prev, url])
-    } catch (e) {
+  const openCloudinaryWidget = (open: () => void) => {
+    if (uploading) return
+    if (!cloudinaryPreset) {
       toast({
-        title: "Upload failed",
-        description: e instanceof Error ? e.message : "Try again",
+        title: "Uploads unavailable",
+        description:
+          "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
         variant: "destructive",
       })
-    } finally {
-      setUploading(false)
+      return
     }
+    setUploading(true)
+    open()
+  }
+
+  const handleCloudinarySuccess = (
+    info: CloudinaryUploadWidgetInfo | undefined
+  ) => {
+    setUploading(false)
+    const uploadedUrl = info?.secure_url
+    if (!uploadedUrl) return
+    setPhotoUrls((prev) =>
+      prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]
+    )
   }
 
   if (isLoading || !lead) {
@@ -251,129 +314,493 @@ export default function VendorLeadDetail() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <Button variant="ghost" size="sm" asChild>
+    <div className="flex max-w-5xl flex-col gap-6">
+      <Button variant="ghost" size="sm" className="w-fit" asChild>
         <Link href="/leads">
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to leads
         </Link>
       </Button>
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold">{lead.customerName}</h1>
-          <Badge>{lead.status.replace("_", " ")}</Badge>
-        </div>
-        <p className="text-sm text-muted-foreground">Phone: {lead.phone}</p>
-        {lead.area && <p className="text-sm">Area: {lead.area}</p>}
-        {lead.budget && <p className="text-sm">Budget: {lead.budget}</p>}
-        <RequirementDetails requirement={lead.requirement} />
-        {lead.status === "new" && (
-          <div className="flex gap-2 pt-2">
-            <Button
-              disabled={patching}
-              onClick={() => patchStatus({ id: lead.id, status: "accepted" })}
-            >
-              Accept lead
-            </Button>
-            <Button
-              variant="outline"
-              disabled={patching}
-              onClick={() => patchStatus({ id: lead.id, status: "rejected" })}
-            >
-              Reject
-            </Button>
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-heading text-2xl font-bold text-foreground">
+                {lead.customerName}
+              </h1>
+              <Badge variant={statusVariant(lead.status)} className="capitalize">
+                {formatStatus(lead.status)}
+              </Badge>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Lead #{lead.id}
+              {lead.serviceRequestId ? ` from service request #${lead.serviceRequestId}` : ""}
+            </p>
           </div>
-        )}
-        {lead.status === "accepted" && (
-          <Button
-            disabled={patching}
-            onClick={() => patchStatus({ id: lead.id, status: "in_progress" })}
-          >
-            Mark in progress
-          </Button>
-        )}
+
+          <div className="flex flex-wrap gap-2">
+            <LeadActions lead={lead} patching={patching} onPatch={patchStatus} />
+            {canPostWorkUpdate(lead.status) ? (
+              <Button variant="secondary" onClick={() => setUpdateSheetOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add work update
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid border-t border-border md:grid-cols-4">
+          <SummaryStat icon={Phone} label="Phone" value={lead.phone} />
+          <SummaryStat icon={MapPin} label="Area" value={lead.area || "-"} />
+          <SummaryStat icon={WalletCards} label="Budget" value={lead.budget || "-"} />
+          <SummaryStat
+            icon={CalendarClock}
+            label="Created"
+            value={format(new Date(lead.createdAt), "dd MMM yyyy")}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Accordion
+          type="multiple"
+          defaultValue={["customer", "requirement", "timeline"]}
+          className="rounded-xl border border-border bg-card px-5"
+        >
+          <AccordionItem value="customer">
+            <AccordionTrigger className="gap-3 text-left">
+              <SectionHeading icon={UserRound} title="Customer details" />
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InfoField label="Customer name" value={lead.customerName} />
+                <InfoField label="Phone" value={lead.phone} />
+                <InfoField label="Area" value={lead.area || "-"} />
+                <InfoField label="Budget" value={lead.budget || "-"} />
+                <InfoField
+                  label="Commission"
+                  value={`${lead.commissionPercent}%`}
+                />
+                <InfoField
+                  label="Job amount"
+                  value={lead.jobAmount != null ? String(lead.jobAmount) : "-"}
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="requirement">
+            <AccordionTrigger className="gap-3 text-left">
+              <SectionHeading icon={ClipboardList} title="Requirement brief" />
+            </AccordionTrigger>
+            <AccordionContent>
+              <RequirementDetails requirement={lead.requirement} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="timeline">
+            <AccordionTrigger className="gap-3 text-left">
+              <SectionHeading icon={CheckCircle2} title="Work timeline" />
+            </AccordionTrigger>
+            <AccordionContent>
+              <LeadTimeline updates={lead.updates} createdAt={lead.createdAt} />
+            </AccordionContent>
+          </AccordionItem>
+
+        </Accordion>
+
+        <aside className="flex flex-col gap-4">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              Next best action
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {lead.status === "new"
+                ? "Accept the lead once you can take the work, or reject it so the team can reassign."
+                : lead.status === "accepted"
+                  ? "Move it to in progress after contacting the customer, or mark it completed if the job is already finished."
+                  : canPostWorkUpdate(lead.status)
+                    ? "Keep the customer informed with updates, then mark the lead completed when work is finished."
+                    : "This lead is closed for vendor action."}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              Lead health
+            </h2>
+            <div className="mt-4 flex flex-col gap-3">
+              <InfoField label="Status" value={formatStatus(lead.status)} />
+              <InfoField
+                label="Last updated"
+                value={format(new Date(lead.updatedAt), "dd MMM yyyy, p")}
+              />
+              <InfoField
+                label="Updates posted"
+                value={String(lead.updates?.length ?? 0)}
+              />
+            </div>
+          </div>
+        </aside>
       </div>
 
-      {lead.status !== "new" && lead.status !== "rejected" && (
-        <div className="space-y-4 rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Work update</h2>
-          <div className="space-y-2">
-            <Label>Milestone</Label>
-            <select
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={milestone}
-              onChange={(e) => setMilestone(e.target.value)}
-            >
-              {MILESTONES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label>Note</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Photos</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              disabled={uploading}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void handleUpload(f)
-              }}
-            />
-            {photoUrls.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {photoUrls.length} file(s) attached
-              </p>
-            )}
-          </div>
-          <Button
-            disabled={adding}
-            onClick={() => {
+      <Sheet open={updateSheetOpen} onOpenChange={setUpdateSheetOpen}>
+        <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
+          <SheetHeader className="border-b border-border pb-4 pr-8 text-left">
+            <SheetTitle className="font-heading">Add work update</SheetTitle>
+            <SheetDescription>
+              Post the latest milestone, note, and optional photo for {lead.customerName}.
+            </SheetDescription>
+          </SheetHeader>
+
+          <form
+            className="flex flex-1 flex-col gap-5 py-5"
+            onSubmit={(event) => {
+              event.preventDefault()
               addUpdate(
-                { id: lead.id, milestone, note: note || undefined, photoUrls },
+                {
+                  id: lead.id,
+                  milestone,
+                  note: note || undefined,
+                  photoUrls,
+                },
                 {
                   onSuccess: () => {
                     setNote("")
                     setPhotoUrls([])
+                    setUpdateSheetOpen(false)
                     toast({ title: "Update posted" })
                   },
                 }
               )
             }}
           >
-            Post update
-          </Button>
-        </div>
-      )}
-
-      {lead.updates && lead.updates.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-semibold">Timeline</h2>
-          {lead.updates.map((u) => (
-            <div
-              key={u.id}
-              className="rounded-lg border border-border p-3 text-sm"
-            >
-              <p className="font-medium">{u.milestone}</p>
-              {u.note && <p className="mt-1 text-muted-foreground">{u.note}</p>}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {format(new Date(u.createdAt), "PPp")}
-              </p>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="lead-milestone">Milestone</Label>
+              <Select value={milestone} onValueChange={setMilestone}>
+                <SelectTrigger id="lead-milestone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MILESTONES.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ))}
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="lead-note">Note</Label>
+              <Textarea
+                id="lead-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={5}
+                placeholder="What changed since the last update?"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="lead-photos">Photos</Label>
+              <CldUploadWidget
+                uploadPreset={cloudinaryPreset}
+                options={{
+                  multiple: true,
+                  maxFileSize: 10 * MB,
+                  clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
+                  resourceType: "image",
+                  folder: "vendor-lead-updates",
+                  sources: ["local", "url", "camera"],
+                }}
+                onSuccess={(result) => {
+                  if (result.event !== "success") return
+                  const info = result.info
+                  if (info && typeof info !== "string") {
+                    handleCloudinarySuccess(info as CloudinaryUploadWidgetInfo)
+                  } else {
+                    setUploading(false)
+                  }
+                }}
+                onError={(error) => {
+                  setUploading(false)
+                  toast({
+                    title: "Upload failed",
+                    description:
+                      typeof error === "string" ? error : "Please try again.",
+                    variant: "destructive",
+                  })
+                }}
+                onClose={() => setUploading(false)}
+              >
+                {({ open }) => (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={uploading}
+                        onClick={() => openCloudinaryWidget(open)}
+                      >
+                        {uploading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        {uploading ? "Uploading..." : "Upload"}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        JPG, PNG or WebP up to 10 MB.
+                      </span>
+                    </div>
+
+                    {photoUrls.length > 0 ? (
+                      <div className="mt-4 flex flex-col gap-2">
+                        {photoUrls.map((url, index) => (
+                          <div
+                            key={url}
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                          >
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="min-w-0 truncate text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Photo {index + 1}
+                            </a>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={uploading}
+                              onClick={() =>
+                                setPhotoUrls((prev) =>
+                                  prev.filter((item) => item !== url)
+                                )
+                              }
+                            >
+                              <X className="mr-1 h-3.5 w-3.5" />
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </CldUploadWidget>
+              {photoUrls.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {photoUrls.length} file(s) attached
+                </p>
+              ) : null}
+            </div>
+
+            <SheetFooter className="mt-auto gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setUpdateSheetOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={adding || uploading}>
+                {adding ? "Posting..." : "Post update"}
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+    </div>
+  )
+}
+
+function LeadActions({
+  lead,
+  patching,
+  onPatch,
+}: {
+  lead: VendorLead
+  patching: boolean
+  onPatch: (input: { id: number; status: VendorLeadStatus }) => void
+}) {
+  if (lead.status === "new") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          disabled={patching}
+          onClick={() => onPatch({ id: lead.id, status: "accepted" })}
+        >
+          Accept lead
+        </Button>
+        <Button
+          variant="outline"
+          disabled={patching}
+          onClick={() => onPatch({ id: lead.id, status: "rejected" })}
+        >
+          Reject
+        </Button>
+      </div>
+    )
+  }
+
+  if (lead.status === "accepted") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          disabled={patching}
+          onClick={() => onPatch({ id: lead.id, status: "in_progress" })}
+        >
+          Mark in progress
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={patching}
+          onClick={() => onPatch({ id: lead.id, status: "completed" })}
+        >
+          <CheckCircle2 className="mr-2 h-4 w-4" />
+          Mark completed
+        </Button>
+      </div>
+    )
+  }
+
+  if (lead.status === "in_progress") {
+    return (
+      <Button
+        variant="secondary"
+        disabled={patching}
+        onClick={() => onPatch({ id: lead.id, status: "completed" })}
+      >
+        <CheckCircle2 className="mr-2 h-4 w-4" />
+        Mark completed
+      </Button>
+    )
+  }
+
+  return null
+}
+
+function SummaryStat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3 border-t border-border p-4 first:border-t-0 md:border-l md:border-t-0 md:first:border-l-0">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function SectionHeading({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon className="h-4 w-4 text-primary" aria-hidden />
+      <span className="font-heading text-sm font-semibold">{title}</span>
+    </span>
+  )
+}
+
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium text-foreground">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function LeadTimeline({
+  updates,
+  createdAt,
+}: {
+  updates: VendorLead["updates"]
+  createdAt: VendorLead["createdAt"]
+}) {
+  const items = updates ?? []
+
+  return (
+    <div className="flex flex-col gap-4">
+      <TimelineItem
+        title="Lead created"
+        description="Customer enquiry was assigned to your account."
+        timestamp={createdAt}
+        isFirst
+        isLast={items.length === 0}
+      />
+      {items.map((u, index) => (
+        <TimelineItem
+          key={u.id}
+          title={u.milestone}
+          description={u.note || "No note added."}
+          timestamp={u.createdAt}
+          isLast={index === items.length - 1}
+          photos={u.photoUrls ?? []}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TimelineItem({
+  title,
+  description,
+  timestamp,
+  isFirst = false,
+  isLast = false,
+  photos = [],
+}: {
+  title: string
+  description: string
+  timestamp: string | Date
+  isFirst?: boolean
+  isLast?: boolean
+  photos?: string[]
+}) {
+  return (
+    <div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-3">
+      <div className="flex flex-col items-center">
+        <span className="mt-1 h-3 w-3 rounded-full border-2 border-primary bg-card" />
+        {!isLast ? <span className="mt-1 h-full min-h-10 w-px bg-border" /> : null}
+      </div>
+      <div className={isFirst ? "pb-1" : "pb-4"}>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-foreground">{title}</p>
+            <span className="text-xs text-muted-foreground">
+              {format(new Date(timestamp), "dd MMM yyyy, p")}
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          {photos.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {photos.map((url, index) => (
+                <Button key={`${url}-${index}`} variant="outline" size="sm" asChild>
+                  <a href={url} target="_blank" rel="noreferrer">
+                    Photo {index + 1}
+                    <ExternalLink className="ml-1 h-3.5 w-3.5" />
+                  </a>
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -655,7 +1082,7 @@ function RequirementDetails({ requirement }: { requirement: string | null }) {
 }
 
 interface DetailFieldProps {
-  icon: typeof Truck
+  icon: LucideIcon
   label: string
   value: string
 }
@@ -673,7 +1100,7 @@ function DetailField({ icon: Icon, label, value }: DetailFieldProps) {
 }
 
 interface LocationRowProps {
-  icon: typeof MapPin
+  icon: LucideIcon
   label: string
   point: LocationPoint
   tone?: "pickup" | "drop"
