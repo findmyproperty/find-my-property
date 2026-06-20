@@ -92,6 +92,12 @@ export interface AdminPayoutInput {
   description?: string;
 }
 
+export interface AdminCreditWalletInput {
+  vendorUserId: number;
+  amount: number;
+  description?: string;
+}
+
 export interface AdminCreatePayoutInput extends CreateWithdrawalInput {
   vendorUserId: number;
 }
@@ -170,6 +176,14 @@ export const vendorWallet = {
 
   async adminPayout(input: AdminPayoutInput): Promise<LedgerEntry> {
     return request<LedgerEntry>("/admin/vendor-wallet/payout", {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+  },
+
+  async adminCreditWallet(input: AdminCreditWalletInput): Promise<LedgerEntry> {
+    return request<LedgerEntry>("/admin/vendor-wallet/credits", {
       method: "POST",
       token: getStoredToken(),
       body: JSON.stringify(input),

@@ -85,7 +85,7 @@ const Navbar = () => {
                     <div className="leading-tight">
                       <p className="font-medium text-foreground">Painting &amp; Cleaning</p>
                       <p className="text-xs text-muted-foreground">
-                        Painting, deep cleaning & more
+                        Painting, cleaning & basic repairs
                       </p>
                     </div>
                   </Link>

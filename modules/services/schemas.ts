@@ -77,6 +77,9 @@ export const paintingCleaningSchema = baseSchema.extend({
       "bathroom_cleaning",
       "sofa_cleaning",
       "kitchen_cleaning",
+      "carpenter",
+      "plumber",
+      "electrician",
     ],
     { required_error: "Pick a service." },
   ),
@@ -115,7 +118,8 @@ export const eventManagementSchema = baseSchema.extend({
     .array(
       z.enum([
         "decoration",
-        "catering",
+        "home_catering",
+        "corporate_catering_veg_non_veg",
         "photography",
         "music",
         "hosting",
@@ -158,7 +162,7 @@ export const BHK_OPTIONS: Array<{
 export const SUB_TYPE_OPTIONS: Array<{
   value: PaintingCleaningFormValues["subType"];
   label: string;
-  group: "Painting" | "Cleaning";
+  group: "Painting" | "Cleaning" | "Home Services";
 }> = [
   { value: "full_painting", label: "Full home painting", group: "Painting" },
   {
@@ -178,6 +182,9 @@ export const SUB_TYPE_OPTIONS: Array<{
     label: "Kitchen deep cleaning",
     group: "Cleaning",
   },
+  { value: "carpenter", label: "Carpenter", group: "Home Services" },
+  { value: "plumber", label: "Plumber", group: "Home Services" },
+  { value: "electrician", label: "Electrician", group: "Home Services" },
 ];
 
 export const PROPERTY_TYPE_OPTIONS: Array<{
@@ -247,7 +254,11 @@ export const EVENT_SERVICE_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "decoration", label: "Decoration" },
-  { value: "catering", label: "Catering" },
+  { value: "home_catering", label: "Home catering" },
+  {
+    value: "corporate_catering_veg_non_veg",
+    label: "Corporate catering (veg & non-veg)",
+  },
   { value: "photography", label: "Photography" },
   { value: "music", label: "Music / DJ" },
   { value: "hosting", label: "Host / anchor" },

@@ -3,6 +3,7 @@
  * App code should import `api` from `@/lib/api` (re-export) for a stable entry.
  */
 import { auth } from "@/end-points/auth";
+import { users } from "@/end-points/user";
 import { agents } from "@/end-points/agents";
 import { leads } from "@/end-points/leads";
 import { properties } from "@/end-points/properties";
@@ -21,6 +22,7 @@ import { supportTickets } from "@/end-points/support-tickets";
 
 export const api = {
   ...auth,
+  ...users,
   ...properties,
   ...systemLogs,
   ...settings,

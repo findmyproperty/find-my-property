@@ -19,6 +19,8 @@ export type {
   PaintingCleaningDetails,
   EventManagementDetails,
   ServiceRequestDTO,
+  ServiceRequestFeedbackInput,
+  ServiceRequestTimelineItem,
   PackersMoversInput,
   PaintingCleaningInput,
   EventManagementInput,
@@ -27,6 +29,11 @@ export type {
   AdminUpdateServiceRequestInput,
   ServiceRequestStats,
 } from "@/end-points/service-requests";
+export type {
+  AdminListUsersQuery,
+  AdminListUsersResponse,
+  AdminUserListItem,
+} from "@/end-points/user";
 export type {
   AdminListPropertiesQuery,
   AdminPropertyStatsQuery,

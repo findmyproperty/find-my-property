@@ -58,7 +58,7 @@ const STEPS: HowItWorksStep[] = [
     icon: ClipboardList,
     title: "Pick a service",
     description:
-      "Painting, deep cleaning, sofa, kitchen or bathroom — choose what you need.",
+      "Painting, cleaning, carpenter, plumber or electrician - choose what you need.",
   },
   {
     icon: PhoneCall,
@@ -169,15 +169,15 @@ export default function PaintingCleaningPage() {
     <main className="pb-20">
       <ServiceHero
         eyebrow="Painting & Cleaning"
-        title="A fresh coat. A spotless home. One booking."
-        subtitle="Professional painters, deep cleaners, and sanitisation crews — vetted, insured, and ready to transform your space."
+        title="A fresh coat. A spotless home. A quick fix."
+        subtitle="Professional painters, deep cleaners, carpenters, plumbers and electricians - vetted, insured, and ready to keep your space in shape."
         Illustration={PaintBucket}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 
       <HowItWorks
         heading="How we keep your home in top shape"
-        subheading="Simple, supervised service — every step handled by our team."
+        subheading="Simple, supervised painting, cleaning and home services - every step handled by our team."
         steps={STEPS}
       />
 
@@ -185,10 +185,10 @@ export default function PaintingCleaningPage() {
         <div className="container mx-auto max-w-3xl px-4">
           <div className="mb-10 text-center">
             <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">
-              Book painting or cleaning
+              Book painting, cleaning or home service
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Share a few details and we'll call you back with a transparent quote.
+              Share a few details and we&apos;ll call you back with a transparent quote.
             </p>
           </div>
 
@@ -538,7 +538,7 @@ export default function PaintingCleaningPage() {
                         <FormControl>
                           <Textarea
                             rows={4}
-                            placeholder="Specific rooms, colour preferences, stains to focus on, etc."
+                            placeholder="Specific rooms, colour preferences, repair issue, stains to focus on, etc."
                             {...field}
                           />
                         </FormControl>

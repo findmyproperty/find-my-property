@@ -93,6 +93,9 @@ const PAINTING_SUBTYPE_LABELS: Record<string, string> = {
   bathroom_cleaning: "Bathroom cleaning",
   sofa_cleaning: "Sofa / upholstery cleaning",
   kitchen_cleaning: "Kitchen deep cleaning",
+  carpenter: "Carpenter",
+  plumber: "Plumber",
+  electrician: "Electrician",
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -120,6 +123,8 @@ const VENUE_TYPE_LABELS: Record<string, string> = {
 const EVENT_SERVICE_LABELS: Record<string, string> = {
   decoration: "Decoration",
   catering: "Catering",
+  home_catering: "Home catering",
+  corporate_catering_veg_non_veg: "Corporate catering (veg & non-veg)",
   photography: "Photography",
   music: "Music / DJ",
   hosting: "Host / anchor",

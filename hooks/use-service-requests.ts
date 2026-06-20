@@ -8,6 +8,7 @@ import {
   type EventManagementInput,
   type PackersMoversInput,
   type PaintingCleaningInput,
+  type ServiceRequestFeedbackInput,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -100,6 +101,34 @@ export function useSubmitEventManagement() {
   });
 }
 
+export function useSubmitServiceRequestFeedback() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: number;
+      input: ServiceRequestFeedbackInput;
+    }) => api.submitServiceRequestFeedback(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.mine });
+      toast({
+        title: "Thanks for your feedback",
+        description: "Your rating has been added to this service request.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not save feedback",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useAdminServiceRequests(query: AdminListServiceRequestsQuery) {
   const { user, isAuthReady } = useAuth();
   return useQuery({
@@ -131,9 +160,16 @@ export function useAdminUpdateServiceRequest() {
       id: number;
       input: AdminUpdateServiceRequestInput;
     }) => api.adminUpdateServiceRequest(id, input),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["service-requests", "admin"] });
-      toast({ title: "Request updated" });
+      const emailEvents = variables.input.emailNotifications?.events ?? [];
+      toast({
+        title: "Request updated",
+        description:
+          emailEvents.length > 0
+            ? "Email notifications were requested for customer, vendor, and admin."
+            : undefined,
+      });
     },
     onError: (error: Error) => {
       toast({

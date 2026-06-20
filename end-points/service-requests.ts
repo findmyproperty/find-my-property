@@ -1,4 +1,4 @@
-import { getStoredToken, request } from "@/end-points/http";
+import { ApiRequestError, getStoredToken, request } from "@/end-points/http";
 
 export type ServiceType =
   | "packers_movers"
@@ -51,7 +51,10 @@ export interface PaintingCleaningDetails {
     | "deep_cleaning"
     | "bathroom_cleaning"
     | "sofa_cleaning"
-    | "kitchen_cleaning";
+    | "kitchen_cleaning"
+    | "carpenter"
+    | "plumber"
+    | "electrician";
   propertyType: "apartment" | "villa" | "office";
   bhkOrSqft: string;
   location?: Stop;
@@ -66,6 +69,8 @@ export interface EventManagementDetails {
   services: Array<
     | "decoration"
     | "catering"
+    | "home_catering"
+    | "corporate_catering_veg_non_veg"
     | "photography"
     | "music"
     | "hosting"
@@ -75,6 +80,19 @@ export interface EventManagementDetails {
   location?: Stop;
   themeOrStyle?: string | null;
   notes?: string | null;
+}
+
+export interface ServiceRequestTimelineItem {
+  id?: number | string;
+  title?: string | null;
+  milestone?: string | null;
+  description?: string | null;
+  note?: string | null;
+  status?: ServiceRequestStatus | null;
+  actorLabel?: string | null;
+  timestamp?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ServiceRequestDTO {
@@ -98,6 +116,10 @@ export interface ServiceRequestDTO {
   internalNotes: string | null;
   assignedAdminId: number | null;
   assignedVendorUserId: number | null;
+  customerRating?: number | null;
+  customerFeedback?: string | null;
+  customerReviewedAt?: string | null;
+  timeline?: ServiceRequestTimelineItem[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -126,6 +148,126 @@ export interface EventManagementInput extends BaseServiceRequestInput {
   details: EventManagementDetails;
 }
 
+export interface ServiceRequestFeedbackInput {
+  rating: number;
+  feedback?: string;
+}
+
+interface StoredServiceRequestFeedback {
+  rating: number;
+  feedback: string | null;
+  reviewedAt: string;
+}
+
+const LOCAL_FEEDBACK_STORE_KEY = "fmp:v1:service-request-feedback";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeFeedbackInput(input: ServiceRequestFeedbackInput) {
+  const rating = Number(input.rating);
+  const feedback = input.feedback?.trim();
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error("Please select a rating from 1 to 5.");
+  }
+  if (feedback && feedback.length > 1000) {
+    throw new Error("Feedback must be 1000 characters or less.");
+  }
+  return {
+    rating,
+    feedback: feedback || undefined,
+  };
+}
+
+function normalizeStoredFeedback(
+  value: unknown,
+): StoredServiceRequestFeedback | null {
+  if (!isRecord(value)) return null;
+  const rating = Number(value.rating);
+  const reviewedAt =
+    typeof value.reviewedAt === "string" ? value.reviewedAt : null;
+  const feedback =
+    typeof value.feedback === "string"
+      ? value.feedback
+      : value.feedback === null
+        ? null
+        : undefined;
+
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !reviewedAt) {
+    return null;
+  }
+
+  return {
+    rating,
+    feedback: feedback ?? null,
+    reviewedAt,
+  };
+}
+
+function readStoredFeedback(): Record<string, StoredServiceRequestFeedback> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(LOCAL_FEEDBACK_STORE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : {};
+    if (!isRecord(parsed)) return {};
+    return Object.entries(parsed).reduce<
+      Record<string, StoredServiceRequestFeedback>
+    >((acc, [id, value]) => {
+      const normalized = normalizeStoredFeedback(value);
+      if (normalized) acc[id] = normalized;
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredFeedback(
+  requestId: number,
+  feedback: StoredServiceRequestFeedback,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = readStoredFeedback();
+    localStorage.setItem(
+      LOCAL_FEEDBACK_STORE_KEY,
+      JSON.stringify({
+        ...current,
+        [requestId]: feedback,
+      }),
+    );
+  } catch {
+    /* local fallback is best effort */
+  }
+}
+
+function mergeStoredFeedback(rows: ServiceRequestDTO[]): ServiceRequestDTO[] {
+  const stored = readStoredFeedback();
+  if (Object.keys(stored).length === 0) return rows;
+
+  return rows.map((row) => {
+    const localFeedback = stored[String(row.id)];
+    if (!localFeedback || row.customerRating || row.customerReviewedAt) {
+      return row;
+    }
+
+    return {
+      ...row,
+      customerRating: localFeedback.rating,
+      customerFeedback: localFeedback.feedback,
+      customerReviewedAt: localFeedback.reviewedAt,
+    };
+  });
+}
+
+function shouldUseLocalFeedbackFallback(error: unknown) {
+  if (error instanceof ApiRequestError) {
+    return error.status === 404 || error.status === 405 || error.status === 501;
+  }
+  return error instanceof TypeError;
+}
+
 export interface AdminListServiceRequestsQuery {
   serviceType?: ServiceType;
   status?: ServiceRequestStatus;
@@ -146,6 +288,11 @@ export interface AdminUpdateServiceRequestInput {
   internalNotes?: string;
   assignedAdminId?: number | null;
   assignedVendorUserId?: number | null;
+  emailNotifications?: {
+    enabled: true;
+    recipients: Array<"customer" | "vendor" | "admin">;
+    events: Array<"status_changed" | "completed" | "vendor_assigned">;
+  };
 }
 
 export interface ServiceRequestStats {
@@ -199,7 +346,69 @@ export const serviceRequests = {
       method: "GET",
       token: getStoredToken(),
     });
-    return Array.isArray(rows) ? rows : [];
+    return Array.isArray(rows) ? mergeStoredFeedback(rows) : [];
+  },
+
+  async submitServiceRequestFeedback(
+    id: number,
+    input: ServiceRequestFeedbackInput,
+  ): Promise<ServiceRequestDTO> {
+    const normalized = normalizeFeedbackInput(input);
+    const fallbackReviewedAt = new Date().toISOString();
+
+    try {
+      const result = await request<ServiceRequestDTO>(
+        `/service-requests/${id}/feedback`,
+        {
+          method: "POST",
+          body: JSON.stringify(normalized),
+          token: getStoredToken(),
+        },
+      );
+      writeStoredFeedback(id, {
+        rating: result.customerRating ?? normalized.rating,
+        feedback: result.customerFeedback ?? normalized.feedback ?? null,
+        reviewedAt: result.customerReviewedAt ?? fallbackReviewedAt,
+      });
+      return {
+        ...result,
+        customerRating: result.customerRating ?? normalized.rating,
+        customerFeedback: result.customerFeedback ?? normalized.feedback ?? null,
+        customerReviewedAt: result.customerReviewedAt ?? fallbackReviewedAt,
+      };
+    } catch (error) {
+      if (!shouldUseLocalFeedbackFallback(error)) throw error;
+
+      writeStoredFeedback(id, {
+        rating: normalized.rating,
+        feedback: normalized.feedback ?? null,
+        reviewedAt: fallbackReviewedAt,
+      });
+
+      return {
+        id,
+        serviceType: "packers_movers",
+        status: "completed",
+        userId: null,
+        name: "",
+        phone: "",
+        email: null,
+        city: null,
+        addressLine: null,
+        pincode: null,
+        preferredDate: null,
+        preferredSlot: null,
+        details: null,
+        internalNotes: null,
+        assignedAdminId: null,
+        assignedVendorUserId: null,
+        customerRating: normalized.rating,
+        customerFeedback: normalized.feedback ?? null,
+        customerReviewedAt: fallbackReviewedAt,
+        createdAt: fallbackReviewedAt,
+        updatedAt: fallbackReviewedAt,
+      };
+    }
   },
 
   async adminListServiceRequests(

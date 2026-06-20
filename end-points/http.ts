@@ -17,6 +17,16 @@ export type RequestOptions = RequestInit & {
   _didRefresh?: boolean;
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 export function getStoredToken() {
   if (typeof window === "undefined") return undefined;
   return localStorage.getItem("nb_token") || undefined;
@@ -145,7 +155,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     } catch {
       message = response.statusText || message;
     }
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status);
   }
 
   if (response.status === 204) {

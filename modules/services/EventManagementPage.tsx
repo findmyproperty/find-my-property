@@ -85,7 +85,7 @@ const STEPS: HowItWorksStep[] = [
     icon: CalendarCheck,
     title: "Plan the day",
     description:
-      "We align decor, food, photos, music and timelines before the event.",
+      "We align decor, catering, photos, music and timelines before the event.",
   },
   {
     icon: Sparkles,
@@ -188,7 +188,7 @@ export default function EventManagementPage() {
       <ServiceHero
         eyebrow="Event Management"
         title="Plan a celebration that feels effortless."
-        subtitle="Birthday, wedding, baby shower or corporate event - share the brief and our planners coordinate decor, catering, photos, music and guests."
+        subtitle="Birthday, wedding, baby shower or corporate event - share the brief and our planners coordinate decor, home or corporate catering, photos, music and guests."
         Illustration={PartyPopper}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />

@@ -121,6 +121,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { title: "Property Approval", url: "/approvals", icon: CheckSquare },
       { title: "Agent Management", url: "/agents", icon: Users },
+      { title: "Customers", url: "/admin/customers", icon: Users },
       {
         title: "Service Requests",
         url: "/admin/service-requests",

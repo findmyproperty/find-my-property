@@ -4,13 +4,23 @@ import { FormEvent, useState } from "react";
 import { format } from "date-fns";
 import {
   CreditCard,
+  IndianRupee,
   Loader2,
   Plus,
   ShieldCheck,
   Wallet,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  useCreateVendorWithdrawal,
   useCreateVendorPayoutAccount,
   useVendorPayoutAccounts,
   useVendorWalletEntries,
@@ -39,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { PayoutAccount } from "@/end-points/vendor-wallet";
 
 type AccountType = "vpa" | "bank_account";
+type PayoutMode = "UPI" | "IMPS" | "NEFT" | "RTGS";
 
 function formatCurrency(amount: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", {
@@ -65,6 +77,10 @@ function accountBadge(account: PayoutAccount) {
   );
 }
 
+function defaultModeForAccount(account: PayoutAccount | undefined): PayoutMode {
+  return account?.type === "vpa" ? "UPI" : "IMPS";
+}
+
 function statusBadge(status: string) {
   const normalized = status.toLowerCase();
   if (normalized === "processed" || normalized === "settled") {
@@ -84,12 +100,17 @@ export default function VendorWallet() {
   const [vpaAddress, setVpaAddress] = useState("");
   const [ifsc, setIfsc] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawAccountId, setWithdrawAccountId] = useState("");
+  const [withdrawMode, setWithdrawMode] = useState<PayoutMode>("IMPS");
 
   const { data: summary, isLoading: summaryLoading } = useVendorWalletSummary();
   const { data: entries, isLoading: entriesLoading } = useVendorWalletEntries(1);
   const { data: payoutAccounts, isLoading: accountsLoading } = useVendorPayoutAccounts();
   const { data: withdrawals, isLoading: withdrawalsLoading } = useVendorWithdrawals(1);
   const createAccount = useCreateVendorPayoutAccount();
+  const createWithdrawal = useCreateVendorWithdrawal();
 
   if (summaryLoading) {
     return (
@@ -100,8 +121,15 @@ export default function VendorWallet() {
   }
 
   const accounts = payoutAccounts ?? [];
+  const activeAccounts = accounts.filter((account) => account.active);
+  const availableBalance = summary?.availableBalance ?? summary?.pendingSettlement ?? 0;
+  const selectedWithdrawAccount = activeAccounts.find(
+    (account) => String(account.id) === withdrawAccountId,
+  );
+  const withdrawModes: PayoutMode[] =
+    selectedWithdrawAccount?.type === "vpa" ? ["UPI"] : ["IMPS", "NEFT", "RTGS"];
   const cards = [
-    { label: "Available", value: summary?.availableBalance ?? summary?.pendingSettlement ?? 0 },
+    { label: "Available", value: availableBalance },
     { label: "Pending payouts", value: summary?.pendingPayouts ?? 0 },
     { label: "Paid out", value: summary?.paidOut ?? 0 },
     { label: "Commission", value: summary?.commissionDeducted ?? 0 },
@@ -113,6 +141,82 @@ export default function VendorWallet() {
     setVpaAddress("");
     setIfsc("");
     setAccountNumber("");
+  };
+
+  const openWithdrawDialog = () => {
+    const firstAccount = activeAccounts[0];
+    setWithdrawAccountId(firstAccount ? String(firstAccount.id) : "");
+    setWithdrawMode(defaultModeForAccount(firstAccount));
+    setWithdrawAmount(availableBalance > 0 ? String(availableBalance) : "");
+    setIsWithdrawOpen(true);
+  };
+
+  const closeWithdrawDialog = () => {
+    if (createWithdrawal.isPending) return;
+    setIsWithdrawOpen(false);
+    setWithdrawAmount("");
+    setWithdrawAccountId("");
+    setWithdrawMode("IMPS");
+  };
+
+  const selectWithdrawAccount = (accountId: string) => {
+    const nextAccount = activeAccounts.find((account) => String(account.id) === accountId);
+    setWithdrawAccountId(accountId);
+    setWithdrawMode(defaultModeForAccount(nextAccount));
+  };
+
+  const submitWithdrawal = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedWithdrawAccount) {
+      toast({
+        title: "Add payout account",
+        description: "Save a UPI or bank account before withdrawing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsedAmount = Number(withdrawAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 1) {
+      toast({
+        title: "Enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parsedAmount > availableBalance) {
+      toast({
+        title: "Amount exceeds wallet balance",
+        description: `You can withdraw up to ${formatCurrency(availableBalance)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createWithdrawal.mutate(
+      {
+        payoutAccountId: selectedWithdrawAccount.id,
+        amount: parsedAmount,
+        mode: withdrawMode,
+        description: "Vendor wallet withdrawal",
+      },
+      {
+        onSuccess: (withdrawal) => {
+          toast({
+            title: "Withdrawal requested",
+            description: `Status: ${withdrawal.status}. Reference: ${withdrawal.referenceId}`,
+          });
+          closeWithdrawDialog();
+        },
+        onError: (error) =>
+          toast({
+            title: "Withdrawal failed",
+            description: error instanceof Error ? error.message : undefined,
+            variant: "destructive",
+          }),
+      },
+    );
   };
 
   const submitAccount = (event: FormEvent<HTMLFormElement>) => {
@@ -186,10 +290,24 @@ export default function VendorWallet() {
             Track earnings and manage the payout account admin will use for settlements.
           </p>
         </div>
-        <Badge variant="secondary" className="gap-1">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          RazorpayX payouts
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            RazorpayX payouts
+          </Badge>
+          <Button
+            onClick={openWithdrawDialog}
+            disabled={availableBalance <= 0 || activeAccounts.length === 0}
+            title={
+              activeAccounts.length === 0
+                ? "Add payout account before withdrawing"
+                : "Withdraw available balance"
+            }
+          >
+            <IndianRupee className="mr-2 h-4 w-4" />
+            Withdraw
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -200,6 +318,107 @@ export default function VendorWallet() {
           </div>
         ))}
       </div>
+
+      <Dialog
+        open={isWithdrawOpen}
+        onOpenChange={(open) => {
+          if (!open) closeWithdrawDialog();
+          if (open) openWithdrawDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Withdraw from wallet</DialogTitle>
+            <DialogDescription>
+              Send your available wallet balance to a saved UPI or bank account.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="flex flex-col gap-4" onSubmit={submitWithdrawal}>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Available balance</p>
+              <p className="mt-1 text-lg font-semibold">{formatCurrency(availableBalance)}</p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Payout account</Label>
+              <Select value={withdrawAccountId} onValueChange={selectWithdrawAccount}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose payout account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAccounts.map((account) => (
+                    <SelectItem key={account.id} value={String(account.id)}>
+                      {accountTitle(account)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="withdraw-amount">Amount (INR)</Label>
+                <Input
+                  id="withdraw-amount"
+                  type="number"
+                  min={1}
+                  max={availableBalance || undefined}
+                  step="0.01"
+                  value={withdrawAmount}
+                  onChange={(event) => setWithdrawAmount(event.target.value)}
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Mode</Label>
+                <Select
+                  value={withdrawMode}
+                  onValueChange={(value) => setWithdrawMode(value as PayoutMode)}
+                  disabled={selectedWithdrawAccount?.type === "vpa"}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {withdrawModes.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {mode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertTitle>Withdrawal request</AlertTitle>
+              <AlertDescription>
+                The amount moves to pending withdrawals while RazorpayX processes it.
+              </AlertDescription>
+            </Alert>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeWithdrawDialog}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createWithdrawal.isPending || !withdrawAmount.trim()}
+              >
+                {createWithdrawal.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Requesting...
+                  </>
+                ) : (
+                  "Request withdrawal"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
         <div className="rounded-lg border border-border bg-card">

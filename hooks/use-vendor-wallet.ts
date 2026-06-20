@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
   AdminCreatePayoutInput,
+  AdminCreditWalletInput,
   AdminPayoutInput,
   CreatePayoutAccountInput,
   CreateWithdrawalInput,
@@ -107,6 +108,24 @@ export function useAdminVendorPayout() {
       void qc.invalidateQueries({
         queryKey: ["admin-vendor-wallet-entries", input.vendorUserId],
       });
+    },
+  });
+}
+
+export function useAdminCreditVendorWallet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AdminCreditWalletInput) =>
+      api.vendorWallet.adminCreditWallet(input),
+    onSuccess: (_, input) => {
+      void qc.invalidateQueries({
+        queryKey: ["admin-vendor-wallet-summary", input.vendorUserId],
+      });
+      void qc.invalidateQueries({
+        queryKey: ["admin-vendor-wallet-entries", input.vendorUserId],
+      });
+      void qc.invalidateQueries({ queryKey: ["vendor-wallet-summary"] });
+      void qc.invalidateQueries({ queryKey: ["vendor-wallet-entries"] });
     },
   });
 }

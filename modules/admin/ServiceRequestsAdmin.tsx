@@ -215,15 +215,34 @@ export default function ServiceRequestsAdmin() {
     const input: Parameters<
       typeof updateMutation.mutateAsync
     >[0]["input"] = {};
+    const emailEvents: NonNullable<
+      typeof input.emailNotifications
+    >["events"] = [];
     if (draftStatus !== selected.status) input.status = draftStatus;
+    if (draftStatus !== selected.status) {
+      emailEvents.push("status_changed");
+      if (draftStatus === "completed") {
+        emailEvents.push("completed");
+      }
+    }
     if ((internalNotes ?? "") !== (selected.internalNotes ?? "")) {
       input.internalNotes = internalNotes;
     }
     const vendorId = draftVendorId ? Number(draftVendorId) : null;
     if (vendorId !== (selected.assignedVendorUserId ?? null)) {
       input.assignedVendorUserId = vendorId;
+      if (vendorId != null) {
+        emailEvents.push("vendor_assigned");
+      }
     }
     if (Object.keys(input).length === 0) return;
+    if (emailEvents.length > 0) {
+      input.emailNotifications = {
+        enabled: true,
+        recipients: ["customer", "vendor", "admin"],
+        events: Array.from(new Set(emailEvents)),
+      };
+    }
     const updated = await updateMutation.mutateAsync({ id: selected.id, input });
     setSelected(updated);
     setInternalNotes(updated.internalNotes ?? "");
@@ -651,6 +670,9 @@ export default function ServiceRequestsAdmin() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Vendor assignment and status updates notify customer, vendor, and admin by email.
+                    </p>
                   </div>
                   <div>
                     <Label className="text-xs">Internal notes</Label>
@@ -717,6 +739,9 @@ const SUBTYPE_LABELS: Record<
   bathroom_cleaning: "Bathroom cleaning",
   sofa_cleaning: "Sofa / upholstery cleaning",
   kitchen_cleaning: "Kitchen deep cleaning",
+  carpenter: "Carpenter",
+  plumber: "Plumber",
+  electrician: "Electrician",
 };
 
 const PROPERTY_TYPE_LABELS: Record<
@@ -756,6 +781,8 @@ const EVENT_SERVICE_LABELS: Record<
 > = {
   decoration: "Decoration",
   catering: "Catering",
+  home_catering: "Home catering",
+  corporate_catering_veg_non_veg: "Corporate catering (veg & non-veg)",
   photography: "Photography",
   music: "Music / DJ",
   hosting: "Host / anchor",
