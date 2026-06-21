@@ -13,12 +13,15 @@ import { admin } from "@/end-points/admin";
 import { adminWallet } from "@/end-points/admin-wallet";
 import { contact } from "@/end-points/contact";
 import { serviceRequests } from "@/end-points/service-requests";
+import { loanRequests } from "@/end-points/loan-requests";
+import { jobConsultancy } from "@/end-points/job-consultancy";
 import { uploads } from "@/end-points/uploads";
 import { vendors } from "@/end-points/vendors";
 import { vendorLeads } from "@/end-points/vendor-leads";
 import { vendorWallet } from "@/end-points/vendor-wallet";
 import { notifications } from "@/end-points/notifications";
 import { supportTickets } from "@/end-points/support-tickets";
+import { emailLogs } from "@/end-points/email-logs";
 
 export const api = {
   ...auth,
@@ -31,6 +34,8 @@ export const api = {
   ...admin,
   adminWallet,
   ...serviceRequests,
+  ...loanRequests,
+  ...jobConsultancy,
   ...uploads,
   vendors,
   vendorLeads,
@@ -38,6 +43,7 @@ export const api = {
   notifications,
   supportTickets,
   contact,
+  emailLogs,
 };
 
 export type Api = typeof api;

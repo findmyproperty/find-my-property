@@ -29,7 +29,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/contact`, lastModified, changeFrequency: "monthly", priority: 0.65 },
     { url: `${base}/packers-movers`, lastModified, changeFrequency: "monthly", priority: 0.85 },
     { url: `${base}/painting-cleaning`, lastModified, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${base}/home-services`, lastModified, changeFrequency: "monthly", priority: 0.85 },
     { url: `${base}/event-management`, lastModified, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${base}/loans`, lastModified, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${base}/job-consultancy`, lastModified, changeFrequency: "monthly", priority: 0.85 },
     { url: `${base}/sitemap`, lastModified, changeFrequency: "monthly", priority: 0.35 },
   ];
 

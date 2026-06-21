@@ -9,6 +9,8 @@ import {
   LayoutDashboard,
   LayoutList,
   LifeBuoy,
+  Mail,
+  Briefcase,
   Search,
   Settings as SettingsIcon,
   Sparkles,
@@ -113,6 +115,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
       { title: "Activity Log", url: "/admin/activity", icon: Activity },
+      { title: "Email Log", url: "/admin/email-logs", icon: Mail },
       { title: "Alerts", url: "/alerts", icon: Bell },
     ],
   },
@@ -126,6 +129,16 @@ const adminNavGroups: NavGroup[] = [
         title: "Service Requests",
         url: "/admin/service-requests",
         icon: Sparkles,
+      },
+      {
+        title: "Loan Requests",
+        url: "/admin/loan-requests",
+        icon: CreditCard,
+      },
+      {
+        title: "Job Consultancy",
+        url: "/admin/job-consultancy",
+        icon: Briefcase,
       },
       { title: "Complaints", url: "/admin/complaints", icon: LifeBuoy },
     ],

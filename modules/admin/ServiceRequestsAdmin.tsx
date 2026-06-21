@@ -25,7 +25,9 @@ import {
   Route,
   Search,
   Sparkles,
+  Star,
   Truck,
+  Wrench,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +67,7 @@ import type {
   EventManagementDetails,
   PackersMoversDetails,
   PaintingCleaningDetails,
+  HomeServicesDetails,
   ServiceRequestDTO,
   ServiceRequestStatus,
   ServiceType,
@@ -100,7 +103,13 @@ function isPackersMoversDetails(
 function isPaintingCleaningDetails(
   d: ServiceRequestDTO["details"],
 ): d is PaintingCleaningDetails {
-  return !!d && "subType" in d;
+  return !!d && "subType" in d && !("eventType" in d);
+}
+
+function isHomeServicesDetails(
+  d: ServiceRequestDTO["details"],
+): d is HomeServicesDetails {
+  return !!d && "subType" in d && !("eventType" in d);
 }
 
 function isEventManagementDetails(
@@ -120,21 +129,39 @@ const STATUS_VALUES: ServiceRequestStatus[] = [
 const SERVICE_VALUES: ServiceType[] = [
   "packers_movers",
   "painting_cleaning",
+  "home_services",
   "event_management",
 ];
 
 const STATUS_META: Record<
   ServiceRequestStatus,
-  {
-    label: string;
-    variant: "default" | "secondary" | "outline" | "destructive";
-  }
+  { label: string; className: string }
 > = {
-  new: { label: "New", variant: "default" },
-  contacted: { label: "Contacted", variant: "secondary" },
-  scheduled: { label: "Scheduled", variant: "secondary" },
-  completed: { label: "Completed", variant: "outline" },
-  cancelled: { label: "Cancelled", variant: "destructive" },
+  new: {
+    label: "New",
+    className:
+      "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
+  },
+  contacted: {
+    label: "Contacted",
+    className:
+      "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300",
+  },
+  scheduled: {
+    label: "Scheduled",
+    className:
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  },
+  completed: {
+    label: "Completed",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  },
+  cancelled: {
+    label: "Cancelled",
+    className:
+      "border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300",
+  },
 };
 
 const SERVICE_META: Record<
@@ -143,6 +170,7 @@ const SERVICE_META: Record<
 > = {
   packers_movers: { label: "Packers & Movers", icon: Truck },
   painting_cleaning: { label: "Painting & Cleaning", icon: PaintBucket },
+  home_services: { label: "Home Services", icon: Wrench },
   event_management: { label: "Event Management", icon: PartyPopper },
 };
 
@@ -262,11 +290,11 @@ export default function ServiceRequestsAdmin() {
             Service Requests
           </h2>
           <p className="text-sm text-muted-foreground">
-            Triage Packers &amp; Movers, Painting &amp; Cleaning, and Event Management requests.
+            Triage Packers &amp; Movers, Painting &amp; Cleaning, Home Services, and Event Management requests.
           </p>
         </div>
         {stats ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <StatTile
               icon={ClipboardList}
               label="Open"
@@ -282,6 +310,11 @@ export default function ServiceRequestsAdmin() {
               icon={PaintBucket}
               label="Painting & Cleaning"
               value={stats.totals.painting_cleaning ?? 0}
+            />
+            <StatTile
+              icon={Wrench}
+              label="Home Services"
+              value={stats.totals.home_services ?? 0}
             />
             <StatTile
               icon={PartyPopper}
@@ -457,7 +490,10 @@ export default function ServiceRequestsAdmin() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={s.variant} className="text-[10px] uppercase text-white">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-medium uppercase ${s.className}`}
+                      >
                         {s.label}
                       </Badge>
                     </TableCell>
@@ -618,12 +654,67 @@ export default function ServiceRequestsAdmin() {
                   <PackersMoversDetailPanel details={selected.details} />
                 ) : null}
 
-                {isPaintingCleaningDetails(selected.details) ? (
+                {selected.serviceType === "painting_cleaning" &&
+                isPaintingCleaningDetails(selected.details) ? (
                   <PaintingCleaningDetailPanel details={selected.details} />
+                ) : null}
+
+                {selected.serviceType === "home_services" &&
+                isHomeServicesDetails(selected.details) ? (
+                  <PaintingCleaningDetailPanel
+                    details={selected.details}
+                    subtypeLabels={HOME_SUBTYPE_LABELS}
+                  />
                 ) : null}
 
                 {isEventManagementDetails(selected.details) ? (
                   <EventManagementDetailPanel details={selected.details} />
+                ) : null}
+
+                {selected.status === "completed" ? (
+                  <section className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Customer rating
+                    </h3>
+                    {selected.customerRating ? (
+                      <>
+                        <div
+                          className="flex items-center gap-1 text-primary"
+                          aria-label={`${selected.customerRating} out of 5 stars`}
+                        >
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <Star
+                              key={value}
+                              className={`size-4 ${value <= selected.customerRating! ? "fill-current" : ""}`}
+                              aria-hidden
+                            />
+                          ))}
+                        </div>
+                        {selected.customerFeedback?.trim() ? (
+                          <p className="text-sm text-muted-foreground">
+                            {selected.customerFeedback.trim()}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No written feedback.
+                          </p>
+                        )}
+                        {selected.customerReviewedAt ? (
+                          <p className="text-xs text-muted-foreground">
+                            Submitted{" "}
+                            {formatDistanceToNow(
+                              new Date(selected.customerReviewedAt),
+                              { addSuffix: true },
+                            )}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Customer has not rated this service yet.
+                      </p>
+                    )}
+                  </section>
                 ) : null}
 
                 <section className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
@@ -739,6 +830,12 @@ const SUBTYPE_LABELS: Record<
   bathroom_cleaning: "Bathroom cleaning",
   sofa_cleaning: "Sofa / upholstery cleaning",
   kitchen_cleaning: "Kitchen deep cleaning",
+};
+
+const HOME_SUBTYPE_LABELS: Record<
+  NonNullable<HomeServicesDetails["subType"]>,
+  string
+> = {
   carpenter: "Carpenter",
   plumber: "Plumber",
   electrician: "Electrician",
@@ -954,8 +1051,10 @@ function PackersMoversDetailPanel({ details }: { details: PackersMoversDetails }
 
 function PaintingCleaningDetailPanel({
   details,
+  subtypeLabels = SUBTYPE_LABELS,
 }: {
-  details: PaintingCleaningDetails;
+  details: PaintingCleaningDetails | HomeServicesDetails;
+  subtypeLabels?: Record<string, string>;
 }) {
   const loc = details.location;
   return (
@@ -966,7 +1065,7 @@ function PaintingCleaningDetailPanel({
       <dl className="grid grid-cols-2 gap-2 text-sm">
         <Field
           label="Service"
-          value={SUBTYPE_LABELS[details.subType] ?? details.subType}
+          value={subtypeLabels[details.subType] ?? details.subType}
         />
         <Field
           label="Property type"
@@ -1167,7 +1266,7 @@ export function ServiceRequestsOverviewTiles() {
   const { data: stats } = useAdminServiceRequestStats();
   if (!stats) return null;
   return (
-    <div className="grid gap-3 sm:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <StatTile
         icon={Sparkles}
         label="Open service requests"
@@ -1183,6 +1282,11 @@ export function ServiceRequestsOverviewTiles() {
         icon={PaintBucket}
         label="Painting & Cleaning"
         value={stats.totals.painting_cleaning ?? 0}
+      />
+      <StatTile
+        icon={Wrench}
+        label="Home Services"
+        value={stats.totals.home_services ?? 0}
       />
       <StatTile
         icon={PartyPopper}

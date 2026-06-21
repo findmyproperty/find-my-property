@@ -21,6 +21,7 @@ import {
   Route,
   Star,
   Truck,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import type {
   EventManagementDetails,
   PackersMoversDetails,
   PaintingCleaningDetails,
+  HomeServicesDetails,
   ServiceRequestDTO,
   ServiceRequestFeedbackInput,
   ServiceRequestStatus,
@@ -108,6 +110,11 @@ const SERVICE_META: Record<
     icon: PaintBucket,
     href: "/painting-cleaning",
   },
+  home_services: {
+    label: "Home Services",
+    icon: Wrench,
+    href: "/home-services",
+  },
   event_management: {
     label: "Event Management",
     icon: PartyPopper,
@@ -129,6 +136,9 @@ const SUBTYPE_LABELS: Record<PaintingCleaningDetails["subType"], string> = {
   bathroom_cleaning: "Bathroom cleaning",
   sofa_cleaning: "Sofa / upholstery cleaning",
   kitchen_cleaning: "Kitchen deep cleaning",
+};
+
+const HOME_SUBTYPE_LABELS: Record<HomeServicesDetails["subType"], string> = {
   carpenter: "Carpenter",
   plumber: "Plumber",
   electrician: "Electrician",
@@ -194,6 +204,14 @@ function detailSummary(r: ServiceRequestDTO): string[] {
     const d = r.details as PaintingCleaningDetails;
     return [
       d.subType ? SUBTYPE_LABELS[d.subType] : null,
+      d.propertyType ? PROPERTY_TYPE_LABELS[d.propertyType] : null,
+      d.bhkOrSqft ?? null,
+    ].filter((x): x is string => Boolean(x));
+  }
+  if (r.serviceType === "home_services") {
+    const d = r.details as HomeServicesDetails;
+    return [
+      d.subType ? HOME_SUBTYPE_LABELS[d.subType] : null,
       d.propertyType ? PROPERTY_TYPE_LABELS[d.propertyType] : null,
       d.bhkOrSqft ?? null,
     ].filter((x): x is string => Boolean(x));
@@ -415,6 +433,12 @@ export default function MyServiceRequests() {
               <Link href="/painting-cleaning">
                 <PaintBucket data-icon="inline-start" />
                 Painting & Cleaning
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/home-services">
+                <Wrench data-icon="inline-start" />
+                Home Services
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
@@ -829,8 +853,14 @@ function LocationStrip({ request }: { request: ServiceRequestDTO }) {
       </div>
     );
   }
-  if (request.serviceType === "painting_cleaning") {
-    const d = request.details as PaintingCleaningDetails | null;
+  if (
+    request.serviceType === "painting_cleaning" ||
+    request.serviceType === "home_services"
+  ) {
+    const d = request.details as
+      | PaintingCleaningDetails
+      | HomeServicesDetails
+      | null;
     const label = d?.location?.label;
     if (!label) return null;
     return (

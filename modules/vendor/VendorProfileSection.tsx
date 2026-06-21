@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type Dispatch, type SetStateAction } from "react"
+import { useState } from "react"
 import { ExternalLink, FileCheck2, Loader2, Upload, X } from "lucide-react"
 import {
   CldUploadWidget,
@@ -22,9 +22,9 @@ import {
   useVendorProfile,
   useUpdateVendorProfile,
 } from "@/hooks/use-vendor-profile"
-import { api } from "@/lib/api"
 import type { VendorCategory, VendorProfile } from "@/schema/vendor"
 import { useToast } from "@/hooks/use-toast"
+import WorkingHoursPicker from "@/modules/vendor/WorkingHoursPicker"
 
 const MB = 1024 * 1024
 
@@ -197,7 +197,6 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
   const [workingHours, setWorkingHours] = useState(
     () => profile?.workingHours ?? ""
   )
-  const [slug, setSlug] = useState(() => profile?.slug ?? "")
   const [locationInput, setLocationInput] = useState("")
   const [serviceLocations, setServiceLocations] = useState<string[]>(
     () => profile?.serviceLocations ?? []
@@ -213,12 +212,6 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
   const [addressProofUrl, setAddressProofUrl] = useState(
     () => profile?.documents?.addressProofUrl ?? ""
   )
-  const [publicPhotoUrls, setPublicPhotoUrls] = useState<string[]>(
-    () => profile?.publicPhotoUrls ?? []
-  )
-  const [certificateUrls, setCertificateUrls] = useState<string[]>(
-    () => profile?.certificateUrls ?? []
-  )
 
   const addLocation = () => {
     const v = locationInput.trim()
@@ -227,30 +220,9 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
     setLocationInput("")
   }
 
-  const uploadGallery = async (
-    files: FileList | null,
-    setter: Dispatch<SetStateAction<string[]>>
-  ) => {
-    if (!files?.length) return
-    try {
-      const urls: string[] = []
-      for (const file of Array.from(files)) {
-        const { url } = await api.uploadFile(file)
-        urls.push(url)
-      }
-      setter((prev) => [...prev, ...urls])
-    } catch (e) {
-      toast({
-        title: "Upload failed",
-        description: e instanceof Error ? e.message : undefined,
-        variant: "destructive",
-      })
-    }
-  }
-
   const publicLink =
     profile?.verificationStatus === "verified" && profile.userId
-      ? `/vendors/${slug.trim() || profile.userId}`
+      ? `/vendors/${profile.slug?.trim() || profile.userId}`
       : null
 
   return (
@@ -304,26 +276,12 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
       </div>
 
       <div className="space-y-2">
-        <Label>Public URL slug (optional)</Label>
-        <Input
-          value={slug}
-          onChange={(e) =>
-            setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
-          }
-          placeholder="my-business-name"
-        />
-        <p className="text-xs text-muted-foreground">
-          Lowercase letters, numbers, and hyphens only. Used in
-          /vendors/your-slug when verified. 
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label>About</Label>
+        <Label>Bio</Label>
         <Textarea
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           rows={3}
+          placeholder="Tell customers about your business, services, and experience."
         />
       </div>
       <div className="space-y-2">
@@ -334,14 +292,7 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
           rows={2}
         />
       </div>
-      <div className="space-y-2">
-        <Label>Working hours</Label>
-        <Input
-          value={workingHours}
-          onChange={(e) => setWorkingHours(e.target.value)}
-          placeholder="Mon–Sat 9am–6pm"
-        />
-      </div>
+      <WorkingHoursPicker value={workingHours} onChange={setWorkingHours} />
 
       <div className="space-y-2">
         <Label>Service locations</Label>
@@ -405,40 +356,6 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Public gallery photos</Label>
-        <Input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) =>
-            void uploadGallery(e.target.files, setPublicPhotoUrls)
-          }
-        />
-        {publicPhotoUrls.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {publicPhotoUrls.length} photo(s)
-          </p>
-        ) : null}
-      </div>
-
-      <div className="space-y-2">
-        <Label>Certificates (PDF or image)</Label>
-        <Input
-          type="file"
-          accept="image/*,application/pdf"
-          multiple
-          onChange={(e) =>
-            void uploadGallery(e.target.files, setCertificateUrls)
-          }
-        />
-        {certificateUrls.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {certificateUrls.length} file(s)
-          </p>
-        ) : null}
-      </div>
-
       <Button
         disabled={isPending}
         onClick={() =>
@@ -450,9 +367,6 @@ function VendorProfileForm({ profile }: { profile: VendorProfile | null }) {
               experience,
               workingHours,
               serviceLocations,
-              slug: slug.trim() || null,
-              publicPhotoUrls,
-              certificateUrls,
               documents: {
                 aadhaarUrl: aadhaarUrl || null,
                 panUrl: panUrl || null,

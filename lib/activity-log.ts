@@ -84,6 +84,14 @@ const ROUTE_MAP: Array<{
     },
   },
   {
+    method: "POST",
+    test: /^\/service-requests\/home-services$/,
+    match: {
+      title: () => "New Home Services request submitted",
+      category: "service",
+    },
+  },
+  {
     method: "PATCH",
     test: /^\/admin\/service-requests\/(\d+)$/,
     match: {
@@ -93,6 +101,50 @@ const ROUTE_MAP: Array<{
           return `Service request #${id} marked "${humanStatus(status)}"`;
         }
         return `Service request #${id} updated`;
+      },
+      category: "service",
+    },
+  },
+  {
+    method: "POST",
+    test: /^\/loan-requests$/,
+    match: {
+      title: () => "New loan application submitted",
+      category: "service",
+    },
+  },
+  {
+    method: "POST",
+    test: /^\/job-consultancy$/,
+    match: {
+      title: () => "New job consultancy inquiry submitted",
+      category: "service",
+    },
+  },
+  {
+    method: "PATCH",
+    test: /^\/admin\/loan-requests\/(\d+)$/,
+    match: {
+      title: ({ id, body }) => {
+        const status = body?.status;
+        if (typeof status === "string" && status.length > 0) {
+          return `Loan request #${id} marked "${humanStatus(status)}"`;
+        }
+        return `Loan request #${id} updated`;
+      },
+      category: "service",
+    },
+  },
+  {
+    method: "PATCH",
+    test: /^\/admin\/job-consultancy\/(\d+)$/,
+    match: {
+      title: ({ id, body }) => {
+        const status = body?.status;
+        if (typeof status === "string" && status.length > 0) {
+          return `Job consultancy #${id} marked "${humanStatus(status)}"`;
+        }
+        return `Job consultancy #${id} updated`;
       },
       category: "service",
     },

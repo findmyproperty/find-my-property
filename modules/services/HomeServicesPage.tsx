@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,9 +10,9 @@ import {
   CalendarCheck,
   ClipboardList,
   MapPin,
-  PaintBucket,
   PhoneCall,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 import {
   Form,
@@ -28,22 +28,20 @@ import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
-import { useSubmitPaintingCleaning } from "@/hooks/use-service-requests";
+import { useSubmitHomeServices } from "@/hooks/use-service-requests";
 import {
+  HOME_SERVICE_TYPE_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
   SLOT_OPTIONS,
-  SUB_TYPE_OPTIONS,
-  paintingCleaningSchema,
-  type PaintingCleaningFormValues,
+  homeServicesSchema,
+  type HomeServicesFormValues,
   type StopValue,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
@@ -57,8 +55,7 @@ const STEPS: HowItWorksStep[] = [
   {
     icon: ClipboardList,
     title: "Pick a service",
-    description:
-      "Painting or deep cleaning — choose the service that fits your home.",
+    description: "Carpenter, plumber, or electrician — tell us what needs fixing.",
   },
   {
     icon: PhoneCall,
@@ -69,25 +66,23 @@ const STEPS: HowItWorksStep[] = [
   {
     icon: CalendarCheck,
     title: "Schedule the visit",
-    description:
-      "Pick a slot. A trained crew arrives with eco-safe materials and tools.",
+    description: "Pick a slot. A vetted professional arrives with the right tools.",
   },
   {
     icon: Sparkles,
-    title: "Crisp & spotless",
-    description:
-      "Walk through with our supervisor. 100% satisfaction guarantee on every job.",
+    title: "Job done right",
+    description: "Walk through with our supervisor. Satisfaction guaranteed.",
   },
 ];
 
-export default function PaintingCleaningPage() {
+export default function HomeServicesPage() {
   const { user, isAuthReady } = useAuth();
   const { requireAuth, openAuthModal } = useServiceAuthModal();
-  const mutation = useSubmitPaintingCleaning();
+  const mutation = useSubmitHomeServices();
   const router = useRouter();
 
-  const form = useForm<PaintingCleaningFormValues>({
-    resolver: zodResolver(paintingCleaningSchema),
+  const form = useForm<HomeServicesFormValues>({
+    resolver: zodResolver(homeServicesSchema),
     defaultValues: {
       name: "",
       phone: "",
@@ -97,7 +92,7 @@ export default function PaintingCleaningPage() {
       pincode: "",
       preferredDate: "",
       preferredSlot: undefined,
-      subType: "deep_cleaning",
+      subType: "plumber",
       propertyType: "apartment",
       bhkOrSqft: "",
       location: { ...EMPTY_LOCATION },
@@ -117,15 +112,7 @@ export default function PaintingCleaningPage() {
     });
   }, [isAuthReady, user, form]);
 
-  const groupedSubtypes = useMemo(() => {
-    const groups: Record<string, typeof SUB_TYPE_OPTIONS> = {};
-    for (const opt of SUB_TYPE_OPTIONS) {
-      (groups[opt.group] ??= []).push(opt);
-    }
-    return groups;
-  }, []);
-
-  const onSubmit = async (values: PaintingCleaningFormValues) => {
+  const onSubmit = async (values: HomeServicesFormValues) => {
     await mutation.mutateAsync({
       name: values.name.trim(),
       phone: values.phone.trim(),
@@ -168,16 +155,16 @@ export default function PaintingCleaningPage() {
   return (
     <main className="pb-20">
       <ServiceHero
-        eyebrow="Painting & Cleaning"
-        title="A fresh coat. A spotless home. A quick fix."
-        subtitle="Professional painters and deep cleaners — vetted, insured, and ready to refresh your space."
-        Illustration={PaintBucket}
+        eyebrow="Home Services"
+        title="Repairs done right. Pros you can trust."
+        subtitle="Book vetted carpenters, plumbers, and electricians for quick fixes and home maintenance — supervised and guaranteed."
+        Illustration={Wrench}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 
       <HowItWorks
-        heading="How we keep your home in top shape"
-        subheading="Simple, supervised painting and cleaning — every step handled by our team."
+        heading="How our home services work"
+        subheading="Simple, supervised repairs — from request to completion."
         steps={STEPS}
       />
 
@@ -185,7 +172,7 @@ export default function PaintingCleaningPage() {
         <div className="container mx-auto max-w-3xl px-4">
           <div className="mb-10 text-center">
             <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">
-              Book painting or cleaning
+              Book a home service
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Share a few details and we&apos;ll call you back with a transparent quote.
@@ -246,11 +233,7 @@ export default function PaintingCleaningPage() {
                       <FormItem>
                         <FormLabel required>Your name</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Rahul Nair"
-                            autoComplete="name"
-                            {...field}
-                          />
+                          <Input placeholder="Rahul Nair" autoComplete="name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -263,11 +246,7 @@ export default function PaintingCleaningPage() {
                       <FormItem>
                         <FormLabel required>Phone</FormLabel>
                         <FormControl>
-                          <Input
-                            autoComplete="tel"
-                            inputMode="tel"
-                            {...field}
-                          />
+                          <Input autoComplete="tel" inputMode="tel" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -320,31 +299,18 @@ export default function PaintingCleaningPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel required>Service</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Pick a service" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {Object.entries(groupedSubtypes).map(
-                                ([group, items]) => (
-                                  <SelectGroup key={group}>
-                                    <SelectLabel>{group}</SelectLabel>
-                                    {items.map((o) => (
-                                      <SelectItem
-                                        key={o.value}
-                                        value={o.value}
-                                      >
-                                        {o.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ),
-                              )}
+                              {HOME_SERVICE_TYPE_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -357,10 +323,7 @@ export default function PaintingCleaningPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel required>Property type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select property type" />
@@ -388,10 +351,7 @@ export default function PaintingCleaningPage() {
                         <FormItem>
                           <FormLabel required>Size</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="2 BHK or 950 sqft"
-                              {...field}
-                            />
+                            <Input placeholder="2 BHK or 950 sqft" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -472,11 +432,7 @@ export default function PaintingCleaningPage() {
                         <FormItem>
                           <FormLabel>Pincode</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="400053"
-                              inputMode="numeric"
-                              {...field}
-                            />
+                            <Input placeholder="400053" inputMode="numeric" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -506,10 +462,7 @@ export default function PaintingCleaningPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Preferred slot</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? ""}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Anytime" />
@@ -534,11 +487,11 @@ export default function PaintingCleaningPage() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem className="mt-5">
-                        <FormLabel>Anything we should know?</FormLabel>
+                        <FormLabel>Describe the issue</FormLabel>
                         <FormControl>
                           <Textarea
                             rows={4}
-                            placeholder="Specific rooms, colour preferences, repair issue, stains to focus on, etc."
+                            placeholder="Leaking tap, broken cabinet hinge, faulty switch, etc."
                             {...field}
                           />
                         </FormControl>

@@ -29,6 +29,7 @@ const sections: Section[] = [
     links: [
       { href: "/packers-movers", label: "Packers & Movers" },
       { href: "/painting-cleaning", label: "Painting & Cleaning" },
+      { href: "/home-services", label: "Home Services" },
       { href: "/event-management", label: "Event Management" },
     ],
   },

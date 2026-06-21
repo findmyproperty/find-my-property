@@ -77,9 +77,6 @@ export const paintingCleaningSchema = baseSchema.extend({
       "bathroom_cleaning",
       "sofa_cleaning",
       "kitchen_cleaning",
-      "carpenter",
-      "plumber",
-      "electrician",
     ],
     { required_error: "Pick a service." },
   ),
@@ -100,6 +97,26 @@ export const paintingCleaningSchema = baseSchema.extend({
 export type PaintingCleaningFormValues = z.infer<
   typeof paintingCleaningSchema
 >;
+
+export const homeServicesSchema = baseSchema.extend({
+  subType: z.enum(["carpenter", "plumber", "electrician"], {
+    required_error: "Pick a service.",
+  }),
+  propertyType: z.enum(["apartment", "villa", "office"], {
+    required_error: "Pick a property type.",
+  }),
+  bhkOrSqft: z
+    .string()
+    .trim()
+    .min(1, "Tell us the size (e.g. 2 BHK or 950 sqft).")
+    .max(60),
+  location: stopSchema.refine((v) => v.label.trim().length >= 3, {
+    message: "Select a service location.",
+  }),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type HomeServicesFormValues = z.infer<typeof homeServicesSchema>;
 
 export const eventManagementSchema = baseSchema.extend({
   eventType: z.enum(["birthday", "wedding", "baby_shower", "corporate"], {
@@ -162,7 +179,7 @@ export const BHK_OPTIONS: Array<{
 export const SUB_TYPE_OPTIONS: Array<{
   value: PaintingCleaningFormValues["subType"];
   label: string;
-  group: "Painting" | "Cleaning" | "Home Services";
+  group: "Painting" | "Cleaning";
 }> = [
   { value: "full_painting", label: "Full home painting", group: "Painting" },
   {
@@ -182,9 +199,15 @@ export const SUB_TYPE_OPTIONS: Array<{
     label: "Kitchen deep cleaning",
     group: "Cleaning",
   },
-  { value: "carpenter", label: "Carpenter", group: "Home Services" },
-  { value: "plumber", label: "Plumber", group: "Home Services" },
-  { value: "electrician", label: "Electrician", group: "Home Services" },
+];
+
+export const HOME_SERVICE_TYPE_OPTIONS: Array<{
+  value: HomeServicesFormValues["subType"];
+  label: string;
+}> = [
+  { value: "carpenter", label: "Carpenter" },
+  { value: "plumber", label: "Plumber" },
+  { value: "electrician", label: "Electrician" },
 ];
 
 export const PROPERTY_TYPE_OPTIONS: Array<{

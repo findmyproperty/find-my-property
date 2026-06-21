@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, ChevronRight } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Building2, ChevronRight, LogOut } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
 import { NavLink } from "@/components/layout/NavLink"
 import {
   Collapsible,
@@ -16,6 +18,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -35,7 +38,15 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
-  const { state } = useSidebar()
+  const router = useRouter()
+  const { logout } = useAuth()
+  const { state, isMobile, setOpenMobile } = useSidebar()
+
+  const closeMobileSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
   const [openGroups, setOpenGroups] = useState(
     () => new Set(groups.map((group) => group.title))
   )
@@ -45,6 +56,12 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
   const logoUrl = settings?.primaryLogoUrl?.trim() || null
   const { data: unreadData } = useUnreadNotificationCount()
   const unreadCount = unreadData?.count ?? 0
+  const handleLogout = async () => {
+    closeMobileSidebar()
+    await logout()
+    router.refresh()
+  }
+
   const toggleGroup = (title: string) => {
     setOpenGroups((current) => {
       const next = new Set(current)
@@ -69,6 +86,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
         >
           <Link
             href="/"
+            onClick={closeMobileSidebar}
             className={cn(
               "flex min-w-0 items-center gap-2",
               collapsed && "justify-center"
@@ -155,6 +173,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                             <NavLink
                               href={item.url}
                               end={item.url === "/dashboard"}
+                              onClick={closeMobileSidebar}
                               className="min-w-0 hover:bg-muted/50"
                               activeClassName="bg-primary/10 text-primary font-medium"
                               aria-label={item.title}
@@ -174,6 +193,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                               <NavLink
                                 href={item.url}
                                 end={item.url === "/dashboard"}
+                                onClick={closeMobileSidebar}
                                 className="min-w-0 hover:bg-muted/50"
                                 activeClassName="bg-primary/10 text-primary font-medium"
                               >
@@ -199,6 +219,20 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
           )
         })}
       </SidebarContent>
+      <SidebarFooter className="border-t border-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Logout"
+              onClick={() => void handleLogout()}
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed ? <span>Logout</span> : null}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

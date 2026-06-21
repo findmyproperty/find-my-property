@@ -28,6 +28,13 @@ function notificationHref(n: Notification): string | null {
   const ticketId = meta.ticketId;
   if (typeof ticketId === "number") return "/support";
   if (n.type === "vendor_payout") return "/wallet";
+  if (n.type === "property_lead_new" && typeof leadId === "number") {
+    return `/leads/${leadId}`;
+  }
+  const emailLogId = meta.emailLogId;
+  if (n.type === "email_received" && typeof emailLogId === "number") {
+    return "/admin/email-logs";
+  }
   return null;
 }
 
@@ -50,7 +57,7 @@ export default function AlertsFeed() {
           <div>
             <h1 className="font-heading text-xl font-bold">Alerts</h1>
             <p className="text-sm text-muted-foreground">
-              Updates for leads, payouts, tickets, and account activity.
+              Updates for leads, emails, payouts, tickets, and account activity.
             </p>
           </div>
           {unread > 0 ? <Badge variant="secondary">{unread} unread</Badge> : null}

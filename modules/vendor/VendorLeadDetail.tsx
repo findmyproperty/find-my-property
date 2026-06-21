@@ -27,10 +27,6 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import {
-  CldUploadWidget,
-  type CloudinaryUploadWidgetInfo,
-} from "next-cloudinary"
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -46,13 +42,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  CldUploadWidget,
+  type CloudinaryUploadWidgetInfo,
+} from "next-cloudinary"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -281,7 +274,7 @@ export default function VendorLeadDetail() {
   const [note, setNote] = useState("")
   const [uploading, setUploading] = useState(false)
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
-  const [updateSheetOpen, setUpdateSheetOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<"details" | "updates">("details")
   const cloudinaryPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
   const openCloudinaryWidget = (open: () => void) => {
@@ -300,13 +293,13 @@ export default function VendorLeadDetail() {
   }
 
   const handleCloudinarySuccess = (
-    info: CloudinaryUploadWidgetInfo | undefined
+    info: CloudinaryUploadWidgetInfo | undefined,
   ) => {
     setUploading(false)
     const uploadedUrl = info?.secure_url
     if (!uploadedUrl) return
     setPhotoUrls((prev) =>
-      prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]
+      prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl],
     )
   }
 
@@ -347,9 +340,12 @@ export default function VendorLeadDetail() {
           <div className="flex flex-wrap gap-2">
             <LeadActions lead={lead} patching={patching} onPatch={patchStatus} />
             {canPostWorkUpdate(lead.status) ? (
-              <Button variant="secondary" onClick={() => setUpdateSheetOpen(true)}>
+              <Button
+                variant="secondary"
+                onClick={() => setActiveTab("updates")}
+              >
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add work update
+                Post work update
               </Button>
             ) : null}
           </div>
@@ -367,259 +363,324 @@ export default function VendorLeadDetail() {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <Accordion
-          type="multiple"
-          defaultValue={["customer", "requirement", "timeline"]}
-          className="rounded-xl border border-border bg-card px-5"
-        >
-          <AccordionItem value="customer">
-            <AccordionTrigger className="gap-3 text-left">
-              <SectionHeading icon={UserRound} title="Customer details" />
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoField label="Customer name" value={lead.customerName} />
-                <InfoField label="Phone" value={lead.phone} />
-                <InfoField label="Area" value={lead.area || "-"} />
-                <InfoField label="Budget" value={lead.budget || "-"} />
-                <InfoField
-                  label="Commission"
-                  value={`${lead.commissionPercent}%`}
-                />
-                <InfoField
-                  label="Job amount"
-                  value={lead.jobAmount != null ? String(lead.jobAmount) : "-"}
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "details" | "updates")
+        }
+        className="flex flex-col gap-4"
+      >
+        <TabsList className="h-auto w-full justify-start gap-1 rounded-xl border border-border bg-card p-1">
+          <TabsTrigger value="details" className="flex-1 sm:flex-none">
+            Lead details
+          </TabsTrigger>
+          <TabsTrigger value="updates" className="flex-1 gap-2 sm:flex-none">
+            Work updates
+            {(lead.updates?.length ?? 0) > 0 ? (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {lead.updates?.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+        </TabsList>
 
-          <AccordionItem value="requirement">
-            <AccordionTrigger className="gap-3 text-left">
-              <SectionHeading icon={ClipboardList} title="Requirement brief" />
-            </AccordionTrigger>
-            <AccordionContent>
-              <RequirementDetails requirement={lead.requirement} />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="timeline">
-            <AccordionTrigger className="gap-3 text-left">
-              <SectionHeading icon={CheckCircle2} title="Work timeline" />
-            </AccordionTrigger>
-            <AccordionContent>
-              <LeadTimeline updates={lead.updates} createdAt={lead.createdAt} />
-            </AccordionContent>
-          </AccordionItem>
-
-        </Accordion>
-
-        <aside className="flex flex-col gap-4">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-heading text-sm font-semibold text-foreground">
-              Next best action
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {lead.status === "new"
-                ? "Accept the lead once you can take the work, or reject it so the team can reassign."
-                : lead.status === "accepted"
-                  ? "Move it to in progress after contacting the customer, or mark it completed if the job is already finished."
-                  : canPostWorkUpdate(lead.status)
-                    ? "Keep the customer informed with updates, then mark the lead completed when work is finished."
-                    : "This lead is closed for vendor action."}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-heading text-sm font-semibold text-foreground">
-              Lead health
-            </h2>
-            <div className="mt-4 flex flex-col gap-3">
-              <InfoField label="Status" value={formatStatus(lead.status)} />
-              <InfoField
-                label="Last updated"
-                value={format(new Date(lead.updatedAt), "dd MMM yyyy, p")}
-              />
-              <InfoField
-                label="Updates posted"
-                value={String(lead.updates?.length ?? 0)}
-              />
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      <Sheet open={updateSheetOpen} onOpenChange={setUpdateSheetOpen}>
-        <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
-          <SheetHeader className="border-b border-border pb-4 pr-8 text-left">
-            <SheetTitle className="font-heading">Add work update</SheetTitle>
-            <SheetDescription>
-              Post the latest milestone, note, and optional photo for {lead.customerName}.
-            </SheetDescription>
-          </SheetHeader>
-
-          <form
-            className="flex flex-1 flex-col gap-5 py-5"
-            onSubmit={(event) => {
-              event.preventDefault()
-              addUpdate(
-                {
-                  id: lead.id,
-                  milestone,
-                  note: note || undefined,
-                  photoUrls,
-                },
-                {
-                  onSuccess: () => {
-                    setNote("")
-                    setPhotoUrls([])
-                    setUpdateSheetOpen(false)
-                    toast({ title: "Update posted" })
-                  },
-                }
-              )
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="lead-milestone">Milestone</Label>
-              <Select value={milestone} onValueChange={setMilestone}>
-                <SelectTrigger id="lead-milestone">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MILESTONES.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="lead-note">Note</Label>
-              <Textarea
-                id="lead-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={5}
-                placeholder="What changed since the last update?"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="lead-photos">Photos</Label>
-              <CldUploadWidget
-                uploadPreset={cloudinaryPreset}
-                options={{
-                  multiple: true,
-                  maxFileSize: 10 * MB,
-                  clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
-                  resourceType: "image",
-                  folder: "vendor-lead-updates",
-                  sources: ["local", "url", "camera"],
-                }}
-                onSuccess={(result) => {
-                  if (result.event !== "success") return
-                  const info = result.info
-                  if (info && typeof info !== "string") {
-                    handleCloudinarySuccess(info as CloudinaryUploadWidgetInfo)
-                  } else {
-                    setUploading(false)
-                  }
-                }}
-                onError={(error) => {
-                  setUploading(false)
-                  toast({
-                    title: "Upload failed",
-                    description:
-                      typeof error === "string" ? error : "Please try again.",
-                    variant: "destructive",
-                  })
-                }}
-                onClose={() => setUploading(false)}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0">
+            <TabsContent value="details" className="mt-0">
+              <Accordion
+                type="multiple"
+                defaultValue={["customer", "requirement"]}
+                className="rounded-xl border border-border bg-card px-5"
               >
-                {({ open }) => (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={uploading}
-                        onClick={() => openCloudinaryWidget(open)}
-                      >
-                        {uploading ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Upload className="mr-2 h-4 w-4" />
-                        )}
-                        {uploading ? "Uploading..." : "Upload"}
-                      </Button>
-                      <span className="text-xs text-muted-foreground">
-                        JPG, PNG or WebP up to 10 MB.
-                      </span>
+                <AccordionItem value="customer">
+                  <AccordionTrigger className="gap-3 text-left">
+                    <SectionHeading icon={UserRound} title="Customer details" />
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <InfoField label="Customer name" value={lead.customerName} />
+                      <InfoField label="Phone" value={lead.phone} />
+                      <InfoField label="Area" value={lead.area || "-"} />
+                      <InfoField label="Budget" value={lead.budget || "-"} />
+                      <InfoField
+                        label="Commission"
+                        value={`${lead.commissionPercent}%`}
+                      />
+                      <InfoField
+                        label="Job amount"
+                        value={
+                          lead.jobAmount != null ? String(lead.jobAmount) : "-"
+                        }
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="requirement">
+                  <AccordionTrigger className="gap-3 text-left">
+                    <SectionHeading
+                      icon={ClipboardList}
+                      title="Requirement brief"
+                    />
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <RequirementDetails requirement={lead.requirement} />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </TabsContent>
+
+            <TabsContent value="updates" className="mt-0 space-y-6">
+              {canPostWorkUpdate(lead.status) ? (
+                <section className="rounded-xl border border-border bg-card p-5">
+                  <div className="mb-5">
+                    <h2 className="font-heading text-base font-semibold text-foreground">
+                      Post a work update
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Share the latest milestone, note, and optional photos for{" "}
+                      {lead.customerName}.
+                    </p>
+                  </div>
+
+                  <form
+                    className="flex flex-col gap-5"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      addUpdate(
+                        {
+                          id: lead.id,
+                          milestone,
+                          note: note || undefined,
+                          photoUrls,
+                        },
+                        {
+                          onSuccess: () => {
+                            setNote("")
+                            setPhotoUrls([])
+                            setMilestone(MILESTONES[0])
+                            toast({ title: "Update posted" })
+                          },
+                        },
+                      )
+                    }}
+                  >
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="lead-milestone">Milestone</Label>
+                      <Select value={milestone} onValueChange={setMilestone}>
+                        <SelectTrigger id="lead-milestone">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MILESTONES.map((m) => (
+                            <SelectItem key={m} value={m}>
+                              {m}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    {photoUrls.length > 0 ? (
-                      <div className="mt-4 flex flex-col gap-2">
-                        {photoUrls.map((url, index) => (
-                          <div
-                            key={url}
-                            className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
-                          >
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="min-w-0 truncate text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              Photo {index + 1}
-                            </a>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              disabled={uploading}
-                              onClick={() =>
-                                setPhotoUrls((prev) =>
-                                  prev.filter((item) => item !== url)
-                                )
-                              }
-                            >
-                              <X className="mr-1 h-3.5 w-3.5" />
-                              Remove
-                            </Button>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="lead-note">Note</Label>
+                      <Textarea
+                        id="lead-note"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        rows={5}
+                        placeholder="What changed since the last update?"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="lead-photos">Photos</Label>
+                      <CldUploadWidget
+                        uploadPreset={cloudinaryPreset}
+                        options={{
+                          multiple: true,
+                          maxFileSize: 10 * MB,
+                          clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
+                          resourceType: "image",
+                          folder: "vendor-lead-updates",
+                          sources: ["local", "url", "camera"],
+                        }}
+                        onSuccess={(result) => {
+                          if (result.event !== "success") return
+                          const info = result.info
+                          if (info && typeof info !== "string") {
+                            handleCloudinarySuccess(
+                              info as CloudinaryUploadWidgetInfo,
+                            )
+                          } else {
+                            setUploading(false)
+                          }
+                        }}
+                        onError={(error) => {
+                          setUploading(false)
+                          toast({
+                            title: "Upload failed",
+                            description:
+                              typeof error === "string"
+                                ? error
+                                : "Please try again.",
+                            variant: "destructive",
+                          })
+                        }}
+                        onClose={() => setUploading(false)}
+                      >
+                        {({ open }) => (
+                          <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                id="lead-photos"
+                                type="button"
+                                variant="secondary"
+                                disabled={uploading}
+                                onClick={() => openCloudinaryWidget(open)}
+                              >
+                                {uploading ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Upload className="mr-2 h-4 w-4" />
+                                )}
+                                {uploading ? "Uploading..." : "Upload"}
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                JPG, PNG or WebP up to 10 MB.
+                              </span>
+                            </div>
+
+                            {photoUrls.length > 0 ? (
+                              <div className="mt-4 flex flex-col gap-2">
+                                {photoUrls.map((url, index) => (
+                                  <div
+                                    key={url}
+                                    className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                                  >
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="min-w-0 truncate text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                      Photo {index + 1}
+                                    </a>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      disabled={uploading}
+                                      onClick={() =>
+                                        setPhotoUrls((prev) =>
+                                          prev.filter((item) => item !== url),
+                                        )
+                                      }
+                                    >
+                                      <X className="mr-1 h-3.5 w-3.5" />
+                                      Remove
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </CldUploadWidget>
-              {photoUrls.length > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {photoUrls.length} file(s) attached
-                </p>
+                        )}
+                      </CldUploadWidget>
+                      {photoUrls.length > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          {photoUrls.length} file(s) attached
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={adding || uploading}
+                        onClick={() => {
+                          setNote("")
+                          setPhotoUrls([])
+                          setMilestone(MILESTONES[0])
+                        }}
+                      >
+                        Clear
+                      </Button>
+                      <Button type="submit" disabled={adding || uploading}>
+                        {adding ? "Posting..." : "Post update"}
+                      </Button>
+                    </div>
+                  </form>
+                </section>
+              ) : (
+                <section className="rounded-xl border border-dashed border-border bg-muted/20 p-5">
+                  <p className="text-sm text-muted-foreground">
+                    {lead.status === "new"
+                      ? "Accept this lead before posting work updates."
+                      : "This lead is closed — work updates can no longer be posted."}
+                  </p>
+                </section>
+              )}
+
+              <section className="rounded-xl border border-border bg-card p-5">
+                <SectionHeading icon={CheckCircle2} title="Work timeline" />
+                <div className="mt-4">
+                  <LeadTimeline
+                    updates={lead.updates}
+                    createdAt={lead.createdAt}
+                  />
+                </div>
+              </section>
+            </TabsContent>
+          </div>
+
+          <aside className="flex flex-col gap-4">
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h2 className="font-heading text-sm font-semibold text-foreground">
+                Next best action
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {lead.status === "new"
+                  ? "Accept the lead once you can take the work, or reject it so the team can reassign."
+                  : lead.status === "accepted"
+                    ? "Move it to in progress after contacting the customer, then post updates on the Work updates tab."
+                    : canPostWorkUpdate(lead.status)
+                      ? "Keep the customer informed with updates, then mark the lead completed when work is finished."
+                      : "This lead is closed for vendor action."}
+              </p>
+              {canPostWorkUpdate(lead.status) && activeTab === "details" ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setActiveTab("updates")}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Go to work updates
+                </Button>
               ) : null}
             </div>
 
-            <SheetFooter className="mt-auto gap-2 border-t border-border pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setUpdateSheetOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={adding || uploading}>
-                {adding ? "Posting..." : "Post update"}
-              </Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h2 className="font-heading text-sm font-semibold text-foreground">
+                Lead health
+              </h2>
+              <div className="mt-4 flex flex-col gap-3">
+                <InfoField label="Status" value={formatStatus(lead.status)} />
+                <InfoField
+                  label="Last updated"
+                  value={format(new Date(lead.updatedAt), "dd MMM yyyy, p")}
+                />
+                <InfoField
+                  label="Updates posted"
+                  value={String(lead.updates?.length ?? 0)}
+                />
+              </div>
+            </div>
+          </aside>
+        </div>
+      </Tabs>
     </div>
   )
 }

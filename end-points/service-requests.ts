@@ -3,6 +3,7 @@ import { ApiRequestError, getStoredToken, request } from "@/end-points/http";
 export type ServiceType =
   | "packers_movers"
   | "painting_cleaning"
+  | "home_services"
   | "event_management";
 
 export type ServiceRequestStatus =
@@ -51,10 +52,15 @@ export interface PaintingCleaningDetails {
     | "deep_cleaning"
     | "bathroom_cleaning"
     | "sofa_cleaning"
-    | "kitchen_cleaning"
-    | "carpenter"
-    | "plumber"
-    | "electrician";
+    | "kitchen_cleaning";
+  propertyType: "apartment" | "villa" | "office";
+  bhkOrSqft: string;
+  location?: Stop;
+  notes?: string | null;
+}
+
+export interface HomeServicesDetails {
+  subType: "carpenter" | "plumber" | "electrician";
   propertyType: "apartment" | "villa" | "office";
   bhkOrSqft: string;
   location?: Stop;
@@ -111,6 +117,7 @@ export interface ServiceRequestDTO {
   details:
     | PackersMoversDetails
     | PaintingCleaningDetails
+    | HomeServicesDetails
     | EventManagementDetails
     | null;
   internalNotes: string | null;
@@ -142,6 +149,10 @@ export interface PackersMoversInput extends BaseServiceRequestInput {
 
 export interface PaintingCleaningInput extends BaseServiceRequestInput {
   details: PaintingCleaningDetails;
+}
+
+export interface HomeServicesInput extends BaseServiceRequestInput {
+  details: HomeServicesDetails;
 }
 
 export interface EventManagementInput extends BaseServiceRequestInput {
@@ -327,6 +338,14 @@ export const serviceRequests = {
 
   async submitPaintingCleaning(input: PaintingCleaningInput): Promise<ServiceRequestDTO> {
     return request<ServiceRequestDTO>("/service-requests/painting-cleaning", {
+      method: "POST",
+      body: JSON.stringify(input),
+      token: getStoredToken(),
+    });
+  },
+
+  async submitHomeServices(input: HomeServicesInput): Promise<ServiceRequestDTO> {
+    return request<ServiceRequestDTO>("/service-requests/home-services", {
       method: "POST",
       body: JSON.stringify(input),
       token: getStoredToken(),

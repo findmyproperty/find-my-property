@@ -49,7 +49,13 @@ export function buildLoginAndRegisterHrefs(pathname: string, searchParams: URLSe
 }
 
 /** Service pages that show login/signup in a modal instead of navigating away. */
-export const SERVICE_AUTH_MODAL_PATHS = ["/packers-movers", "/painting-cleaning"] as const;
+export const SERVICE_AUTH_MODAL_PATHS = [
+  "/packers-movers",
+  "/painting-cleaning",
+  "/home-services",
+  "/loans",
+  "/job-consultancy",
+] as const;
 
 export function isServiceAuthModalPath(pathname: string): boolean {
   return SERVICE_AUTH_MODAL_PATHS.some(

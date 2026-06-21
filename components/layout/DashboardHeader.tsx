@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/contexts/auth-context";
-import { LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface DashboardHeaderProps {
@@ -14,13 +11,7 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ title }: DashboardHeaderProps) {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    router.refresh();
-  };
+  const { user } = useAuth();
 
   return (
     <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30 shrink-0">
@@ -50,16 +41,6 @@ export default function DashboardHeader({ title }: DashboardHeaderProps) {
                 {user.name}
               </span>
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
           </>
         )}
       </div>
