@@ -6,9 +6,22 @@ export const AUTH_ERROR_SESSION_EXPIRED = "SESSION_EXPIRED";
 /** Refresh failed (e.g. network / 5xx); access token may still work. */
 export const AUTH_ERROR_REFRESH_FAILED = "REFRESH_FAILED";
 
+function normalizeApiBaseUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim().replace(/\/+$/, "");
+  return trimmed || undefined;
+}
+
 export function getApiBaseUrl() {
-  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-    return configuredApiUrl ?? DEFAULT_LOCAL_API_URL;
+  return normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL) ?? DEFAULT_LOCAL_API_URL;
+}
+
+export function getServerApiBaseUrl() {
+  const internalApiUrl =
+    typeof window === "undefined"
+      ? normalizeApiBaseUrl(process.env.API_INTERNAL_URL)
+      : undefined;
+
+  return internalApiUrl ?? getApiBaseUrl();
 }
 
 export type RequestOptions = RequestInit & {

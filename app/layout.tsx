@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
 
 import "./globals.css";
-import { ThemeProvider } from "@/contexts/theme-provider";
 import { AppProviders } from "@/contexts/app-providers";
 import { cn } from "@/lib/utils";
+import { DEFAULT_FAVICON_URL } from "@/lib/branding";
 import { getBranding } from "@/lib/branding/server";
 import { metadataBase } from "@/lib/seo/site";
 
@@ -14,6 +14,7 @@ const SITE_DESCRIPTION =
 export async function generateMetadata(): Promise<Metadata> {
   "use cache";
   const { siteName, faviconUrl } = await getBranding();
+  const iconUrl = faviconUrl || DEFAULT_FAVICON_URL;
 
   return {
     metadataBase: metadataBase(),
@@ -36,9 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: SITE_DESCRIPTION,
     },
     robots: { index: true, follow: true },
-    ...(faviconUrl
-      ? { icons: { icon: faviconUrl, shortcut: faviconUrl, apple: faviconUrl } }
-      : {}),
+    icons: { icon: iconUrl, shortcut: iconUrl, apple: iconUrl },
   };
 }
 
@@ -52,11 +51,13 @@ const fontHeading = Plus_Jakarta_Sans({
   variable: "--font-heading",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const branding = await getBranding();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -67,9 +68,7 @@ export default function RootLayout({
           "font-[family-name:var(--font-body)]",
         )}
       >
-      
-          <AppProviders>{children}</AppProviders>
-        
+        <AppProviders initialBranding={branding}>{children}</AppProviders>
       </body>
     </html>
   );

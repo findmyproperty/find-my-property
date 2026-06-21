@@ -88,7 +88,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
             href="/"
             onClick={closeMobileSidebar}
             className={cn(
-              "flex min-w-0 items-center gap-2",
+              "flex min-w-0 items-center gap-2 py-4",
               collapsed && "justify-center"
             )}
             aria-label={siteName}

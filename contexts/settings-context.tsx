@@ -4,38 +4,45 @@ import React, { createContext, useContext, useEffect } from "react";
 import { api, type Settings } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { applyFavicon } from "@/lib/branding/client";
-import { SITE_NAME } from "@/lib/branding";
+import { SITE_NAME, type PublicBranding } from "@/lib/branding";
 
 interface SettingsContextType {
-  settings: Settings | undefined;
+  settings: Partial<Settings> | undefined;
   isLoading: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
+export const SettingsProvider = ({
+  children,
+  initialBranding,
+}: {
+  children: React.ReactNode;
+  initialBranding?: PublicBranding;
+}) => {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["global-settings"],
     queryFn: api.getSettings,
     staleTime: 10 * 60 * 1000,
   });
+  const effectiveSettings: Partial<Settings> | undefined = settings ?? initialBranding;
 
   useEffect(() => {
-    if (settings?.theme) {
-      document.documentElement.setAttribute("data-theme", settings.theme);
+    if (effectiveSettings?.theme) {
+      document.documentElement.setAttribute("data-theme", effectiveSettings.theme);
     }
-  }, [settings?.theme]);
+  }, [effectiveSettings?.theme]);
 
   useEffect(() => {
-    applyFavicon(settings?.faviconUrl);
-  }, [settings?.faviconUrl]);
+    applyFavicon(effectiveSettings?.faviconUrl);
+  }, [effectiveSettings?.faviconUrl]);
 
   // Keep the browser tab label in sync with the admin-provided site name.
   // We only override when a siteName is configured — otherwise leave whatever
   // the page's `<title>` from Next metadata set.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const name = settings?.siteName?.trim();
+    const name = effectiveSettings?.siteName?.trim();
     if (!name) return;
     // Preserve any per-page prefix from Next's title template (`Something | Site`).
     const current = document.title;
@@ -45,10 +52,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } else if (current === SITE_NAME || current.trim() === "") {
       document.title = name;
     }
-  }, [settings?.siteName]);
+  }, [effectiveSettings?.siteName]);
 
   return (
-    <SettingsContext.Provider value={{ settings, isLoading }}>
+    <SettingsContext.Provider value={{ settings: effectiveSettings, isLoading }}>
       {children}
     </SettingsContext.Provider>
   );

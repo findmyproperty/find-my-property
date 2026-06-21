@@ -1,25 +1,35 @@
 import "server-only";
 import { cache } from "react";
 import { cacheLife, cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { TAGS } from "@/config/tags";
 
-import { DEFAULT_SITE_NAME } from "@/lib/branding";
-import { getApiBaseUrl } from "@/end-points/http";
+import { DEFAULT_BRANDING, type PublicBranding } from "@/lib/branding";
+import { getServerApiBaseUrl } from "@/end-points/http";
 
-export type Branding = {
-  siteName: string;
-  primaryLogoUrl: string | null;
-  faviconUrl: string | null;
-};
+export type Branding = PublicBranding;
 
-const FALLBACK: Branding = {
-  siteName: DEFAULT_SITE_NAME,
-  primaryLogoUrl: null,
-  faviconUrl: null,
-};
+const FALLBACK: Branding = DEFAULT_BRANDING;
 
 const REVALIDATE_SECONDS = 600;
+
+const publicBrandingSchema = z.object({
+  siteName: z.string().nullish(),
+  primaryLogoUrl: z.string().nullish(),
+  faviconUrl: z.string().nullish(),
+});
+
+function normalizeBranding(input: unknown): Branding {
+  const parsed = publicBrandingSchema.safeParse(input);
+  if (!parsed.success) return FALLBACK;
+
+  return {
+    siteName: parsed.data.siteName?.trim() || FALLBACK.siteName,
+    primaryLogoUrl: parsed.data.primaryLogoUrl?.trim() || null,
+    faviconUrl: parsed.data.faviconUrl?.trim() || null,
+  };
+}
 
 /**
  * Server-only branding lookup. Reads the singleton `settings` row from the
@@ -39,14 +49,9 @@ export const getBranding = cache(async (): Promise<Branding> => {
   cacheLife({ revalidate: REVALIDATE_SECONDS });
 
   try {
-    const res = await fetch(`${getApiBaseUrl()}/settings`);
+    const res = await fetch(`${getServerApiBaseUrl()}/settings`);
     if (!res.ok) return FALLBACK;
-    const data = (await res.json()) as Partial<Branding> | null;
-    return {
-      siteName: data?.siteName?.trim() || FALLBACK.siteName,
-      primaryLogoUrl: data?.primaryLogoUrl?.trim() || null,
-      faviconUrl: data?.faviconUrl?.trim() || null,
-    };
+    return normalizeBranding(await res.json());
   } catch {
     return FALLBACK;
   }

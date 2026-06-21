@@ -7,22 +7,29 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import { SettingsProvider } from "@/contexts/settings-context";
+import type { PublicBranding } from "@/lib/branding";
 import { useState } from "react";
 import { ThemeProvider } from "./theme-provider";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  initialBranding,
+}: {
+  children: React.ReactNode;
+  initialBranding?: PublicBranding;
+}) {
   const [queryClient] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-        <SettingsProvider>
-          <AuthProvider>
-            <NuqsAdapter>
-              <Toaster />
-              <Sonner />
-              {children}
-            </NuqsAdapter>
+          <SettingsProvider initialBranding={initialBranding}>
+            <AuthProvider>
+              <NuqsAdapter>
+                <Toaster />
+                <Sonner />
+                {children}
+              </NuqsAdapter>
             </AuthProvider>
           </SettingsProvider>
         </ThemeProvider>
