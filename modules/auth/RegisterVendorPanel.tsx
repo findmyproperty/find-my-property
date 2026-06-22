@@ -103,7 +103,7 @@ export default function RegisterVendorPanel() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-muted/30">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md bg-card rounded-2xl border border-border p-8 shadow-sm space-y-6">
         <div className="text-center">
           <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mx-auto mb-4" />

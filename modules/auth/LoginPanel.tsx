@@ -1,18 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
+import { AuthLogo } from "@/modules/auth/AuthLogo";
 
 const normalizePhone = (value: string) => {
   const trimmed = value.trim();
@@ -128,24 +128,7 @@ export default function LoginPanel({
     <>
       {!isModal ? (
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary/20">
-            {logoUrl ? (
-              <span className="relative inline-flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-muted">
-                <Image
-                  src={logoUrl}
-                  alt={siteName}
-                  fill
-                  sizes="56px"
-                  unoptimized
-                  className="object-contain"
-                />
-              </span>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-linear-to-tr from-primary to-primary-foreground/90">
-                <Building2 className="h-7 w-7 text-primary-foreground" />
-              </div>
-            )}
-          </div>
+          <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
           <p className="text-sm text-muted-foreground">
             Enter your phone number to login or securely create a new account.

@@ -117,28 +117,25 @@ const Navbar = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-16 px-4 min-w-0">
+      <div className="container mx-auto flex h-20 min-w-0 items-center justify-between px-4 md:h-24">
         <div className="flex min-w-0 flex-1 items-center gap-6 md:gap-10">
-          <Link href="/" className="flex shrink-0 items-center gap-2" onClick={closeMobileMenu}>
+          <Link href="/" className="flex shrink-0 items-center" onClick={closeMobileMenu}>
             {logoUrl ? (
-              <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+              <span className="relative inline-flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-20 md:w-32">
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes="36px"
+                  sizes="(min-width: 768px) 128px, 96px"
                   unoptimized
                   className="object-contain"
                 />
               </span>
             ) : (
-              <div className="w-9 h-9 rounded-lg hero-gradient flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-primary-foreground" />
+              <div className="hero-gradient flex size-12 shrink-0 items-center justify-center rounded-xl md:size-14">
+                <Building2 className="size-6 text-primary-foreground md:size-7" />
               </div>
             )}
-            <span className="font-heading font-bold text-xl text-foreground">
-              {siteName}
-            </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <DropdownMenu modal={false}>
@@ -299,8 +296,7 @@ const Navbar = () => {
               <Suspense fallback={null}>
                 <MobileNavAutoClose onClose={closeMobileMenu} />
               </Suspense>
-              <div className="mb-3 flex items-center justify-between">
-                <span className="font-heading text-sm font-semibold text-foreground">{siteName}</span>
+              <div className="mb-3 flex justify-end">
                 <ThemeToggle className="h-9 w-9" />
               </div>
               <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4">

@@ -19,7 +19,7 @@ const Login = () => {
         description="Sign in to manage shortlisted homes, saved enquiries, listing updates, and tenant tools from one calm workspace."
       />
 
-      <div className="relative flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden bg-muted/10 p-6 lg:p-12">
+      <div className="relative flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden bg-background p-6 lg:p-12">
         <div className="absolute inset-0 -z-10 bg-grid-black/[0.02]" />
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
           <LoginPanel variant="page" />

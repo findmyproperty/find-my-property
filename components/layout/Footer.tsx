@@ -28,22 +28,22 @@ const Footer = () => {
           <div className="space-y-3">
             <Link href="/" className="flex items-center gap-2">
               {logoUrl ? (
-                <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                <span className="relative inline-flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden">
                   <Image
                     src={logoUrl}
                     alt={siteName}
                     fill
-                    sizes="36px"
+                    sizes="128px"
                     unoptimized
                     className="object-contain"
                   />
                 </span>
               ) : (
-                <div className="w-9 h-9 rounded-lg hero-gradient flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary-foreground" />
+                <div className="hero-gradient flex size-14 shrink-0 items-center justify-center rounded-xl">
+                  <Building2 className="size-7 text-primary-foreground" />
                 </div>
               )}
-              <span className="font-heading font-bold text-xl text-foreground">
+              <span className="min-w-0 font-heading text-xl font-bold text-foreground">
                 {siteName}
               </span>
             </Link>

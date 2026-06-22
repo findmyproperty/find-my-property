@@ -77,34 +77,34 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {/* Logo — collapses to a centered icon tile so it fits the 3rem icon rail */}
+        {/* Logo mark: wide when open, compact when the sidebar is collapsed. */}
         <div
           className={cn(
-            "flex h-14 items-center border-b border-border",
-            collapsed ? "justify-center px-0" : "px-4"
+            "flex items-center border-b border-border",
+            collapsed ? "h-16 justify-center px-0" : "h-28 justify-center px-4"
           )}
         >
           <Link
             href="/"
             onClick={closeMobileSidebar}
             className={cn(
-              "flex min-w-0 items-center gap-2 py-4",
-              collapsed && "justify-center"
+              "flex min-w-0 items-center justify-center",
+              !collapsed && "w-full"
             )}
             aria-label={siteName}
           >
             {logoUrl ? (
               <span
                 className={cn(
-                  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted",
-                  collapsed ? "h-8 w-8" : "h-9 w-9"
+                  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg",
+                  collapsed ? "size-11" : "h-24 w-48"
                 )}
               >
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes={collapsed ? "32px" : "36px"}
+                  sizes={collapsed ? "44px" : "192px"}
                   unoptimized
                   className="object-contain"
                 />
@@ -112,22 +112,17 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
             ) : (
               <div
                 className={cn(
-                  "hero-gradient flex shrink-0 items-center justify-center rounded-lg",
-                  collapsed ? "h-8 w-8" : "h-9 w-9"
+                  "hero-gradient flex shrink-0 items-center justify-center rounded-xl",
+                  collapsed ? "size-11" : "size-16"
                 )}
               >
                 <Building2
                   className={cn(
                     "text-primary-foreground",
-                    collapsed ? "h-4 w-4" : "h-5 w-5"
+                    collapsed ? "size-5" : "size-8"
                   )}
                 />
               </div>
-            )}
-            {!collapsed && (
-              <span className="truncate font-heading text-lg font-bold text-foreground">
-                {siteName}
-              </span>
             )}
           </Link>
         </div>

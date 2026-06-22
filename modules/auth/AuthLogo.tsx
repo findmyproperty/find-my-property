@@ -12,15 +12,15 @@ type AuthLogoProps = {
 export function AuthLogo({ logoUrl, siteName, className = "" }: AuthLogoProps) {
   return (
     <div
-      className={`flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary/20 ${className}`}
+      className={`flex h-24 w-40 items-center justify-center overflow-hidden ${className}`}
     >
       {logoUrl ? (
-        <span className="relative inline-flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-muted">
-          <Image src={logoUrl} alt={siteName} fill sizes="56px" unoptimized className="object-contain" />
+        <span className="relative inline-flex h-full w-full items-center justify-center overflow-hidden">
+          <Image src={logoUrl} alt={siteName} fill sizes="160px" unoptimized className="object-contain" />
         </span>
       ) : (
-        <div className="flex h-full w-full items-center justify-center rounded-2xl bg-linear-to-tr from-primary to-primary-foreground/90">
-          <Building2 className="h-7 w-7 text-primary-foreground" />
+        <div className="hero-gradient flex size-16 items-center justify-center rounded-2xl shadow-lg shadow-primary/20">
+          <Building2 className="size-8 text-primary-foreground" />
         </div>
       )}
     </div>
