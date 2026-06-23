@@ -1,24 +1,33 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Building2, ChevronRight, LogOut } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { Building2, ChevronsUpDown, ChevronRight, LogOut, UserCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { NavLink } from "@/components/layout/NavLink"
+import { UserAvatar } from "@/components/user-avatar"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -31,15 +40,28 @@ import { SITE_NAME } from "@/lib/branding"
 import { useSettings } from "@/contexts/settings-context"
 import { cn } from "@/lib/utils"
 import { useUnreadNotificationCount } from "@/hooks/use-notifications"
-import type { NavGroup } from "@/config/roleNav"
+import { getRoleSidebarLabel, type NavGroup } from "@/config/roleNav"
 
 interface DashboardSidebarProps {
   groups: NavGroup[]
 }
 
+function isNavItemActive(pathname: string, url: string, end?: boolean) {
+  return end
+    ? pathname === url
+    : pathname === url || (url !== "/" && pathname.startsWith(`${url}/`))
+}
+
+function groupHasActiveItem(pathname: string, group: NavGroup) {
+  return group.items.some((item) =>
+    isNavItemActive(pathname, item.url, item.url === "/dashboard")
+  )
+}
+
 const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
   const router = useRouter()
-  const { logout } = useAuth()
+  const pathname = usePathname()
+  const { user, logout } = useAuth()
   const { state, isMobile, setOpenMobile } = useSidebar()
 
   const closeMobileSidebar = () => {
@@ -47,15 +69,42 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
       setOpenMobile(false)
     }
   }
-  const [openGroups, setOpenGroups] = useState(
-    () => new Set(groups.map((group) => group.title))
-  )
+
+  const initialOpenGroups = useMemo(() => {
+    const open = new Set<string>()
+    for (const group of groups) {
+      if (groupHasActiveItem(pathname, group)) {
+        open.add(group.title)
+      }
+    }
+    if (open.size === 0) {
+      groups.forEach((group) => open.add(group.title))
+    }
+    return open
+  }, [groups, pathname])
+
+  const [openGroups, setOpenGroups] = useState(initialOpenGroups)
+
+  useEffect(() => {
+    setOpenGroups((current) => {
+      const next = new Set(current)
+      for (const group of groups) {
+        if (groupHasActiveItem(pathname, group)) {
+          next.add(group.title)
+        }
+      }
+      return next
+    })
+  }, [pathname, groups])
   const { settings } = useSettings()
   const collapsed = state === "collapsed"
   const siteName = settings?.siteName?.trim() || SITE_NAME
   const logoUrl = settings?.primaryLogoUrl?.trim() || null
+  const roleLabel = getRoleSidebarLabel(user?.role)
   const { data: unreadData } = useUnreadNotificationCount()
   const unreadCount = unreadData?.count ?? 0
+  const userContact = user?.email?.trim() || user?.phone?.trim() || "Signed in"
+
   const handleLogout = async () => {
     closeMobileSidebar()
     await logout()
@@ -76,66 +125,88 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent>
-        {/* Logo mark: wide when open, compact when the sidebar is collapsed. */}
-        <div
-          className={cn(
-            "flex items-center border-b border-border",
-            collapsed ? "h-16 justify-center px-0" : "h-28 justify-center px-4"
-          )}
-        >
-          <Link
-            href="/"
-            onClick={closeMobileSidebar}
-            className={cn(
-              "flex min-w-0 items-center justify-center",
-              !collapsed && "w-full"
-            )}
-            aria-label={siteName}
-          >
-            {logoUrl ? (
-              <span
-                className={cn(
-                  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg",
-                  collapsed ? "size-11" : "h-24 w-48"
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild tooltip={siteName}>
+              <Link href="/" onClick={closeMobileSidebar}>
+                {logoUrl ? (
+                  <span
+                    className={cn(
+                      "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card ring-1 ring-border/70",
+                      collapsed ? "size-8" : "h-11 w-16"
+                    )}
+                  >
+                    <Image
+                      src={logoUrl}
+                      alt={siteName}
+                      fill
+                      sizes={collapsed ? "32px" : "64px"}
+                      unoptimized
+                      className="object-contain"
+                    />
+                  </span>
+                ) : (
+                  <span className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <Building2 className="size-4" />
+                  </span>
                 )}
-              >
-                <Image
-                  src={logoUrl}
-                  alt={siteName}
-                  fill
-                  sizes={collapsed ? "44px" : "192px"}
-                  unoptimized
-                  className="object-contain"
-                />
-              </span>
-            ) : (
-              <div
-                className={cn(
-                  "hero-gradient flex shrink-0 items-center justify-center rounded-xl",
-                  collapsed ? "size-11" : "size-16"
-                )}
-              >
-                <Building2
-                  className={cn(
-                    "text-primary-foreground",
-                    collapsed ? "size-5" : "size-8"
-                  )}
-                />
-              </div>
-            )}
-          </Link>
-        </div>
+                <div className="grid min-w-0 flex-1 text-left leading-tight">
+                  <span className="truncate font-semibold">{siteName}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {roleLabel}
+                  </span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
+      <SidebarContent>
         {groups.map((group) => {
           const open = openGroups.has(group.title)
+          const singleItem = group.items.length === 1 ? group.items[0] : null
+
+          if (singleItem) {
+            return (
+              <SidebarGroup key={group.title} className="py-0.5">
+                <SidebarGroupLabel className="font-heading text-[11px] tracking-wide uppercase">
+                  {group.title}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip={singleItem.title}>
+                        <NavLink
+                          href={singleItem.url}
+                          end={singleItem.url === "/dashboard"}
+                          onClick={closeMobileSidebar}
+                          activeClassName="bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                        >
+                          <singleItem.icon className="size-4 shrink-0" />
+                          <span>{singleItem.title}</span>
+                          {singleItem.url === "/alerts" && unreadCount > 0 ? (
+                            <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                              {unreadCount > 99 ? "99+" : unreadCount}
+                            </span>
+                          ) : null}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )
+          }
+
           return (
             <Collapsible
               key={group.title}
               open={collapsed ? true : open}
               onOpenChange={() => toggleGroup(group.title)}
             >
-              <SidebarGroup className="py-1.5">
+              <SidebarGroup className="py-0.5">
                 <CollapsibleTrigger asChild disabled={collapsed}>
                   <SidebarGroupLabel
                     asChild
@@ -151,7 +222,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                       <span>{group.title}</span>
                       <ChevronRight
                         className={cn(
-                          "h-3.5 w-3.5 transition-transform",
+                          "size-3.5 transition-transform",
                           open && "rotate-90"
                         )}
                         aria-hidden
@@ -169,11 +240,10 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                               href={item.url}
                               end={item.url === "/dashboard"}
                               onClick={closeMobileSidebar}
-                              className="min-w-0 hover:bg-muted/50"
-                              activeClassName="bg-primary/10 text-primary font-medium"
+                              activeClassName="bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                               aria-label={item.title}
                             >
-                              <item.icon className="h-4 w-4 shrink-0" />
+                              <item.icon className="size-4 shrink-0" />
                             </NavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -181,7 +251,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                     </SidebarMenu>
                   ) : (
                     <CollapsibleContent>
-                      <SidebarMenuSub className="mx-1.5 gap-1 border-l-border/70 px-2">
+                      <SidebarMenuSub>
                         {group.items.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
                             <SidebarMenuSubButton asChild>
@@ -189,11 +259,10 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                                 href={item.url}
                                 end={item.url === "/dashboard"}
                                 onClick={closeMobileSidebar}
-                                className="min-w-0 hover:bg-muted/50"
-                                activeClassName="bg-primary/10 text-primary font-medium"
+                                activeClassName="bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                               >
-                                <item.icon className="h-4 w-4 shrink-0" />
-                                <span className="min-w-0 flex-1 wrap-break-word">
+                                <item.icon className="size-4 shrink-0" />
+                                <span className="min-w-0 flex-1 truncate">
                                   {item.title}
                                 </span>
                                 {item.url === "/alerts" && unreadCount > 0 ? (
@@ -214,20 +283,63 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
           )
         })}
       </SidebarContent>
-      <SidebarFooter className="border-t border-border p-2">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Logout"
-              onClick={() => void handleLogout()}
-              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              {!collapsed ? <span>Logout</span> : null}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+
+      {user ? (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton
+                    size="lg"
+                    tooltip={user.name}
+                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  >
+                    <UserAvatar
+                      name={user.name}
+                      avatarUrl={user.avatarUrl}
+                      className="size-8 shrink-0"
+                      fallbackClassName="text-xs"
+                    />
+                    <div className="grid min-w-0 flex-1 text-left leading-tight">
+                      <span className="truncate font-semibold">{user.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {userContact}
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="ml-auto size-4 shrink-0" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 rounded-lg"
+                  side={isMobile ? "bottom" : "right"}
+                  align="end"
+                  sideOffset={4}
+                >
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/profile"
+                      onClick={closeMobileSidebar}
+                      className="flex cursor-default items-center gap-2"
+                    >
+                      <UserCircle className="size-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="gap-2 text-destructive focus:text-destructive"
+                    onClick={() => void handleLogout()}
+                  >
+                    <LogOut className="size-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      ) : null}
     </Sidebar>
   )
 }

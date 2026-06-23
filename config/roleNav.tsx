@@ -188,6 +188,13 @@ const dashboardTitles: Record<UserRole, string> = {
   vendor: "Partner Dashboard",
 }
 
+const roleSidebarLabels: Record<UserRole, string> = {
+  tenant: "Tenant account",
+  agent: "Agent account",
+  admin: "Administration",
+  vendor: "Partner account",
+}
+
 export function getNavGroupsForRole(role: UserRole | undefined): NavGroup[] {
   switch (role) {
     case "tenant":
@@ -210,6 +217,11 @@ export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {
 export function getDashboardTitleForRole(role: UserRole | undefined): string {
   if (!role) return "Dashboard"
   return dashboardTitles[role]
+}
+
+export function getRoleSidebarLabel(role: UserRole | undefined): string {
+  if (!role) return "Account"
+  return roleSidebarLabels[role]
 }
 
 export {

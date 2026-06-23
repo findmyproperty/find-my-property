@@ -64,7 +64,10 @@ export function ImageUploadField({
   const inputId = useId();
   const cloudinaryPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  const sizeClass = aspect === "wide" ? "h-36 w-full max-w-sm" : "h-36 w-36";
+  const sizeClass =
+    aspect === "wide"
+      ? "h-32 w-full max-w-full sm:h-36 sm:max-w-sm"
+      : "h-32 w-full max-w-[9rem] sm:h-36 sm:w-36 sm:max-w-none";
 
   const openWidget = (open: () => void) => {
     if (disabled || isUploading) return;
@@ -88,9 +91,12 @@ export function ImageUploadField({
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+    <div className={cn("min-w-0 space-y-2", className)}>
+      <div className="flex min-w-0 items-baseline justify-between gap-2">
+        <label
+          htmlFor={inputId}
+          className="min-w-0 text-sm font-medium text-foreground"
+        >
           {label}
         </label>
         {value ? (
@@ -203,11 +209,12 @@ export function ImageUploadField({
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="shrink-0 w-full sm:w-auto"
                 onClick={() => openWidget(open)}
                 disabled={disabled || isUploading}
               >
@@ -219,7 +226,8 @@ export function ImageUploadField({
                   href={value}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="truncate text-xs text-muted-foreground hover:text-foreground"
+                  title={value}
+                  className="min-w-0 break-all text-xs leading-relaxed text-muted-foreground hover:text-foreground sm:pt-1.5"
                 >
                   {value}
                 </a>

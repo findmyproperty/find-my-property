@@ -307,55 +307,107 @@ export default function LoanRequestsAdmin() {
             No loan requests match your filters.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Applicant</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile: card list */}
+            <ul className="divide-y divide-border md:hidden">
               {data.items.map((r) => {
                 const loanMeta = LOAN_META[r.loanType];
                 const LoanIcon = loanMeta.icon;
                 const s = STATUS_META[r.status] ?? STATUS_META.new;
                 return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => openRow(r)}
-                  >
-                    <TableCell>
-                      <p className="font-medium text-foreground">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">{r.phone}</p>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 text-sm">
-                        <LoanIcon className="h-3.5 w-3.5 text-primary" />
-                        {loanMeta.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {r.city || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={s.className}>
-                        {s.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </TableCell>
-                  </TableRow>
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className="flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
+                      onClick={() => openRow(r)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground">{r.name}</p>
+                          <p className="text-xs text-muted-foreground">{r.phone}</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn("shrink-0 text-[10px]", s.className)}
+                        >
+                          {s.label}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                            <LoanIcon className="h-4 w-4 text-primary" aria-hidden />
+                          </span>
+                          <span className="text-foreground">{loanMeta.label}</span>
+                        </span>
+                        {r.city ? <span>{r.city}</span> : null}
+                        <span className="text-xs">
+                          {formatDistanceToNow(new Date(r.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
                 );
               })}
-            </TableBody>
-          </Table>
+            </ul>
+
+            {/* Desktop: table */}
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[10rem]">Applicant</TableHead>
+                    <TableHead className="min-w-[9rem]">Type</TableHead>
+                    <TableHead>City</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Submitted</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((r) => {
+                    const loanMeta = LOAN_META[r.loanType];
+                    const LoanIcon = loanMeta.icon;
+                    const s = STATUS_META[r.status] ?? STATUS_META.new;
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer"
+                        onClick={() => openRow(r)}
+                      >
+                        <TableCell className="min-w-[10rem]">
+                          <p className="font-medium text-foreground">{r.name}</p>
+                          <p className="text-xs text-muted-foreground">{r.phone}</p>
+                        </TableCell>
+                        <TableCell className="min-w-[9rem]">
+                          <span className="inline-flex items-center gap-2 text-sm">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                              <LoanIcon className="h-4 w-4 text-primary" aria-hidden />
+                            </span>
+                            <span className="whitespace-nowrap">{loanMeta.label}</span>
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {r.city || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={s.className}>
+                            {s.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(r.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
 

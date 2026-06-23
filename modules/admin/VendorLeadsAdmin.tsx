@@ -199,71 +199,122 @@ export default function VendorLeadsAdmin() {
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
+      ) : !data?.items.length ? (
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+          No vendor leads yet. Assign a vendor on a service request.
+        </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Job amount</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.items.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>{lead.customerName}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">
-                        {vendorNameById.get(lead.vendorUserId) ??
-                          `Vendor #${lead.vendorUserId}`}
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Mobile: card list */}
+          <ul className="divide-y divide-border md:hidden">
+            {data.items.map((lead) => {
+              const vendorLabel =
+                vendorNameById.get(lead.vendorUserId) ??
+                `Vendor #${lead.vendorUserId}`
+              return (
+                <li key={lead.id}>
+                  <button
+                    type="button"
+                    className="flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
+                    onClick={() => openLead(lead)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">
+                          {lead.customerName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {lead.phone}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={statusVariant(lead.status)}
+                        className="shrink-0 capitalize text-[10px]"
+                      >
+                        {formatStatus(lead.status)}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      <span className="min-w-0 text-foreground">
+                        {vendorLabel}
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          · ID #{lead.vendorUserId}
+                        </span>
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        ID #{lead.vendorUserId}
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(lead.jobAmount)}
+                      </span>
+                      <span className="text-xs">
+                        {formatDistanceToNow(new Date(lead.createdAt), {
+                          addSuffix: true,
+                        })}
                       </span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={statusVariant(lead.status)}
-                      className="capitalize"
-                    >
-                      {formatStatus(lead.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatCurrency(lead.jobAmount)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(lead.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openLead(lead)}
-                    >
-                      View detail
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data?.items.length === 0 && (
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    No vendor leads yet. Assign a vendor on a service request.
-                  </TableCell>
+                  <TableHead className="min-w-[9rem]">Customer</TableHead>
+                  <TableHead className="min-w-[10rem]">Vendor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Job amount</TableHead>
+                  <TableHead className="whitespace-nowrap">Created</TableHead>
+                  <TableHead />
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.items.map((lead) => (
+                  <TableRow key={lead.id}>
+                    <TableCell className="min-w-[9rem]">
+                      <p className="font-medium">{lead.customerName}</p>
+                      <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                    </TableCell>
+                    <TableCell className="min-w-[10rem]">
+                      <p className="text-sm font-medium">
+                        {vendorNameById.get(lead.vendorUserId) ??
+                          `Vendor #${lead.vendorUserId}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ID #{lead.vendorUserId}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={statusVariant(lead.status)}
+                        className="capitalize whitespace-nowrap"
+                      >
+                        {formatStatus(lead.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatCurrency(lead.jobAmount)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(lead.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openLead(lead)}
+                      >
+                        View detail
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

@@ -81,75 +81,168 @@ export default function AlertsFeed() {
           Loading alerts...
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Alert</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Created</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.map((n) => {
-                const href = notificationHref(n);
-                return (
-                  <TableRow key={n.id} className={!n.read ? "bg-primary/5" : undefined}>
-                    <TableCell className="max-w-[420px]">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-medium">{n.title}</span>
-                        <span className="line-clamp-2 text-xs text-muted-foreground">{n.body}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="capitalize">{formatType(n.type)}</TableCell>
-                    <TableCell>
-                      {n.read ? (
-                        <Badge variant="secondary">Read</Badge>
-                      ) : (
-                        <Badge>Unread</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {!n.read ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={markingOne}
-                            onClick={() => markRead(n.id)}
-                          >
-                            <Check className="mr-1 h-4 w-4" />
-                            Read
-                          </Button>
-                        ) : null}
-                        {href ? (
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link href={href} aria-label={`Open ${n.title}`}>
-                              <ExternalLink className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        ) : null}
-                      </div>
+        <>
+          <div className="grid gap-3 md:hidden">
+            {data?.map((n) => (
+              <AlertCard
+                key={n.id}
+                notification={n}
+                isMarking={markingOne}
+                onMarkRead={markRead}
+              />
+            ))}
+            {!data?.length ? (
+              <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                No alerts yet. You will see updates here.
+              </div>
+            ) : null}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Alert</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Created</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.map((n) => {
+                  const href = notificationHref(n);
+                  return (
+                    <TableRow key={n.id} className={!n.read ? "bg-primary/5" : undefined}>
+                      <TableCell className="max-w-[420px]">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{n.title}</span>
+                          <span className="line-clamp-2 text-xs text-muted-foreground">{n.body}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="capitalize">{formatType(n.type)}</TableCell>
+                      <TableCell>
+                        {n.read ? (
+                          <Badge variant="secondary">Read</Badge>
+                        ) : (
+                          <Badge>Unread</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {!n.read ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={markingOne}
+                              onClick={() => markRead(n.id)}
+                            >
+                              <Check className="mr-1 h-4 w-4" />
+                              Read
+                            </Button>
+                          ) : null}
+                          {href ? (
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={href} aria-label={`Open ${n.title}`}>
+                                <ExternalLink className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {!data?.length ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                      No alerts yet. You will see updates here.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {!data?.length ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                    No alerts yet. You will see updates here.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </div>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
+  );
+}
+
+function AlertCard({
+  notification,
+  isMarking,
+  onMarkRead,
+}: {
+  notification: Notification;
+  isMarking: boolean;
+  onMarkRead: (id: number) => void;
+}) {
+  const href = notificationHref(notification);
+  const createdDate = new Date(notification.createdAt);
+  const createdAt = formatDistanceToNow(createdDate, {
+    addSuffix: true,
+  });
+
+  return (
+    <article
+      className={
+        notification.read
+          ? "rounded-xl border border-border bg-card p-4"
+          : "rounded-xl border border-primary/20 bg-primary/5 p-4"
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="line-clamp-2 text-sm font-semibold text-foreground">
+            {notification.title}
+          </h2>
+          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
+            {notification.body}
+          </p>
+        </div>
+        {notification.read ? (
+          <Badge variant="secondary" className="shrink-0">
+            Read
+          </Badge>
+        ) : (
+          <Badge className="shrink-0">Unread</Badge>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="capitalize">{formatType(notification.type)}</span>
+        <span aria-hidden>&bull;</span>
+        <time dateTime={createdDate.toISOString()}>{createdAt}</time>
+      </div>
+
+      {!notification.read || href ? (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          {!notification.read ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              disabled={isMarking}
+              onClick={() => onMarkRead(notification.id)}
+            >
+              <Check data-icon="inline-start" />
+              Mark read
+            </Button>
+          ) : null}
+          {href ? (
+            <Button variant="ghost" size="sm" className="w-full sm:w-auto" asChild>
+              <Link href={href} aria-label={`Open ${notification.title}`}>
+                <ExternalLink data-icon="inline-start" />
+                Open
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
   );
 }

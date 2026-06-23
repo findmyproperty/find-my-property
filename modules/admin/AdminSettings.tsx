@@ -95,22 +95,22 @@ const AdminSettings = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="font-heading text-2xl font-bold text-foreground">
+        <div className="min-w-0">
+          <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
             System Settings
           </h2>
           <p className="text-sm text-muted-foreground">
             Manage public identity and branding shown across the platform.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           {dirty ? (
             <motion.span
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+              className="w-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
             >
               Unsaved changes
             </motion.span>
@@ -119,12 +119,16 @@ const AdminSettings = () => {
             variant="outline"
             onClick={handleReset}
             disabled={!dirty || isUpdating}
-            className="gap-2"
+            className="w-full gap-2 sm:w-auto"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Discard
           </Button>
-          <Button onClick={handleSave} disabled={!dirty || isUpdating} className="gap-2">
+          <Button
+            onClick={handleSave}
+            disabled={!dirty || isUpdating}
+            className="w-full gap-2 sm:w-auto"
+          >
             {isUpdating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
@@ -135,12 +139,12 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="general" className="gap-2">
+      <Tabs defaultValue="general" className="min-w-0 space-y-6">
+        <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto bg-muted/50 p-1">
+          <TabsTrigger value="general" className="shrink-0 gap-2">
             <Globe className="h-4 w-4" /> General
           </TabsTrigger>
-          <TabsTrigger value="branding" className="gap-2">
+          <TabsTrigger value="branding" className="shrink-0 gap-2">
             <Palette className="h-4 w-4" /> Branding
           </TabsTrigger>
         </TabsList>
@@ -224,7 +228,7 @@ const AdminSettings = () => {
             title="Logo & favicon"
             subtitle="Upload your brand marks via Cloudinary. Save changes to apply across the site."
           >
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid min-w-0 gap-6 md:grid-cols-2">
               <ImageUploadField
                 label="Primary logo"
                 description="SVG or PNG, recommended ≤ 1 MB."
@@ -266,7 +270,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <section className="min-w-0 space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
       <header className="flex items-start gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           {icon}

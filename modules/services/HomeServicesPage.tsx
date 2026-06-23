@@ -25,13 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
@@ -296,23 +290,19 @@ export default function HomeServicesPage() {
                     <FormField
                       control={form.control}
                       name="subType"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel required>Service</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pick a service" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {HOME_SERVICE_TYPE_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={HOME_SERVICE_TYPE_OPTIONS}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Pick a service"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -320,23 +310,19 @@ export default function HomeServicesPage() {
                     <FormField
                       control={form.control}
                       name="propertyType"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel required>Property type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select property type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {PROPERTY_TYPE_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={PROPERTY_TYPE_OPTIONS}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select property type"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -459,23 +445,19 @@ export default function HomeServicesPage() {
                     <FormField
                       control={form.control}
                       name="preferredSlot"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel>Preferred slot</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Anytime" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {SLOT_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={SLOT_OPTIONS}
+                              value={field.value ?? ""}
+                              onValueChange={field.onChange}
+                              placeholder="Anytime"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

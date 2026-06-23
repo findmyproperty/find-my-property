@@ -298,7 +298,7 @@ const Index = ({ siteName: ssrSiteName }: IndexProps = {}) => {
               <div className="hidden sm:block">
                 <PropertyGridSkeleton count={4} columns="featured" />
               </div>
-              <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
+              <div className="scrollbar-hide  flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="min-w-[75vw] snap-start">
                     <PropertyCardSkeleton />
@@ -330,7 +330,7 @@ const Index = ({ siteName: ssrSiteName }: IndexProps = {}) => {
                 ))}
               </div>
               {/* Mobile horizontal scroll */}
-              <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
+              <div className="scrollbar-hide  flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
                 {featuredProperties.map((property, i) => (
                   <div
                     key={property.id}

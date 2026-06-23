@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -8,24 +7,25 @@ import { cn } from "@/lib/utils";
 
 interface ThemeToggleProps {
   className?: string;
+  showLabel?: boolean;
 }
 
-export default function ThemeToggle({ className }: ThemeToggleProps) {
+export default function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isDark = mounted && resolvedTheme === "dark";
+  const isDark = resolvedTheme === "dark";
+  const modeLabel = isDark ? "Dark Mode" : "Light Mode";
 
   return (
     <Button
       type="button"
       variant="ghost"
-      size="icon"
-      className={cn("rounded-full border border-border/60 bg-background/70 hover:bg-muted", className)}
+      size={showLabel ? "default" : "icon"}
+      className={cn(
+        "rounded-full border border-border/60 bg-background/70 hover:bg-muted",
+        showLabel &&
+          "h-auto w-full justify-start gap-2 rounded-md border-0 bg-transparent px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground",
+        className,
+      )}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -44,7 +44,7 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
           )}
         />
       </div>
-      <span className="sr-only">{isDark ? "Switch to light mode" : "Switch to dark mode"}</span>
+      <span className={showLabel ? undefined : "sr-only"}>{modeLabel}</span>
     </Button>
   );
 }

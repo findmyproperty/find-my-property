@@ -37,6 +37,14 @@ import { useToast } from "@/hooks/use-toast";
 
 const STATUSES: SupportTicketStatus[] = ["open", "in_progress", "resolved"];
 
+function formatCategory(category: string) {
+  return category.replace(/_/g, " ");
+}
+
+function formatStatus(status: string) {
+  return status.replace(/_/g, " ");
+}
+
 export default function AdminComplaints() {
   const { data, isLoading } = useAdminSupportTickets({ limit: 50 });
   const { mutate: patch, isPending } = useAdminPatchSupportTicket();
@@ -91,49 +99,90 @@ export default function AdminComplaints() {
         <div className="flex justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
+      ) : !data?.items.length ? (
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+          No support tickets yet.
+        </p>
       ) : (
-        <div className="rounded-xl border border-border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.items.map((t) => (
-                <TableRow
-                  key={t.id}
-                  className="cursor-pointer"
+        <div className="rounded-xl border border-border bg-card">
+          {/* Mobile: card list */}
+          <ul className="divide-y divide-border md:hidden">
+            {data.items.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
                   onClick={() => setSelected(t)}
                 >
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {t.subject}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {t.user?.name ?? `User #${t.userId}`}
-                    <span className="block text-xs text-muted-foreground capitalize">
-                      {t.userRole}
-                    </span>
-                  </TableCell>
-                  <TableCell className="capitalize text-sm">
-                    {t.category.replace("_", " ")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {t.status.replace("_", " ")}
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 flex-1 font-medium text-foreground line-clamp-2">
+                      {t.subject}
+                    </p>
+                    <Badge variant="outline" className="shrink-0 capitalize text-[10px]">
+                      {formatStatus(t.status)}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
-                  </TableCell>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span className="min-w-0 text-foreground">
+                      {t.user?.name ?? `User #${t.userId}`}
+                      <span className="ml-1 capitalize text-xs text-muted-foreground">
+                        · {t.userRole}
+                      </span>
+                    </span>
+                    <span className="capitalize">{formatCategory(t.category)}</span>
+                    <span className="text-xs">
+                      {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[12rem]">Subject</TableHead>
+                  <TableHead className="min-w-[9rem]">From</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Updated</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.items.map((t) => (
+                  <TableRow
+                    key={t.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelected(t)}
+                  >
+                    <TableCell className="max-w-[240px] font-medium">
+                      <span className="line-clamp-2">{t.subject}</span>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {t.user?.name ?? `User #${t.userId}`}
+                      <span className="block text-xs capitalize text-muted-foreground">
+                        {t.userRole}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm capitalize">
+                      {formatCategory(t.category)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {formatStatus(t.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

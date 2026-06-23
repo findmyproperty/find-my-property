@@ -14,6 +14,8 @@ import {
   Shield,
   Trash2,
   UserCircle,
+  FileText,
+  Store,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +47,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/auth-context";
 import type { UserRole } from "@/contexts/auth-context";
 import { normalizePhone } from "@/helpers";
 import { useToast } from "@/hooks/use-toast";
-import VendorProfileSection from "@/modules/vendor/VendorProfileSection";
+import { useVendorProfile } from "@/hooks/use-vendor-profile";
+import {
+  VendorBusinessForm,
+  VendorKycForm,
+  VendorProfileStatusBanner,
+} from "@/modules/vendor/VendorProfileSection";
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -70,6 +78,9 @@ const Profile = () => {
   const { user, updateProfile, requestPhoneOtp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const isVendor = user?.role === "vendor";
+  const { data: vendorProfile } = useVendorProfile();
+  const [profileTab, setProfileTab] = useState("account");
   const [name, setName] = useState(() => user?.name ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -260,267 +271,339 @@ const Profile = () => {
     open();
   };
 
+  const avatarBlock = (
+    <CldUploadWidget
+      uploadPreset={cloudinaryPreset}
+      options={{
+        multiple: false,
+        cropping: true,
+        croppingAspectRatio: 1,
+        showSkipCropButton: false,
+        clientAllowedFormats: ["image"],
+        maxFileSize: AVATAR_MAX_BYTES,
+        sources: ["local", "camera", "url"],
+        folder: "avatars",
+      }}
+      onSuccess={(result) => {
+        if (result.event !== "success") return;
+        const info = result.info;
+        if (info && typeof info !== "string") {
+          void handleCloudinarySuccess(info as CloudinaryUploadWidgetInfo);
+        }
+      }}
+      onError={(error) => {
+        toast({
+          title: "Upload failed",
+          description: typeof error === "string" ? error : "Please try again.",
+          variant: "destructive",
+        });
+        setIsUploadingAvatar(false);
+      }}
+    >
+      {({ open }) => (
+        <div className="flex flex-col items-center gap-4 lg:items-center">
+          <div className="relative shrink-0">
+            <Avatar className="size-20 ring-2 ring-border sm:size-28">
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary sm:text-2xl">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <Button
+              type="button"
+              size="icon"
+              className="absolute -bottom-1 -right-1 size-8 rounded-full sm:size-9"
+              onClick={() => openAvatarWidget(open)}
+              disabled={isUploadingAvatar}
+              aria-label={avatarUrl ? "Change profile photo" : "Upload profile photo"}
+            >
+              {isUploadingAvatar ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          <div className="min-w-0 flex-1 text-center lg:text-center">
+            <h3 className="truncate font-heading text-lg font-semibold text-foreground">
+              {displayName}
+            </h3>
+            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+            <div className="mt-2 flex justify-center">
+              <Badge variant="secondary" className="capitalize">
+                {roleLabel(user.role)}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-wrap justify-center gap-2 sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openAvatarWidget(open)}
+              disabled={isUploadingAvatar}
+            >
+              <Camera className="mr-2 h-3.5 w-3.5" />
+              {avatarUrl ? "Change photo" : "Upload photo"}
+            </Button>
+            {avatarUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => void handleRemoveAvatar()}
+                disabled={isUploadingAvatar}
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                Remove
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </CldUploadWidget>
+  );
+
+  const identityForm = (
+    <form onSubmit={handleSave} className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading text-lg">Identity</CardTitle>
+          <CardDescription>
+            This name appears across your dashboard and profile surfaces.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="profile-name" className="flex items-center gap-2">
+              <UserCircle className="h-4 w-4" />
+              Full name
+            </Label>
+            <Input
+              id="profile-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="profile-email" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email
+            </Label>
+            <Input id="profile-email" value={user.email ?? ""} disabled />
+            <p className="text-xs text-muted-foreground">
+              Email cannot be changed from this page.
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col items-stretch gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {hasNameChanges ? (
+              <>
+                <Pencil className="h-3.5 w-3.5" />
+                Unsaved name change
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Identity is up to date
+              </>
+            )}
+          </div>
+          <Button type="submit" disabled={isSaving || !hasNameChanges}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Saving...
+              </>
+            ) : (
+              "Save identity"
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading text-lg">Contact Verification</CardTitle>
+          <CardDescription>
+            Your phone number is updated only after OTP verification.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" />
+                <p className="font-medium text-foreground">
+                  {displayPhone || "No phone number added"}
+                </p>
+                {displayPhone ? (
+                  <Badge variant="outline" className="gap-1">
+                    <BadgeCheck className="h-3 w-3" />
+                    Verified
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Change this when your contact number changes.
+              </p>
+            </div>
+            <Button type="button" variant="outline" onClick={openPhoneDialog}>
+              <Pencil className="mr-2 h-4 w-4" />
+              {displayPhone ? "Change phone" : "Add phone"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {user.defaultRole === "admin" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-heading text-lg">
+              <Shield className="h-4 w-4 text-primary" />
+              Admin Role Override
+            </CardTitle>
+            <CardDescription>
+              Switch your current session role for testing role-specific dashboards.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={user.role}
+              onValueChange={async (val: UserRole) => {
+                const res = await updateProfile({ role: val });
+                if (res.success) {
+                  toast({
+                    title: "Role updated",
+                    description: `You are now a ${val}. Redirecting...`,
+                  });
+                  router.push("/");
+                  router.refresh();
+                } else {
+                  toast({
+                    title: "Failed",
+                    description: res.error || "Unknown error",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tenant">Tenant</SelectItem>
+                <SelectItem value="agent">Agent</SelectItem>
+                <SelectItem value="vendor">Vendor</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      ) : null}
+    </form>
+  );
+
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-6">
+    <div className="flex w-full min-w-0 max-w-5xl flex-col gap-6">
       <div>
-        <h2 className="font-heading text-2xl font-bold text-foreground">My Profile</h2>
+        <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
+          My Profile
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Keep your account information current and verified.
+          {isVendor
+            ? "Manage your account, business details, and KYC verification."
+            : "Keep your account information current and verified."}
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <Card className="h-fit overflow-hidden">
-          <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-            <CldUploadWidget
-              uploadPreset={cloudinaryPreset}
-              options={{
-                multiple: false,
-                cropping: true,
-                croppingAspectRatio: 1,
-                showSkipCropButton: false,
-                clientAllowedFormats: ["image"],
-                maxFileSize: AVATAR_MAX_BYTES,
-                sources: ["local", "camera", "url"],
-                folder: "avatars",
-              }}
-              onSuccess={(result) => {
-                if (result.event !== "success") return;
-                const info = result.info;
-                if (info && typeof info !== "string") {
-                  void handleCloudinarySuccess(info as CloudinaryUploadWidgetInfo);
-                }
-              }}
-              onError={(error) => {
-                toast({
-                  title: "Upload failed",
-                  description: typeof error === "string" ? error : "Please try again.",
-                  variant: "destructive",
-                });
-                setIsUploadingAvatar(false);
-              }}
-            >
-              {({ open }) => (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="size-28 ring-2 ring-border">
-                      {avatarUrl ? (
-                        <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
-                      ) : null}
-                      <AvatarFallback className="bg-primary/10 text-2xl font-bold text-primary">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button
-                      type="button"
-                      size="icon"
-                      className="absolute -bottom-1 -right-1 size-9 rounded-full"
-                      onClick={() => openAvatarWidget(open)}
-                      disabled={isUploadingAvatar}
-                      aria-label={avatarUrl ? "Change profile photo" : "Upload profile photo"}
-                    >
-                      {isUploadingAvatar ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Camera className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+      {isVendor ? (
+        <VendorProfileStatusBanner
+          profile={vendorProfile}
+          onGoToKyc={() => setProfileTab("kyc")}
+        />
+      ) : null}
 
-                  <div className="min-w-0">
-                    <h3 className="truncate font-heading text-lg font-semibold text-foreground">
-                      {displayName}
-                    </h3>
-                    <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-                    <div className="mt-2 flex justify-center">
-                      <Badge variant="secondary" className="capitalize">
-                        {roleLabel(user.role)}
-                      </Badge>
-                    </div>
-                  </div>
+      {isVendor ? (
+        <Tabs value={profileTab} onValueChange={setProfileTab} className="min-w-0 space-y-4">
+          <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto">
+            <TabsTrigger value="account" className="shrink-0 gap-2">
+              <UserCircle className="h-4 w-4" />
+              Account
+            </TabsTrigger>
+            <TabsTrigger value="business" className="shrink-0 gap-2">
+              <Store className="h-4 w-4" />
+              Business
+            </TabsTrigger>
+            <TabsTrigger value="kyc" className="shrink-0 gap-2">
+              <FileText className="h-4 w-4" />
+              KYC documents
+            </TabsTrigger>
+          </TabsList>
 
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAvatarWidget(open)}
-                      disabled={isUploadingAvatar}
-                    >
-                      <Camera className="mr-2 h-3.5 w-3.5" />
-                      {avatarUrl ? "Change photo" : "Upload photo"}
-                    </Button>
-                    {avatarUrl ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => void handleRemoveAvatar()}
-                        disabled={isUploadingAvatar}
-                      >
-                        <Trash2 className="mr-2 h-3.5 w-3.5" />
-                        Remove
-                      </Button>
-                    ) : null}
-                  </div>
+          <TabsContent value="account" className="mt-0 space-y-6">
+            <Card className="overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+                  {avatarBlock}
                 </div>
-              )}
-            </CldUploadWidget>
-
-            <Separator />
-
-            <div className="grid w-full gap-3 text-left">
-              <ProfileFact icon={Mail} label="Email" value={user.email ?? "-"} />
-              <ProfileFact icon={Phone} label="Phone" value={displayPhone || "Not verified"} />
-              <ProfileFact icon={Shield} label="Role" value={roleLabel(user.role)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <form onSubmit={handleSave} className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-heading text-lg">Identity</CardTitle>
-              <CardDescription>
-                This name appears across your dashboard and profile surfaces.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="profile-name" className="flex items-center gap-2">
-                  <UserCircle className="h-4 w-4" />
-                  Full name
-                </Label>
-                <Input
-                  id="profile-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="profile-email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Label>
-                <Input id="profile-email" value={user.email ?? ""} disabled />
-                <p className="text-xs text-muted-foreground">
-                  Email cannot be changed from this page.
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col items-stretch gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {hasNameChanges ? (
-                  <>
-                    <Pencil className="h-3.5 w-3.5" />
-                    Unsaved name change
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Identity is up to date
-                  </>
-                )}
-              </div>
-              <Button type="submit" disabled={isSaving || !hasNameChanges}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                    Saving...
-                  </>
-                ) : (
-                  "Save identity"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-heading text-lg">Contact Verification</CardTitle>
-              <CardDescription>
-                Your phone number is updated only after OTP verification.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <p className="font-medium text-foreground">
-                      {displayPhone || "No phone number added"}
-                    </p>
-                    {displayPhone ? (
-                      <Badge variant="outline" className="gap-1">
-                        <BadgeCheck className="h-3 w-3" />
-                        Verified
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Change this when your contact number changes.
-                  </p>
+                <Separator className="my-4" />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <ProfileFact icon={Mail} label="Email" value={user.email ?? "-"} />
+                  <ProfileFact icon={Phone} label="Phone" value={displayPhone || "Not verified"} />
+                  <ProfileFact icon={Shield} label="Role" value={roleLabel(user.role)} />
                 </div>
-                <Button type="button" variant="outline" onClick={openPhoneDialog}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {displayPhone ? "Change phone" : "Add phone"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {user.defaultRole === "admin" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 font-heading text-lg">
-                  <Shield className="h-4 w-4 text-primary" />
-                  Admin Role Override
-                </CardTitle>
-                <CardDescription>
-                  Switch your current session role for testing role-specific dashboards.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Select
-                  value={user.role}
-                  onValueChange={async (val: UserRole) => {
-                    const res = await updateProfile({ role: val });
-                    if (res.success) {
-                      toast({
-                        title: "Role updated",
-                        description: `You are now a ${val}. Redirecting...`,
-                      });
-                      router.push("/");
-                      router.refresh();
-                    } else {
-                      toast({
-                        title: "Failed",
-                        description: res.error || "Unknown error",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tenant">Tenant</SelectItem>
-                    <SelectItem value="agent">Agent</SelectItem>
-                    <SelectItem value="vendor">Vendor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
               </CardContent>
             </Card>
-          ) : null}
-        </form>
-      </div>
+            {identityForm}
+          </TabsContent>
 
-      {user.role === "vendor" ? <VendorProfileSection /> : null}
+          <TabsContent value="business" className="mt-0">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <VendorBusinessForm
+                  key={`business-${vendorProfile?.updatedAt ?? "new"}`}
+                  profile={vendorProfile ?? null}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="kyc" className="mt-0">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <VendorKycForm
+                  key={`kyc-${vendorProfile?.updatedAt ?? "new"}`}
+                  profile={vendorProfile ?? null}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <Card className="h-fit overflow-hidden">
+            <CardContent className="flex flex-col items-center gap-4 p-4 sm:p-6 text-center">
+              {avatarBlock}
+              <Separator />
+              <div className="grid w-full gap-3 text-left">
+                <ProfileFact icon={Mail} label="Email" value={user.email ?? "-"} />
+                <ProfileFact icon={Phone} label="Phone" value={displayPhone || "Not verified"} />
+                <ProfileFact icon={Shield} label="Role" value={roleLabel(user.role)} />
+              </div>
+            </CardContent>
+          </Card>
+          {identityForm}
+        </div>
+      )}
 
       <Dialog open={phoneDialogOpen} onOpenChange={handlePhoneDialogOpenChange}>
         <DialogContent className="sm:max-w-md">

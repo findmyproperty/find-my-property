@@ -29,15 +29,9 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
@@ -397,26 +391,19 @@ export default function EventManagementPage() {
                     <FormField
                       control={form.control}
                       name="venueType"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel required>Venue type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pick venue type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {VENUE_TYPE_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={VENUE_TYPE_OPTIONS}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Pick venue type"
+                              disableSearch={VENUE_TYPE_OPTIONS.length <= 6}
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -424,26 +411,19 @@ export default function EventManagementPage() {
                     <FormField
                       control={form.control}
                       name="budgetRange"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel>Budget range</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Not decided" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {BUDGET_RANGE_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={BUDGET_RANGE_OPTIONS}
+                              value={field.value ?? ""}
+                              onValueChange={field.onChange}
+                              placeholder="Not decided"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -578,26 +558,19 @@ export default function EventManagementPage() {
                     <FormField
                       control={form.control}
                       name="preferredSlot"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel>Preferred slot</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Anytime" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {SLOT_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={SLOT_OPTIONS}
+                              value={field.value ?? ""}
+                              onValueChange={field.onChange}
+                              placeholder="Anytime"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

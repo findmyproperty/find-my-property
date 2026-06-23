@@ -284,7 +284,7 @@ export default function ServiceRequestsAdmin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-4">
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground mb-1">
             Service Requests
@@ -294,39 +294,49 @@ export default function ServiceRequestsAdmin() {
           </p>
         </div>
         {stats ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            <StatTile
-              icon={ClipboardList}
-              label="Open"
-              value={stats.openTotal}
-              tone="default"
-            />
-            <StatTile
-              icon={Truck}
-              label="Packers & Movers"
-              value={stats.totals.packers_movers ?? 0}
-            />
-            <StatTile
-              icon={PaintBucket}
-              label="Painting & Cleaning"
-              value={stats.totals.painting_cleaning ?? 0}
-            />
-            <StatTile
-              icon={Wrench}
-              label="Home Services"
-              value={stats.totals.home_services ?? 0}
-            />
-            <StatTile
-              icon={PartyPopper}
-              label="Event Management"
-              value={stats.totals.event_management ?? 0}
-            />
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
+            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+              <StatTile
+                icon={ClipboardList}
+                label="Open"
+                value={stats.openTotal}
+                tone="default"
+              />
+            </div>
+            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+              <StatTile
+                icon={Truck}
+                label="Packers & Movers"
+                value={stats.totals.packers_movers ?? 0}
+              />
+            </div>
+            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+              <StatTile
+                icon={PaintBucket}
+                label="Painting & Cleaning"
+                value={stats.totals.painting_cleaning ?? 0}
+              />
+            </div>
+            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+              <StatTile
+                icon={Wrench}
+                label="Home Services"
+                value={stats.totals.home_services ?? 0}
+              />
+            </div>
+            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+              <StatTile
+                icon={PartyPopper}
+                label="Event Management"
+                value={stats.totals.event_management ?? 0}
+              />
+            </div>
           </div>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-3">
-        <div className="min-w-[200px] flex-1">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+        <div className="min-w-0 sm:col-span-2 lg:min-w-[12rem] lg:flex-1">
           <Label className="text-xs text-muted-foreground">Search</Label>
           <div className="relative mt-1">
             <Search
@@ -337,11 +347,11 @@ export default function ServiceRequestsAdmin() {
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               placeholder="Search by name or phone"
-              className="pl-9"
+              className="pl-9 w-full"
             />
           </div>
         </div>
-        <div className="w-44">
+        <div className="min-w-0 w-full lg:w-44">
           <Label className="text-xs text-muted-foreground">Service type</Label>
           <Select
             value={type}
@@ -352,7 +362,7 @@ export default function ServiceRequestsAdmin() {
               })
             }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger className="mt-1 w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -365,7 +375,7 @@ export default function ServiceRequestsAdmin() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-40">
+        <div className="min-w-0 w-full lg:w-40">
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select
             value={status}
@@ -376,7 +386,7 @@ export default function ServiceRequestsAdmin() {
               })
             }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger className="mt-1 w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -393,6 +403,7 @@ export default function ServiceRequestsAdmin() {
           <Button
             variant="ghost"
             size="sm"
+            className="w-full sm:col-span-2 sm:w-auto lg:w-auto"
             onClick={() => {
               setSearchDraft("");
               setQuery({ type: "all", status: "all", q: "", page: 1 });
@@ -1242,18 +1253,18 @@ interface StatTileProps {
 function StatTile({ icon: Icon, label, value, tone = "muted" }: StatTileProps) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 ${
+      className={`flex h-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 ${
         tone === "default" ? "ring-1 ring-primary/20" : ""
       }`}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-        <Icon className="h-4 w-4 text-primary" aria-hidden />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 sm:h-9 sm:w-9">
+        <Icon className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" aria-hidden />
       </div>
-      <div>
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div className="min-w-0">
+        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground sm:text-[11px]">
           {label}
         </p>
-        <p className="font-heading text-lg font-semibold text-foreground">
+        <p className="font-heading text-base font-semibold text-foreground sm:text-lg">
           {value}
         </p>
       </div>
@@ -1266,33 +1277,43 @@ export function ServiceRequestsOverviewTiles() {
   const { data: stats } = useAdminServiceRequestStats();
   if (!stats) return null;
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      <StatTile
-        icon={Sparkles}
-        label="Open service requests"
-        value={stats.openTotal}
-        tone="default"
-      />
-      <StatTile
-        icon={Truck}
-        label="Packers & Movers"
-        value={stats.totals.packers_movers ?? 0}
-      />
-      <StatTile
-        icon={PaintBucket}
-        label="Painting & Cleaning"
-        value={stats.totals.painting_cleaning ?? 0}
-      />
-      <StatTile
-        icon={Wrench}
-        label="Home Services"
-        value={stats.totals.home_services ?? 0}
-      />
-      <StatTile
-        icon={PartyPopper}
-        label="Event Management"
-        value={stats.totals.event_management ?? 0}
-      />
+    <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={Sparkles}
+          label="Open service requests"
+          value={stats.openTotal}
+          tone="default"
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={Truck}
+          label="Packers & Movers"
+          value={stats.totals.packers_movers ?? 0}
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={PaintBucket}
+          label="Painting & Cleaning"
+          value={stats.totals.painting_cleaning ?? 0}
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={Wrench}
+          label="Home Services"
+          value={stats.totals.home_services ?? 0}
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={PartyPopper}
+          label="Event Management"
+          value={stats.totals.event_management ?? 0}
+        />
+      </div>
     </div>
   );
 }

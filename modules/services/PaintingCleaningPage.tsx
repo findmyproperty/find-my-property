@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,15 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
@@ -116,14 +108,6 @@ export default function PaintingCleaningPage() {
       city: current.city || user.locationCity || "",
     });
   }, [isAuthReady, user, form]);
-
-  const groupedSubtypes = useMemo(() => {
-    const groups: Record<string, typeof SUB_TYPE_OPTIONS> = {};
-    for (const opt of SUB_TYPE_OPTIONS) {
-      (groups[opt.group] ??= []).push(opt);
-    }
-    return groups;
-  }, []);
 
   const onSubmit = async (values: PaintingCleaningFormValues) => {
     await mutation.mutateAsync({
@@ -317,36 +301,23 @@ export default function PaintingCleaningPage() {
                     <FormField
                       control={form.control}
                       name="subType"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel required>Service</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pick a service" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {Object.entries(groupedSubtypes).map(
-                                ([group, items]) => (
-                                  <SelectGroup key={group}>
-                                    <SelectLabel>{group}</SelectLabel>
-                                    {items.map((o) => (
-                                      <SelectItem
-                                        key={o.value}
-                                        value={o.value}
-                                      >
-                                        {o.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={SUB_TYPE_OPTIONS.map((option) => ({
+                                value: option.value,
+                                label: option.label,
+                                description: option.group,
+                              }))}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Pick a service"
+                              searchPlaceholder="Search service..."
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -354,26 +325,19 @@ export default function PaintingCleaningPage() {
                     <FormField
                       control={form.control}
                       name="propertyType"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel required>Property type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select property type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {PROPERTY_TYPE_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={PROPERTY_TYPE_OPTIONS}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select property type"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -503,26 +467,19 @@ export default function PaintingCleaningPage() {
                     <FormField
                       control={form.control}
                       name="preferredSlot"
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel>Preferred slot</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Anytime" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {SLOT_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Combobox
+                              options={SLOT_OPTIONS}
+                              value={field.value ?? ""}
+                              onValueChange={field.onChange}
+                              placeholder="Anytime"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
