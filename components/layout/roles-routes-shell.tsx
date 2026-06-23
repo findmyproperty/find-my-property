@@ -25,7 +25,9 @@ function MarketplacePublicChrome({
   children: ReactNode
   isPropertyPage?: boolean
 }) {
-  const padding = isPropertyPage ? "px-5 md:px-20 pt-18" : "px-5 md:px-10"
+  const padding = isPropertyPage
+    ? "px-5 pb-6 pt-24 md:px-20 md:pt-[7.5rem]"
+    : "px-5 pb-4 pt-24 sm:pb-6 md:px-10 md:pt-[7.5rem]"
   return (
     <ServiceAuthModalProvider>
       <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">

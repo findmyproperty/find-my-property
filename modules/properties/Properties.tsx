@@ -618,7 +618,7 @@ const Properties = () => {
   );
 
   return (
-    <div className={isAuthenticated ? "pb-12" : "pb-20 pt-24"}>
+    <div className={isAuthenticated ? "pb-12" : "pb-20 pt-4"}>
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
         <div className="container mx-auto">
           {/* Mobile & tablet: filters button + list/map */}
