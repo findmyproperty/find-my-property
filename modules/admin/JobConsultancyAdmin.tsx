@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
   parseAsInteger,
   parseAsString,
@@ -11,16 +12,13 @@ import {
 } from "nuqs";
 import {
   ChevronRight,
-  Loader2,
   Mail,
   MessageCircle,
   PhoneCall,
-  Search,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -36,14 +34,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import {
   useAdminJobConsultancy,
   useAdminJobConsultancyStats,
@@ -56,6 +49,10 @@ import type {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CONSULTANCY_META } from "@/modules/job-consultancy/job-consultancy-config";
+import {
+  adminStatusOptionsToMap,
+  JOB_CONSULTANCY_STATUS_OPTIONS,
+} from "@/lib/admin/status-config";
 
 function formatPhoneForLink(phone: string): string {
   return phone.replace(/[^0-9+]/g, "");
@@ -78,46 +75,7 @@ const STATUS_VALUES: JobConsultancyStatus[] = [
 
 const TYPE_VALUES: JobConsultancyType[] = ["it", "non_it", "customer_support"];
 
-const STATUS_META: Record<
-  JobConsultancyStatus,
-  { label: string; className: string }
-> = {
-  new: {
-    label: "New",
-    className:
-      "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
-  },
-  contacted: {
-    label: "Contacted",
-    className:
-      "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300",
-  },
-  screening: {
-    label: "Screening",
-    className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  },
-  interview_scheduled: {
-    label: "Interview",
-    className:
-      "border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-300",
-  },
-  placed: {
-    label: "Placed",
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
-  },
-  rejected: {
-    label: "Rejected",
-    className:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300",
-  },
-  cancelled: {
-    label: "Cancelled",
-    className:
-      "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-500/30 dark:bg-zinc-500/15 dark:text-zinc-300",
-  },
-};
+const STATUS_META = adminStatusOptionsToMap(JOB_CONSULTANCY_STATUS_OPTIONS);
 
 const filterParsers = {
   type: parseAsStringLiteral(["all", ...TYPE_VALUES] as const).withDefault("all"),
@@ -141,6 +99,7 @@ export default function JobConsultancyAdmin() {
   });
 
   const [searchDraft, setSearchDraft] = useState(q);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   useEffect(() => {
     const handle = setTimeout(() => {
       if (searchDraft !== q) {
@@ -161,7 +120,7 @@ export default function JobConsultancyAdmin() {
     [type, status, q, page],
   );
 
-  const { data, isLoading, isError } = useAdminJobConsultancy(listQuery);
+  const { data, isLoading, isError, error, isFetching } = useAdminJobConsultancy(listQuery);
   const { data: stats } = useAdminJobConsultancyStats();
   const updateMutation = useAdminUpdateJobConsultancy();
 
@@ -199,178 +158,156 @@ export default function JobConsultancyAdmin() {
 
   const nextStatus = selected ? getNextStatus(selected.status) : null;
 
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = data?.limit ?? 20;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasActiveFilters = type !== "all";
+  const clearFilters = () => setQuery({ type: "all", page: 1 });
+
+  const columns = useMemo<ColumnDef<JobConsultancyDTO, unknown>[]>(
+    () => [
+      {
+        id: "candidate",
+        header: "Candidate",
+        cell: ({ row }) => (
+          <>
+            <p className="font-medium text-foreground">{row.original.name}</p>
+            <p className="text-xs text-muted-foreground">{row.original.phone}</p>
+          </>
+        ),
+      },
+      {
+        id: "type",
+        header: "Type",
+        cell: ({ row }) => {
+          const meta = CONSULTANCY_META[row.original.consultancyType];
+          const Icon = meta.icon;
+          return (
+            <span className="inline-flex items-center gap-1.5 text-sm">
+              <Icon className="h-3.5 w-3.5 text-primary" />
+              {meta.label}
+            </span>
+          );
+        },
+      },
+      {
+        id: "city",
+        header: "City",
+        meta: { className: "text-sm text-muted-foreground" },
+        cell: ({ row }) => row.original.city || "—",
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const s = STATUS_META[row.original.status] ?? STATUS_META.new;
+          return (
+            <Badge variant="outline" className={s.className}>
+              {s.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "submitted",
+        header: "Submitted",
+        meta: { className: "text-sm text-muted-foreground" },
+        cell: ({ row }) =>
+          formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true }),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">
-            Job Consultancy
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            IT, Non IT &amp; Customer Support — click a status to update instantly.
-          </p>
-        </div>
-        {stats ? (
-          <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{stats.openTotal}</span>{" "}
-            open inquiries
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search name or phone…"
-            className="pl-9"
-            value={searchDraft}
-            onChange={(e) => setSearchDraft(e.target.value)}
-          />
-        </div>
-        <Select
-          value={type}
-          onValueChange={(v) =>
-            setQuery({ type: v as "all" | JobConsultancyType, page: 1 })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Consultancy type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {TYPE_VALUES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {CONSULTANCY_META[t].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={status}
-          onValueChange={(v) =>
-            setQuery({ status: v as "all" | JobConsultancyStatus, page: 1 })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_VALUES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_META[s].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {(type !== "all" || status !== "all" || q) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSearchDraft("");
-              setQuery({ type: "all", status: "all", q: "", page: 1 });
+    <>
+      <AdminListPage
+        title="Job Consultancy"
+        description="IT, Non IT & Customer Support — click a status to update instantly."
+        headerAction={
+          stats ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{stats.openTotal}</span>{" "}
+              open inquiries
+            </p>
+          ) : null
+        }
+        isLoading={isLoading}
+        loadingLabel="Loading job consultancy requests…"
+        isError={isError}
+        error={error}
+        errorTitle="Could not load job consultancy requests"
+        toolbar={
+          <AdminToolbar
+            statusFilter={{
+              value: status,
+              onChange: (value) =>
+                setQuery({ status: value as typeof status, page: 1 }),
+              options: JOB_CONSULTANCY_STATUS_OPTIONS,
+              totalCount: total,
             }}
-          >
-            <X className="mr-1 h-4 w-4" />
-            Clear
-          </Button>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-border bg-card">
-        {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading…
-          </div>
-        ) : isError ? (
-          <p className="py-16 text-center text-destructive">
-            Could not load job consultancy requests.
-          </p>
-        ) : !data?.items.length ? (
-          <p className="py-16 text-center text-muted-foreground">
-            No requests match your filters.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Candidate</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.items.map((r) => {
-                const meta = CONSULTANCY_META[r.consultancyType];
-                const Icon = meta.icon;
-                const s = STATUS_META[r.status] ?? STATUS_META.new;
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => openRow(r)}
+            search={{
+              value: searchDraft,
+              onChange: setSearchDraft,
+              placeholder: "Search name or phone…",
+            }}
+            filterSheet={{
+              open: filterSheetOpen,
+              onOpenChange: setFilterSheetOpen,
+              title: "Filters",
+              description: "Narrow by consultancy type.",
+              hasActiveFilters,
+              onClear: clearFilters,
+              children: (
+                <div className="space-y-2">
+                  <Label htmlFor="consultancy-type-filter">Consultancy type</Label>
+                  <Select
+                    value={type}
+                    onValueChange={(v) =>
+                      setQuery({ type: v as typeof type, page: 1 })
+                    }
                   >
-                    <TableCell>
-                      <p className="font-medium text-foreground">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">{r.phone}</p>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 text-sm">
-                        <Icon className="h-3.5 w-3.5 text-primary" />
-                        {meta.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {r.city || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={s.className}>
-                        {s.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-
-      {data && data.total > data.limit ? (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            Page {data.page} · {data.total} total
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setQuery({ page: page - 1 })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page * data.limit >= data.total}
-              onClick={() => setQuery({ page: page + 1 })}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      ) : null}
+                    <SelectTrigger id="consultancy-type-filter">
+                      <SelectValue placeholder="Consultancy type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      {TYPE_VALUES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {CONSULTANCY_META[t].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ),
+            }}
+          />
+        }
+        isEmpty={items.length === 0}
+        emptyTitle="No requests match your filters"
+        emptyDescription="Try All statuses, clearing search, or adjusting filters."
+        pagination={
+          total > pageSize
+            ? {
+                page,
+                totalPages,
+                total,
+                pageSize,
+                onPageChange: (nextPage) => setQuery({ page: nextPage }),
+                isFetching: isFetching && !isLoading,
+              }
+            : undefined
+        }
+      >
+        <AdminDataTable
+          columns={columns}
+          data={items}
+          getRowId={(row) => String(row.id)}
+          onRowClick={openRow}
+        />
+      </AdminListPage>
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
@@ -550,6 +487,6 @@ export default function JobConsultancyAdmin() {
           ) : null}
         </SheetContent>
       </Sheet>
-    </div>
+    </>
   );
 }

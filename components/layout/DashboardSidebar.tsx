@@ -2,24 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Building2, ChevronsUpDown, ChevronRight, LogOut, UserCircle } from "lucide-react"
+import { Building2, ChevronRight, LogOut } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { NavLink } from "@/components/layout/NavLink"
-import { UserAvatar } from "@/components/user-avatar"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -103,7 +95,6 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
   const roleLabel = getRoleSidebarLabel(user?.role)
   const { data: unreadData } = useUnreadNotificationCount()
   const unreadCount = unreadData?.count ?? 0
-  const userContact = user?.email?.trim() || user?.phone?.trim() || "Signed in"
 
   const handleLogout = async () => {
     closeMobileSidebar()
@@ -288,54 +279,15 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    tooltip={user.name}
-                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                  >
-                    <UserAvatar
-                      name={user.name}
-                      avatarUrl={user.avatarUrl}
-                      className="size-8 shrink-0"
-                      fallbackClassName="text-xs"
-                    />
-                    <div className="grid min-w-0 flex-1 text-left leading-tight">
-                      <span className="truncate font-semibold">{user.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {userContact}
-                      </span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4 shrink-0" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 rounded-lg"
-                  side={isMobile ? "bottom" : "right"}
-                  align="end"
-                  sideOffset={4}
-                >
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/profile"
-                      onClick={closeMobileSidebar}
-                      className="flex cursor-default items-center gap-2"
-                    >
-                      <UserCircle className="size-4" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="gap-2 text-destructive focus:text-destructive"
-                    onClick={() => void handleLogout()}
-                  >
-                    <LogOut className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <SidebarMenuButton
+                size="lg"
+                tooltip="Log out"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => void handleLogout()}
+              >
+                <LogOut className="size-4 shrink-0" />
+                <span>Log out</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

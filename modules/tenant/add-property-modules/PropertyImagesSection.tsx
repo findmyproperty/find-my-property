@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { PropertyFormValues } from "./schema";
+import { PropertyImagePreview } from "./PropertyImagePreview";
 import { CldUploadWidget } from "next-cloudinary";
 
 export const PropertyImagesSection = () => {
@@ -106,6 +107,10 @@ export const PropertyImagesSection = () => {
           </div>
         </div>
       )}
+
+      {thumbnailUrl ? (
+        <PropertyImagePreview imageUrl={thumbnailUrl} />
+      ) : null}
     </div>
   );
 };

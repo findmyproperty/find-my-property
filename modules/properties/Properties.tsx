@@ -281,7 +281,7 @@ const Properties = () => {
             onClick={() => void setQuery({ loc: "All Localities" })}
             className={`shrink-0 rounded-full px-3 py-2 text-left text-sm font-medium transition-all ${
               locality === "All Localities"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
@@ -294,7 +294,7 @@ const Properties = () => {
               onClick={() => void setQuery({ loc: opt.name })}
               className={`inline-flex max-w-[min(100%,14rem)] shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-left text-sm font-medium transition-all ${
                 locality === opt.name
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
               title={opt.count > 0 ? `${opt.count} listing${opt.count === 1 ? "" : "s"}` : undefined}
@@ -303,7 +303,7 @@ const Properties = () => {
               {opt.count > 0 ? (
                 <span
                   className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
-                    locality === opt.name ? "bg-background/20 text-background" : "bg-background/60 text-foreground"
+                    locality === opt.name ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/60 text-foreground"
                   }`}
                 >
                   {opt.count}
@@ -329,7 +329,7 @@ const Properties = () => {
               onClick={() => void setQuery({ type: filter === type ? "all" : type })}
               className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                 filter === type
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -341,7 +341,7 @@ const Properties = () => {
             onClick={() => void setQuery({ type: "all" })}
             className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
               filter === "all"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
@@ -360,7 +360,7 @@ const Properties = () => {
               onClick={() => toggleBHK(bhk)}
               className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedBHK.includes(bhk)
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -372,7 +372,7 @@ const Properties = () => {
             onClick={() => toggleBHK(4)}
             className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
               selectedBHK.includes(4)
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
@@ -397,7 +397,7 @@ const Properties = () => {
               }}
               className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                 isBudgetPresetActive(preset)
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -417,7 +417,7 @@ const Properties = () => {
               onClick={() => toggleFurnishing(opt.value)}
               className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedFurnishing.includes(opt.value)
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >

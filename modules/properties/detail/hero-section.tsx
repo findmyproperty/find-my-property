@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, MapPin, Play } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { Property } from "@/components/property/PropertyCard";
 
 type HeroSectionProps = {
@@ -11,7 +10,7 @@ type HeroSectionProps = {
   onMainImageChange: (index: number) => void;
 };
 
-/** Full-width hero: main image, thumbnail strip, title/price overlay, back + actions. */
+/** Full-width hero: main image, thumbnail strip, title/price overlay. */
 export function HeroSection({
   property,
   images,
@@ -34,13 +33,6 @@ export function HeroSection({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-        <Link
-          href="/browse"
-          className="absolute top-6 left-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-card/80 text-foreground backdrop-blur-sm transition-colors hover:bg-card"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
 
         {images.length > 1 && (
           <div className="absolute top-6 right-6 z-10 flex gap-2">
@@ -67,16 +59,6 @@ export function HeroSection({
             <MapPin className="h-4 w-4 shrink-0" /> <span className="min-w-0">{property.location}</span>
           </p>
         </div>
-
-        {/* <div className="absolute bottom-6 right-6 z-10 flex gap-2">
-          <button
-            type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground backdrop-blur-sm transition-colors hover:bg-white"
-            title="Video tour / Slideshow"
-          >
-            <Play className="ml-0.5 h-5 w-5" />
-          </button>
-        </div> */}
       </div>
     </div>
   );

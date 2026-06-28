@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { Loader2, Mail, RefreshCw, Search } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,19 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import {
   useAdminEmailLogs,
   useResendEmailLog,
 } from "@/hooks/use-email-logs";
-import type { EmailLogStatus } from "@/schema/email-log";
+import type { EmailLog, EmailLogStatus } from "@/schema/email-log";
+import { EMAIL_LOG_STATUS_OPTIONS } from "@/lib/admin/status-config";
+
+const PAGE_SIZE = 25;
 
 const STATUS_VALUES = ["sent", "failed", "skipped", "queued"] as const;
 
@@ -65,6 +64,19 @@ export default function EmailLogsAdmin() {
     page: parseAsInteger.withDefault(1),
   });
 
+  const [search, setSearch] = useState(filters.q);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  useEffect(() => setSearch(filters.q), [filters.q]);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      if (search !== filters.q) {
+        void setFilters({ q: search, page: 1 });
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [search, filters.q, setFilters]);
+
   const query = useMemo(
     () => ({
       q: filters.q.trim() || undefined,
@@ -74,214 +86,196 @@ export default function EmailLogsAdmin() {
           ? undefined
           : (filters.status as EmailLogStatus),
       page: filters.page,
-      limit: 25,
+      limit: PAGE_SIZE,
     }),
     [filters],
   );
 
-  const { data, isLoading, isError } = useAdminEmailLogs(query);
+  const { data, isLoading, isError, error, isFetching } = useAdminEmailLogs(query);
   const resendMutation = useResendEmailLog();
 
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
+  const hasActiveFilters = filters.feature !== "all";
+  const clearFilters = () => void setFilters({ feature: "all", page: 1 });
+
+  const columns = useMemo<ColumnDef<EmailLog, unknown>[]>(
+    () => [
+      {
+        id: "feature",
+        header: "Feature",
+        meta: { className: "capitalize" },
+        cell: ({ row }) => formatLabel(row.original.feature),
+      },
+      {
+        id: "trigger",
+        header: "Trigger",
+        meta: { className: "capitalize" },
+        cell: ({ row }) => formatLabel(row.original.triggerEvent),
+      },
+      {
+        id: "recipient",
+        header: "Recipient",
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="text-sm">{row.original.recipientEmail}</span>
+            {row.original.recipientRole ? (
+              <span className="text-xs capitalize text-muted-foreground">
+                {row.original.recipientRole}
+              </span>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: "subject",
+        header: "Subject",
+        meta: { className: "max-w-[240px] truncate" },
+        cell: ({ row }) => row.original.subject,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const log = row.original;
+          return (
+            <>
+              <Badge variant={statusVariant(log.status)}>{log.status}</Badge>
+              {log.errorMessage ? (
+                <p className="mt-1 max-w-[200px] truncate text-xs text-destructive">
+                  {log.errorMessage}
+                </p>
+              ) : null}
+              {log.skippedReason ? (
+                <p className="mt-1 max-w-[200px] truncate text-xs text-muted-foreground">
+                  {log.skippedReason}
+                </p>
+              ) : null}
+            </>
+          );
+        },
+      },
+      {
+        id: "sent",
+        header: "Sent",
+        meta: { className: "whitespace-nowrap text-sm text-muted-foreground" },
+        cell: ({ row }) => {
+          const log = row.original;
+          return log.sentAt
+            ? formatDistanceToNow(new Date(log.sentAt), { addSuffix: true })
+            : formatDistanceToNow(new Date(log.createdAt), { addSuffix: true });
+        },
+      },
+      {
+        id: "resends",
+        header: "Resends",
+        meta: { className: "text-right tabular-nums" },
+        cell: ({ row }) => row.original.resendCount,
+      },
+      {
+        id: "action",
+        header: "Action",
+        meta: { className: "text-right" },
+        cell: ({ row }) => (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={resendMutation.isPending}
+            onClick={() => resendMutation.mutate(row.original.id)}
+          >
+            <RefreshCw className="mr-1 size-3.5" />
+            Resend
+          </Button>
+        ),
+      },
+    ],
+    [resendMutation],
+  );
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Mail className="size-5 text-primary" />
-          <div>
-            <h1 className="font-heading text-xl font-bold">Email delivery log</h1>
-            <p className="text-sm text-muted-foreground">
-              Every triggered email, delivery status, and resend history.
-            </p>
-          </div>
-        </div>
-        {data ? (
-          <Badge variant="secondary">{data.total} total</Badge>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="min-w-[220px] flex-1">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={filters.q}
-              onChange={(e) =>
-                void setFilters({ q: e.target.value, page: 1 })
-              }
-              placeholder="Search recipient, subject, template..."
-              className="pl-9"
-            />
-          </div>
-        </div>
-        <Select
-          value={filters.feature}
-          onValueChange={(value) =>
-            void setFilters({ feature: value, page: 1 })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FEATURE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.status}
-          onValueChange={(value) =>
-            void setFilters({
-              status: value as typeof filters.status,
-              page: 1,
-            })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_VALUES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {formatLabel(status)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="size-6 animate-spin" />
-          Loading email logs...
-        </div>
-      ) : isError ? (
-        <p className="text-sm text-destructive">Could not load email logs.</p>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Feature</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Sent</TableHead>
-                <TableHead className="text-right">Resends</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.items.length ? (
-                data.items.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="capitalize">
-                      {formatLabel(row.feature)}
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {formatLabel(row.triggerEvent)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm">{row.recipientEmail}</span>
-                        {row.recipientRole ? (
-                          <span className="text-xs capitalize text-muted-foreground">
-                            {row.recipientRole}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[240px] truncate">
-                      {row.subject}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(row.status)}>
-                        {row.status}
-                      </Badge>
-                      {row.errorMessage ? (
-                        <p className="mt-1 max-w-[200px] truncate text-xs text-destructive">
-                          {row.errorMessage}
-                        </p>
-                      ) : null}
-                      {row.skippedReason ? (
-                        <p className="mt-1 max-w-[200px] truncate text-xs text-muted-foreground">
-                          {row.skippedReason}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {row.sentAt
-                        ? formatDistanceToNow(new Date(row.sentAt), {
-                            addSuffix: true,
-                          })
-                        : formatDistanceToNow(new Date(row.createdAt), {
-                            addSuffix: true,
-                          })}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.resendCount}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={resendMutation.isPending}
-                        onClick={() => resendMutation.mutate(row.id)}
-                      >
-                        <RefreshCw className="mr-1 size-3.5" />
-                        Resend
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="py-12 text-center text-muted-foreground"
-                  >
-                    No email logs yet. Triggered emails will appear here.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {data && data.total > data.limit ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Page {data.page} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={filters.page <= 1}
-              onClick={() => void setFilters({ page: Math.max(1, filters.page - 1) })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={filters.page >= totalPages}
-              onClick={() =>
-                void setFilters({ page: Math.min(totalPages, filters.page + 1) })
-              }
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <AdminListPage
+      title="Email delivery log"
+      description="Every triggered email, delivery status, and resend history."
+      headerAction={
+        data ? <Badge variant="secondary">{data.total} total</Badge> : null
+      }
+      isLoading={isLoading}
+      loadingLabel="Loading email logs…"
+      isError={isError}
+      error={error}
+      errorTitle="Could not load email logs"
+      toolbar={
+        <AdminToolbar
+          statusFilter={{
+            value: filters.status,
+            onChange: (value) =>
+              void setFilters({
+                status: value as typeof filters.status,
+                page: 1,
+              }),
+            options: EMAIL_LOG_STATUS_OPTIONS,
+            totalCount: total,
+          }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Search recipient, subject, template…",
+          }}
+          filterSheet={{
+            open: filterSheetOpen,
+            onOpenChange: setFilterSheetOpen,
+            title: "Filters",
+            description: "Narrow by feature.",
+            hasActiveFilters,
+            onClear: clearFilters,
+            children: (
+              <div className="space-y-2">
+                <Label htmlFor="email-log-feature">Feature</Label>
+                <Select
+                  value={filters.feature}
+                  onValueChange={(value) =>
+                    void setFilters({ feature: value, page: 1 })
+                  }
+                >
+                  <SelectTrigger id="email-log-feature">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEATURE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          }}
+        />
+      }
+      isEmpty={items.length === 0}
+      emptyTitle="No email logs yet"
+      emptyDescription="Triggered emails will appear here. Try clearing search or filters."
+      pagination={
+        total > PAGE_SIZE
+          ? {
+              page: filters.page,
+              totalPages,
+              total,
+              pageSize: PAGE_SIZE,
+              onPageChange: (nextPage) => void setFilters({ page: nextPage }),
+              isFetching: isFetching && !isLoading,
+            }
+          : undefined
+      }
+    >
+      <AdminDataTable
+        columns={columns}
+        data={items}
+        getRowId={(row) => String(row.id)}
+      />
+    </AdminListPage>
   );
 }

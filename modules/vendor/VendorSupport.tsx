@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, MessageSquarePlus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { type ColumnDef } from "@tanstack/react-table";
+import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,21 +23,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import {
+  compareDates,
+  compareStrings,
+  paginateItems,
+  useAdminListControls,
+} from "@/hooks/use-admin-list-controls";
 import {
   useCreateSupportTicket,
   useMySupportTickets,
 } from "@/hooks/use-support-tickets";
 import { useToast } from "@/hooks/use-toast";
-import type { SupportTicketCategory, SupportTicketStatus } from "@/schema/support-ticket";
+import { SUPPORT_TICKET_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import type {
+  SupportTicket,
+  SupportTicketCategory,
+  SupportTicketStatus,
+} from "@/schema/support-ticket";
+
+const PAGE_SIZE = 20;
 
 const CATEGORIES: { value: SupportTicketCategory; label: string }[] = [
   { value: "general", label: "General question" },
@@ -45,20 +54,148 @@ const CATEGORIES: { value: SupportTicketCategory; label: string }[] = [
   { value: "complaint", label: "Complaint" },
 ];
 
-function statusBadge(status: SupportTicketStatus) {
-  if (status === "resolved") return <Badge variant="secondary">Resolved</Badge>;
-  if (status === "in_progress") return <Badge variant="outline">In progress</Badge>;
-  return <Badge>Open</Badge>;
+type StatusFilter = "all" | SupportTicketStatus;
+type TicketSortKey = "ticket" | "category" | "status" | "updatedAt";
+
+function ticketSearchText(ticket: SupportTicket): string {
+  return [
+    ticket.subject,
+    ticket.body,
+    ticket.category,
+    ticket.adminNotes,
+    String(ticket.id),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+}
+
+function compareTickets(a: SupportTicket, b: SupportTicket, key: TicketSortKey): number {
+  switch (key) {
+    case "ticket":
+      return compareStrings(a.subject, b.subject);
+    case "category":
+      return compareStrings(a.category, b.category);
+    case "status":
+      return compareStrings(a.status, b.status);
+    case "updatedAt":
+      return compareDates(a.updatedAt, b.updatedAt);
+  }
 }
 
 export default function VendorSupport() {
-  const { data: tickets, isLoading } = useMySupportTickets();
+  const { data: tickets, isLoading, isError, error } = useMySupportTickets();
   const { mutate: create, isPending } = useCreateSupportTicket();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [category, setCategory] = useState<SupportTicketCategory>("general");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+
+  const allTickets = useMemo(() => tickets ?? [], [tickets]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const {
+    page,
+    setPage,
+    search,
+    setSearch,
+    debouncedSearch,
+    sort,
+    toggleSort,
+  } = useAdminListControls<TicketSortKey>({
+    defaultSort: { key: "updatedAt", dir: "desc" },
+    pageSize: PAGE_SIZE,
+    resetPageDeps: [statusFilter],
+  });
+
+  const statusCounts = useMemo(
+    () =>
+      SUPPORT_TICKET_STATUS_OPTIONS.reduce(
+        (counts, option) => {
+          counts[option.value] = allTickets.filter((ticket) => ticket.status === option.value)
+            .length;
+          return counts;
+        },
+        {} as Record<string, number>,
+      ),
+    [allTickets],
+  );
+
+  const filteredTickets = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+
+    const filtered = allTickets.filter((ticket) => {
+      if (statusFilter !== "all" && ticket.status !== statusFilter) return false;
+      if (q && !ticketSearchText(ticket).includes(q)) return false;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const result = compareTickets(a, b, sort.key);
+      return sort.dir === "asc" ? result : -result;
+    });
+  }, [allTickets, debouncedSearch, sort.dir, sort.key, statusFilter]);
+
+  const pagedTickets = useMemo(
+    () => paginateItems(filteredTickets, page, PAGE_SIZE),
+    [filteredTickets, page],
+  );
+
+  const columns = useMemo<ColumnDef<SupportTicket, unknown>[]>(
+    () => [
+      {
+        id: "ticket",
+        header: "Ticket",
+        meta: { sortKey: "ticket", className: "max-w-[360px]" },
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{row.original.subject}</span>
+            <span className="line-clamp-2 text-xs text-muted-foreground">{row.original.body}</span>
+          </div>
+        ),
+      },
+      {
+        id: "category",
+        header: "Category",
+        meta: { sortKey: "category", className: "capitalize" },
+        cell: ({ row }) => row.original.category.replace("_", " "),
+      },
+      {
+        id: "status",
+        header: "Status",
+        meta: { sortKey: "status" },
+        cell: ({ row }) => (
+          <AdminStatusBadge
+            status={row.original.status}
+            options={SUPPORT_TICKET_STATUS_OPTIONS}
+          />
+        ),
+      },
+      {
+        id: "reply",
+        header: "Team reply",
+        meta: { className: "max-w-[260px]" },
+        cell: ({ row }) =>
+          row.original.adminNotes ? (
+            <span className="line-clamp-2 text-sm">{row.original.adminNotes}</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">Awaiting response</span>
+          ),
+      },
+      {
+        id: "updated",
+        header: "Updated",
+        meta: {
+          sortKey: "updatedAt",
+          className: "whitespace-nowrap text-right text-xs text-muted-foreground",
+        },
+        cell: ({ row }) =>
+          formatDistanceToNow(new Date(row.original.updatedAt), { addSuffix: true }),
+      },
+    ],
+    [],
+  );
 
   const submit = () => {
     if (!subject.trim() || !body.trim()) {
@@ -86,14 +223,10 @@ export default function VendorSupport() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-xl font-bold">Support</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Payment questions, complaints, or anything about your partner account.
-          </p>
-        </div>
+    <AdminListPage
+      title="Support"
+      description="Payment questions, complaints, or anything about your partner account."
+      headerAction={
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -162,59 +295,50 @@ export default function VendorSupport() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          Loading support tickets...
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ticket</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Team reply</TableHead>
-                <TableHead className="text-right">Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tickets?.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="max-w-[360px]">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{t.subject}</span>
-                      <span className="line-clamp-2 text-xs text-muted-foreground">{t.body}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{t.category.replace("_", " ")}</TableCell>
-                  <TableCell>{statusBadge(t.status)}</TableCell>
-                  <TableCell className="max-w-[260px]">
-                    {t.adminNotes ? (
-                      <span className="line-clamp-2 text-sm">{t.adminNotes}</span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Awaiting response</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!tickets?.length ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                    No tickets yet.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
+      }
+      isLoading={isLoading}
+      loadingLabel="Loading support tickets…"
+      isError={isError}
+      error={error}
+      errorTitle="Could not load support tickets"
+      isEmpty={!isLoading && !isError && filteredTickets.length === 0}
+      emptyTitle={allTickets.length === 0 ? "No tickets yet" : "No tickets match your filters"}
+      emptyDescription={
+        allTickets.length === 0
+          ? "Submit a ticket when you need help from our team."
+          : "Try All statuses or clearing search."
+      }
+      toolbar={
+        <AdminToolbar
+          statusFilter={{
+            value: statusFilter,
+            onChange: (value) => setStatusFilter(value as StatusFilter),
+            options: SUPPORT_TICKET_STATUS_OPTIONS,
+            counts: statusCounts,
+            totalCount: allTickets.length,
+          }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Search subject, message, or category…",
+          }}
+        />
+      }
+      pagination={{
+        page: pagedTickets.page,
+        totalPages: pagedTickets.totalPages,
+        total: pagedTickets.total,
+        pageSize: PAGE_SIZE,
+        onPageChange: setPage,
+      }}
+    >
+      <AdminDataTable
+        columns={columns}
+        data={pagedTickets.items}
+        getRowId={(row) => String(row.id)}
+        sort={sort}
+        onSort={toggleSort}
+      />
+    </AdminListPage>
   );
 }

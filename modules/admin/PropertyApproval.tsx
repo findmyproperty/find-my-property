@@ -4,21 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { type ColumnDef } from "@tanstack/react-table";
 import { motion } from "framer-motion";
 import {
-  AlertCircle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Check,
-  ChevronDown,
-  Clock,
   ExternalLink,
   Eye,
-  Filter,
   Loader2,
   MoreVertical,
-  Search,
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,17 +29,12 @@ import { buildPropertyPath } from "@/lib/property-slug";
 import { invalidatePropertyQueries } from "@/lib/invalidate-property-queries";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -59,29 +47,22 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AdminListError, AdminListLoading, AdminListEmpty } from "@/components/admin/admin-list-states";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  AdminDataTable,
+  type AdminSortState,
+} from "@/components/admin/admin-data-table";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import { PROPERTY_STATUS_OPTIONS } from "@/lib/admin/status-config";
 
 type SortKey =
   | "id"
@@ -94,14 +75,12 @@ type SortKey =
   | "bathrooms"
   | "area";
 
-type StatusTab = "pending" | "approved" | "rejected";
+type StatusTab = "all" | "Pending" | "Approved" | "Rejected";
 
 const PAGE_SIZE = 20;
 
-function statusTabToApi(tab: StatusTab): string {
-  if (tab === "pending") return PropertyStatus.PENDING;
-  if (tab === "approved") return PropertyStatus.APPROVED;
-  return PropertyStatus.REJECTED;
+function statusTabToApi(tab: Exclude<StatusTab, "all">): string {
+  return tab;
 }
 
 function parseOptionalPrice(value: string): number | undefined {
@@ -130,26 +109,6 @@ function rowStatus(p: BackendProperty) {
   return (p.status ?? PropertyStatus.PENDING) as string;
 }
 
-function statusBadge(status: string) {
-  if (status === PropertyStatus.APPROVED)
-    return (
-      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">
-        Approved
-      </Badge>
-    );
-  if (status === PropertyStatus.REJECTED)
-    return (
-      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-800">
-        Rejected
-      </Badge>
-    );
-  return (
-    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
-      Pending
-    </Badge>
-  );
-}
-
 const PROPERTY_TYPE_OPTIONS = ["all", ...Object.values(PropertyType)] as const;
 
 const PropertyApproval = () => {
@@ -158,7 +117,7 @@ const PropertyApproval = () => {
   const { toast } = useToast();
 
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<StatusTab>("pending");
+  const [statusFilter, setStatusFilter] = useState<StatusTab>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [listingFilter, setListingFilter] = useState<"all" | "rent" | "sale">("all");
@@ -168,7 +127,7 @@ const PropertyApproval = () => {
   const [priceMax, setPriceMax] = useState("");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+  const [sort, setSort] = useState<AdminSortState<SortKey>>({
     key: "id",
     dir: "desc",
   });
@@ -221,7 +180,10 @@ const PropertyApproval = () => {
   const listQuery = useMemo(
     () => ({
       ...filterBase,
-      status: statusTabToApi(statusFilter),
+      status:
+        statusFilter === "all"
+          ? undefined
+          : statusTabToApi(statusFilter as Exclude<StatusTab, "all">),
       page,
       limit: PAGE_SIZE,
       sortBy: sort.key,
@@ -238,25 +200,18 @@ const PropertyApproval = () => {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const statusCounts = {
-    pending: stats?.pending ?? 0,
-    approved: stats?.approved ?? 0,
-    rejected: stats?.rejected ?? 0,
+    Pending: stats?.pending ?? 0,
+    Approved: stats?.approved ?? 0,
+    Rejected: stats?.rejected ?? 0,
   };
+  const allStatusTotal =
+    statusCounts.Pending + statusCounts.Approved + statusCounts.Rejected;
 
   const toggleSort = (key: SortKey) => {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
     setPage(1);
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sort.key !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />;
-    return sort.dir === "asc" ? (
-      <ArrowUp className="ml-1 h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="ml-1 h-3.5 w-3.5" />
-    );
   };
 
   const clearFilters = () => {
@@ -340,450 +295,300 @@ const PropertyApproval = () => {
     p.propertyImages?.[0] ||
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=200&q=80";
 
+  const columns = useMemo<ColumnDef<BackendProperty, unknown>[]>(
+    () => [
+      {
+        id: "image",
+        header: "",
+        meta: { className: "w-[72px] p-2" },
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+              <Image
+                src={thumb(p)}
+                alt={p.title || "Property"}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
+            </div>
+          );
+        },
+      },
+      {
+        id: "id",
+        header: "ID",
+        meta: { sortKey: "id", className: "w-[72px] font-mono text-xs text-muted-foreground" },
+        cell: ({ row }) => row.original.id,
+      },
+      {
+        id: "title",
+        header: "Title",
+        meta: { sortKey: "title", className: "max-w-[200px] truncate font-medium" },
+        cell: ({ row }) => (
+          <span title={row.original.title}>{row.original.title || "—"}</span>
+        ),
+      },
+      {
+        id: "city",
+        header: "City",
+        meta: { sortKey: "city", className: "hidden md:table-cell" },
+        cell: ({ row }) => row.original.city || "—",
+      },
+      {
+        id: "listing",
+        header: "Listing",
+        meta: { sortKey: "listingType", className: "text-xs" },
+        cell: ({ row }) => (isRentListing(row.original) ? "Rent" : "Sale"),
+      },
+      {
+        id: "type",
+        header: "Type",
+        meta: { sortKey: "propertyType", className: "hidden lg:table-cell text-xs" },
+        cell: ({ row }) => String(row.original.propertyType ?? "—"),
+      },
+      {
+        id: "price",
+        header: "Price",
+        meta: { sortKey: "price", className: "whitespace-nowrap text-sm" },
+        cell: ({ row }) => formatPrice(row.original),
+      },
+      {
+        id: "beds",
+        header: "Beds",
+        meta: {
+          sortKey: "bedrooms",
+          className: "hidden text-center sm:table-cell text-sm",
+        },
+        cell: ({ row }) => Number(row.original.bedrooms) || "—",
+      },
+      {
+        id: "baths",
+        header: "Baths",
+        meta: {
+          sortKey: "bathrooms",
+          className: "hidden text-center sm:table-cell text-sm",
+        },
+        cell: ({ row }) => Number(row.original.bathrooms) || "—",
+      },
+      {
+        id: "area",
+        header: "Area",
+        meta: {
+          sortKey: "area",
+          className: "hidden text-right xl:table-cell text-xs text-muted-foreground",
+        },
+        cell: ({ row }) =>
+          `${areaSqFt(row.original).toLocaleString("en-IN")} sq.ft`,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <AdminStatusBadge
+            status={rowStatus(row.original)}
+            options={PROPERTY_STATUS_OPTIONS}
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        meta: { className: "text-right" },
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="flex justify-end gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                type="button"
+                onClick={() => openDetail(p)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
+                <Link href={buildPropertyPath(p.id, p.title)} title="Public page">
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
+              </Button>
+              {rowStatus(p) === PropertyStatus.PENDING && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      type="button"
+                      title="More actions"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">More actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem
+                      className="gap-2 text-emerald-700 focus:text-emerald-700"
+                      disabled={isApproving}
+                      onClick={() => void approveProperty(String(p.id))}
+                    >
+                      <Check className="h-4 w-4" />
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="gap-2 text-destructive focus:text-destructive"
+                      onClick={() => openRejectDialog(String(p.id))}
+                    >
+                      <X className="h-4 w-4" />
+                      Reject
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [isApproving, openDetail, approveProperty, openRejectDialog],
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-1 font-heading text-xl font-bold text-foreground">Property Approvals</h2>
-        <p className="text-sm text-muted-foreground">
-          Review listings in a sortable table. Use search and the filter drawer to narrow results, then approve or reject with a reason.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Property Approvals"
+        description="Review listings in a sortable table. Use search and the filter drawer to narrow results, then approve or reject with a reason."
+      />
 
       {isError ? (
-        <div
-          role="alert"
-          className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
-        >
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <div>
-            <p className="font-medium text-destructive">Could not load property approvals</p>
-            <p className="mt-1 text-muted-foreground">
-              {(error as Error)?.message ?? "Please refresh the page or try again."}
-            </p>
-          </div>
-        </div>
+        <AdminListError
+          title="Could not load property approvals"
+          message={(error as Error)?.message ?? "Please refresh the page or try again."}
+        />
       ) : null}
 
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          Loading listings…
-        </div>
+        <AdminListLoading label="Loading listings…" />
       ) : (
         <div className="w-full space-y-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Label className="sr-only">Listing status</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-w-[220px] justify-between gap-2 font-normal"
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      {statusFilter === "pending" ? (
-                        <Clock className="h-4 w-4 shrink-0 opacity-70" />
-                      ) : statusFilter === "approved" ? (
-                        <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-                      ) : (
-                        <X className="h-4 w-4 shrink-0 text-red-600 opacity-80" />
-                      )}
-                      <span className="truncate">
-                        {statusFilter === "pending" && "Pending"}
-                        {statusFilter === "approved" && "Approved"}
-                        {statusFilter === "rejected" && "Rejected"}
-                        <span className="text-muted-foreground">
-                          {" "}
-                          (
-                          {statusFilter === "pending"
-                            ? statusCounts.pending
-                            : statusFilter === "approved"
-                              ? statusCounts.approved
-                              : statusCounts.rejected}
-                          )
-                        </span>
-                      </span>
-                    </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[min(100vw-2rem,280px)]">
-                  <DropdownMenuLabel>Listing status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup
-                    value={statusFilter}
-                    onValueChange={(v) => setStatusFilter(v as StatusTab)}
-                  >
-                    <DropdownMenuRadioItem value="pending" className="gap-2">
-                      <Clock className="h-3.5 w-3.5" />
-                      Pending
-                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                        {statusCounts.pending}
-                      </span>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="approved" className="gap-2">
-                      <Check className="h-3.5 w-3.5 text-emerald-600" />
-                      Approved
-                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                        {statusCounts.approved}
-                      </span>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="rejected" className="gap-2">
-                      <X className="h-3.5 w-3.5 text-red-600" />
-                      Rejected
-                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                        {statusCounts.rejected}
-                      </span>
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="flex w-full min-w-0 flex-1 gap-2 sm:max-w-md lg:max-w-lg">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search ID, title, city, address, or type..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" className="gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filter
-                      {hasActiveFilters ? (
-                        <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                          On
-                        </Badge>
-                      ) : null}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
-                    <SheetHeader className="text-left">
-                      <SheetTitle>Filters</SheetTitle>
-                      <SheetDescription>
-                        Narrow by city, listing type, property type, or price range.
-                      </SheetDescription>
-                    </SheetHeader>
-                    <div className="flex flex-1 flex-col gap-4 py-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="ap-city">City contains</Label>
-                        <Input
-                          id="ap-city"
-                          placeholder="e.g. Mumbai"
-                          value={cityFilter}
-                          onChange={(e) => setCityFilter(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Listing</Label>
-                        <Select
-                          value={listingFilter}
-                          onValueChange={(v) => setListingFilter(v as "all" | "rent" | "sale")}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="rent">Rent / lease</SelectItem>
-                            <SelectItem value="sale">Sale</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Property type</Label>
-                        <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All types" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PROPERTY_TYPE_OPTIONS.map((opt) => (
-                              <SelectItem key={opt} value={opt}>
-                                {opt === "all" ? "All types" : opt}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ap-min">Min price (INR)</Label>
-                        <Input
-                          id="ap-min"
-                          inputMode="numeric"
-                          placeholder="No minimum"
-                          value={priceMin}
-                          onChange={(e) => setPriceMin(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ap-max">Max price (INR)</Label>
-                        <Input
-                          id="ap-max"
-                          inputMode="numeric"
-                          placeholder="No maximum"
-                          value={priceMax}
-                          onChange={(e) => setPriceMax(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-                      {hasActiveFilters ? (
-                        <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={clearFilters}>
-                          Clear filters
-                        </Button>
-                      ) : null}
-                      <Button type="button" className="w-full sm:w-auto" onClick={() => setFilterSheetOpen(false)}>
-                        Done
-                      </Button>
-                    </SheetFooter>
-                  </SheetContent>
-                </Sheet>
-                {hasActiveFilters ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          <AdminToolbar
+            statusFilter={{
+              value: statusFilter,
+              onChange: (value) => setStatusFilter(value as StatusTab),
+              options: PROPERTY_STATUS_OPTIONS,
+              counts: statusCounts,
+              totalCount: allStatusTotal,
+            }}
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: "Search ID, title, city, address, or type…",
+            }}
+            filterSheet={{
+              open: filterSheetOpen,
+              onOpenChange: setFilterSheetOpen,
+              title: "Filters",
+              description:
+                "Narrow by city, listing type, property type, or price range.",
+              hasActiveFilters,
+              onClear: clearFilters,
+              children: (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="ap-city">City contains</Label>
+                    <Input
+                      id="ap-city"
+                      placeholder="e.g. Mumbai"
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Listing</Label>
+                    <Select
+                      value={listingFilter}
+                      onValueChange={(v) => setListingFilter(v as "all" | "rent" | "sale")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="rent">Rent / lease</SelectItem>
+                        <SelectItem value="sale">Sale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Property type</Label>
+                    <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROPERTY_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt === "all" ? "All types" : opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ap-min">Min price (INR)</Label>
+                    <Input
+                      id="ap-min"
+                      inputMode="numeric"
+                      placeholder="No minimum"
+                      value={priceMin}
+                      onChange={(e) => setPriceMin(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ap-max">Max price (INR)</Label>
+                    <Input
+                      id="ap-max"
+                      inputMode="numeric"
+                      placeholder="No maximum"
+                      value={priceMax}
+                      onChange={(e) => setPriceMax(e.target.value)}
+                    />
+                  </div>
+                </>
+              ),
+            }}
+          />
 
           {items.length === 0 ? (
-            <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
-              <Clock className="mx-auto mb-3 h-10 w-10 opacity-50" />
-              <p className="font-medium text-foreground">
-                No {statusFilter} listings match your filters
-              </p>
-              <p className="mt-1 text-sm">Try clearing search or filters.</p>
-            </div>
+            <AdminListEmpty
+              title="No listings match your filters"
+              description="Try All statuses, clearing search, or adjusting filters."
+            />
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-md border bg-card"
             >
-              <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[72px]" />
-                        <TableHead className="w-[72px]">
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("id")}
-                          >
-                            ID
-                            <SortIcon column="id" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="min-w-[140px]">
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("title")}
-                          >
-                            Title
-                            <SortIcon column="title" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("city")}
-                          >
-                            City
-                            <SortIcon column="city" />
-                          </button>
-                        </TableHead>
-                        <TableHead>
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("listingType")}
-                          >
-                            Listing
-                            <SortIcon column="listingType" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="hidden lg:table-cell">
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("propertyType")}
-                          >
-                            Type
-                            <SortIcon column="propertyType" />
-                          </button>
-                        </TableHead>
-                        <TableHead>
-                          <button
-                            type="button"
-                            className="inline-flex items-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("price")}
-                          >
-                            Price
-                            <SortIcon column="price" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="hidden sm:table-cell text-center">
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("bedrooms")}
-                          >
-                            Beds
-                            <SortIcon column="bedrooms" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="hidden sm:table-cell text-center">
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-center font-medium hover:text-foreground"
-                            onClick={() => toggleSort("bathrooms")}
-                          >
-                            Baths
-                            <SortIcon column="bathrooms" />
-                          </button>
-                        </TableHead>
-                        <TableHead className="hidden xl:table-cell text-right">
-                          <button
-                            type="button"
-                            className="inline-flex w-full items-center justify-end font-medium hover:text-foreground"
-                            onClick={() => toggleSort("area")}
-                          >
-                            Area
-                            <SortIcon column="area" />
-                          </button>
-                        </TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="w-[72px] p-2 align-middle">
-                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                              <Image
-                                src={thumb(p)}
-                                alt={p.title || "Property"}
-                                fill
-                                sizes="56px"
-                                className="object-cover"
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-muted-foreground">{p.id}</TableCell>
-                          <TableCell className="max-w-[200px] truncate font-medium" title={p.title}>
-                            {p.title || "—"}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">{p.city || "—"}</TableCell>
-                          <TableCell className="text-xs">{isRentListing(p) ? "Rent" : "Sale"}</TableCell>
-                          <TableCell className="hidden lg:table-cell text-xs">
-                            {String(p.propertyType ?? "—")}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-sm">{formatPrice(p)}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-center text-sm">
-                            {Number(p.bedrooms) || "—"}
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell text-center text-sm">
-                            {Number(p.bathrooms) || "—"}
-                          </TableCell>
-                          <TableCell className="hidden xl:table-cell text-right text-xs text-muted-foreground">
-                            {areaSqFt(p).toLocaleString("en-IN")} sq.ft
-                          </TableCell>
-                          <TableCell>{statusBadge(rowStatus(p))}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                type="button"
-                                onClick={() => openDetail(p)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-                                <Link href={buildPropertyPath(p.id, p.title)} title="Public page">
-                                  <ExternalLink className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              {statusFilter === "pending" && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8"
-                                      type="button"
-                                      title="More actions"
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                      <span className="sr-only">More actions</span>
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-44">
-                                    <DropdownMenuItem
-                                      className="gap-2 text-emerald-700 focus:text-emerald-700"
-                                      disabled={isApproving}
-                                      onClick={() => void approveProperty(String(p.id))}
-                                    >
-                                      <Check className="h-4 w-4" />
-                                      Approve
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="gap-2 text-destructive focus:text-destructive"
-                                      onClick={() => openRejectDialog(String(p.id))}
-                                    >
-                                      <X className="h-4 w-4" />
-                                      Reject
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+              <AdminDataTable
+                columns={columns}
+                data={items}
+                getRowId={(p) => String(p.id)}
+                sort={sort}
+                onSort={toggleSort}
+              />
             </motion.div>
           )}
 
-          {total > PAGE_SIZE ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Page {page} of {totalPages} · {total.toLocaleString("en-IN")} in this tab
-                {isFetching && !isLoading ? " · Refreshing…" : null}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          ) : null}
+          <AdminPagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+            isFetching={isFetching && !isLoading}
+          />
         </div>
       )}
 

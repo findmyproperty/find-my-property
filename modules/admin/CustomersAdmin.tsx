@@ -2,42 +2,82 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Mail, MapPin, Phone, Search, Users } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import {
+  compareDates,
+  compareStrings,
+  paginateItems,
+  useAdminListControls,
+} from "@/hooks/use-admin-list-controls";
 import { useAdminUsers } from "@/hooks/use-users";
 import type { AdminUserListItem } from "@/lib/api";
+import { CUSTOMER_STATUS_OPTIONS } from "@/lib/admin/status-config";
+
+const PAGE_SIZE = 20;
+
+type CustomerStatusFilter = "all" | "verified" | "pending" | "onboarded" | "incomplete";
+type CustomerSortKey = "customer" | "contact" | "location" | "status" | "createdAt";
 
 function formatDate(value: string | Date): string {
   return format(new Date(value), "MMM d, yyyy");
-}
-
-function contactLabel(user: AdminUserListItem): string {
-  return user.email || user.phone || "No contact added";
 }
 
 function locationLabel(user: AdminUserListItem): string {
   return (
     [user.locationCity, user.locationState, user.locationCountry]
       .filter(Boolean)
-      .join(", ") || "-"
+      .join(", ") || "—"
   );
 }
 
-const columns: ColumnDef<AdminUserListItem>[] = [
+function customerStatus(user: AdminUserListItem): Exclude<CustomerStatusFilter, "all"> {
+  if (user.onboardingCompleted) return "onboarded";
+  if (!user.isEmailVerified) return "pending";
+  return user.onboardingCompleted ? "onboarded" : "incomplete";
+}
+
+function customerSearchText(user: AdminUserListItem): string {
+  return [
+    user.name,
+    user.email,
+    user.phone,
+    user.locationCity,
+    user.locationState,
+    user.locationCountry,
+    String(user.id),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+}
+
+function compareCustomers(a: AdminUserListItem, b: AdminUserListItem, key: CustomerSortKey) {
+  switch (key) {
+    case "customer":
+      return compareStrings(a.name ?? "", b.name ?? "");
+    case "contact":
+      return compareStrings(a.email ?? a.phone ?? "", b.email ?? b.phone ?? "");
+    case "location":
+      return compareStrings(locationLabel(a), locationLabel(b));
+    case "status":
+      return compareStrings(customerStatus(a), customerStatus(b));
+    case "createdAt":
+      return compareDates(a.createdAt, b.createdAt);
+  }
+}
+
+const customerColumns: ColumnDef<AdminUserListItem, unknown>[] = [
   {
     id: "customer",
     header: "Customer",
+    meta: { sortKey: "customer", className: "min-w-[160px]" },
     cell: ({ row }) => {
       const user = row.original;
       return (
@@ -45,7 +85,7 @@ const columns: ColumnDef<AdminUserListItem>[] = [
           <span className="font-medium text-foreground">
             {user.name || `Customer #${user.id}`}
           </span>
-          <span className="text-xs text-muted-foreground">#{user.id}</span>
+          <span className="font-mono text-xs text-muted-foreground">#{user.id}</span>
         </div>
       );
     },
@@ -53,6 +93,7 @@ const columns: ColumnDef<AdminUserListItem>[] = [
   {
     id: "contact",
     header: "Contact",
+    meta: { sortKey: "contact", className: "min-w-[180px]" },
     cell: ({ row }) => {
       const user = row.original;
       return (
@@ -70,7 +111,7 @@ const columns: ColumnDef<AdminUserListItem>[] = [
             </span>
           ) : null}
           {!user.email && !user.phone ? (
-            <span className="text-muted-foreground">{contactLabel(user)}</span>
+            <span className="text-muted-foreground">No contact added</span>
           ) : null}
         </div>
       );
@@ -79,6 +120,7 @@ const columns: ColumnDef<AdminUserListItem>[] = [
   {
     id: "location",
     header: "Location",
+    meta: { sortKey: "location", className: "hidden md:table-cell" },
     cell: ({ row }) => (
       <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
         <MapPin className="size-3.5 shrink-0" aria-hidden />
@@ -89,23 +131,27 @@ const columns: ColumnDef<AdminUserListItem>[] = [
   {
     id: "status",
     header: "Status",
+    meta: { sortKey: "status" },
     cell: ({ row }) => {
       const user = row.original;
       return (
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant={user.isEmailVerified ? "secondary" : "outline"}>
-            {user.isEmailVerified ? "Email verified" : "Email pending"}
-          </Badge>
-          <Badge variant={user.onboardingCompleted ? "secondary" : "outline"}>
-            {user.onboardingCompleted ? "Onboarded" : "Incomplete"}
-          </Badge>
+          <AdminStatusBadge
+            status={user.isEmailVerified ? "verified" : "pending"}
+            options={CUSTOMER_STATUS_OPTIONS}
+          />
+          <AdminStatusBadge
+            status={user.onboardingCompleted ? "onboarded" : "incomplete"}
+            options={CUSTOMER_STATUS_OPTIONS}
+          />
         </div>
       );
     },
   },
   {
-    accessorKey: "createdAt",
+    id: "joined",
     header: "Joined",
+    meta: { sortKey: "createdAt" },
     cell: ({ row }) => (
       <span className="text-xs text-muted-foreground">
         {formatDate(row.original.createdAt)}
@@ -115,103 +161,128 @@ const columns: ColumnDef<AdminUserListItem>[] = [
 ];
 
 export default function CustomersAdmin() {
-  const [searchTerm, setSearchTerm] = useState("");
   const { data, isLoading, isError, error } = useAdminUsers({ role: "tenant" });
   const customers = useMemo(() => data?.items ?? [], [data?.items]);
 
+  const [statusFilter, setStatusFilter] = useState<CustomerStatusFilter>("all");
+  const [locationFilter, setLocationFilter] = useState("");
+
+  const {
+    page,
+    setPage,
+    search,
+    setSearch,
+    debouncedSearch,
+    sort,
+    toggleSort,
+    filterSheetOpen,
+    setFilterSheetOpen,
+  } = useAdminListControls<CustomerSortKey>({
+    defaultSort: { key: "createdAt", dir: "desc" },
+    pageSize: PAGE_SIZE,
+    resetPageDeps: [statusFilter, locationFilter],
+  });
+
+  const statusCounts = useMemo(
+    () => ({
+      verified: customers.filter((user) => user.isEmailVerified).length,
+      pending: customers.filter((user) => !user.isEmailVerified).length,
+      onboarded: customers.filter((user) => user.onboardingCompleted).length,
+      incomplete: customers.filter((user) => !user.onboardingCompleted).length,
+    }),
+    [customers],
+  );
+
   const filteredCustomers = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((user) =>
-      [
-        user.name,
-        user.email,
-        user.phone,
-        user.locationCity,
-        user.locationState,
-        user.locationCountry,
-      ]
-        .filter((value): value is string => Boolean(value))
-        .some((value) => value.toLowerCase().includes(q)),
-    );
-  }, [customers, searchTerm]);
+    const q = debouncedSearch.trim().toLowerCase();
+    const location = locationFilter.trim().toLowerCase();
+
+    const filtered = customers.filter((user) => {
+      if (statusFilter === "verified" && !user.isEmailVerified) return false;
+      if (statusFilter === "pending" && user.isEmailVerified) return false;
+      if (statusFilter === "onboarded" && !user.onboardingCompleted) return false;
+      if (statusFilter === "incomplete" && user.onboardingCompleted) return false;
+      if (q && !customerSearchText(user).includes(q)) return false;
+      if (location && !locationLabel(user).toLowerCase().includes(location)) return false;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const result = compareCustomers(a, b, sort.key);
+      return sort.dir === "asc" ? result : -result;
+    });
+  }, [customers, debouncedSearch, locationFilter, sort.dir, sort.key, statusFilter]);
+
+  const pagedCustomers = useMemo(
+    () => paginateItems(filteredCustomers, page, PAGE_SIZE),
+    [filteredCustomers, page],
+  );
+
+  const clearFilters = () => setLocationFilter("");
+  const hasActiveFilters = locationFilter.trim() !== "";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="font-heading text-xl font-bold text-foreground">
-          Customers
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          View registered customer users, contact details, verification, and onboarding status.
-        </p>
-      </div>
-
-      {isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load customers</AlertTitle>
-          <AlertDescription>
-            {(error as Error)?.message || "Please try again."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total customers</CardDescription>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Users className="size-5 text-primary" aria-hidden />
-              {customers.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Email verified</CardDescription>
-            <CardTitle className="text-2xl">
-              {customers.filter((user) => user.isEmailVerified).length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Onboarding complete</CardDescription>
-            <CardTitle className="text-2xl">
-              {customers.filter((user) => user.onboardingCompleted).length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Customer users</CardTitle>
-          <CardDescription>
-            Search customer records by name, email, phone, or location.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search customers..."
-              className="pl-9"
-            />
-          </div>
-          <DataTable
-            columns={columns}
-            data={filteredCustomers}
-            isLoading={isLoading}
-            emptyMessage="No customers found."
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <AdminListPage
+      title="Customers"
+      description="View registered customer users, contact details, verification, and onboarding status."
+      isLoading={isLoading}
+      loadingLabel="Loading customers…"
+      isError={isError}
+      error={error}
+      errorTitle="Could not load customers"
+      toolbar={
+        <AdminToolbar
+          statusFilter={{
+            value: statusFilter,
+            onChange: (value) => setStatusFilter(value as CustomerStatusFilter),
+            options: CUSTOMER_STATUS_OPTIONS,
+            counts: statusCounts,
+            totalCount: customers.length,
+          }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Search name, email, phone, location, or ID…",
+          }}
+          filterSheet={{
+            open: filterSheetOpen,
+            onOpenChange: setFilterSheetOpen,
+            title: "Filters",
+            description: "Narrow by location.",
+            hasActiveFilters,
+            onClear: clearFilters,
+            children: (
+              <div className="space-y-2">
+                <Label htmlFor="customer-location">Location contains</Label>
+                <Input
+                  id="customer-location"
+                  placeholder="e.g. Bangalore"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                />
+              </div>
+            ),
+          }}
+        />
+      }
+      isEmpty={filteredCustomers.length === 0}
+      emptyTitle="No customers match your filters"
+      emptyDescription="Try All statuses, clearing search, or adjusting filters."
+      pagination={{
+        page: pagedCustomers.page,
+        totalPages: pagedCustomers.totalPages,
+        total: pagedCustomers.total,
+        pageSize: PAGE_SIZE,
+        onPageChange: setPage,
+      }}
+    >
+      <AdminDataTable
+        columns={customerColumns}
+        data={pagedCustomers.items}
+        getRowId={(user) => String(user.id)}
+        sort={sort}
+        onSort={toggleSort}
+      />
+    </AdminListPage>
   );
 }

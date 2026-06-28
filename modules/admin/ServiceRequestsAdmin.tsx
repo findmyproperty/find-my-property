@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
   parseAsInteger,
   parseAsString,
@@ -10,29 +11,24 @@ import {
   useQueryStates,
 } from "nuqs";
 import {
-  AlertCircle,
   ArrowUpRight,
   ClipboardList,
   Clock,
   ExternalLink,
   Flag,
-  Loader2,
   Mail,
   MessageCircle,
   PaintBucket,
   PartyPopper,
   PhoneCall,
   Route,
-  Search,
   Sparkles,
   Star,
   Truck,
   Wrench,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -49,14 +45,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import {
   useAdminServiceRequestStats,
   useAdminServiceRequests,
@@ -74,6 +65,14 @@ import type {
   Stop,
 } from "@/lib/api";
 import RouteMap from "@/modules/services/RouteMap";
+import { adminStatusOptionsToMap, SERVICE_REQUEST_STATUS_OPTIONS } from "@/lib/admin/status-config";
+
+const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  packers_movers: "Packers & Movers",
+  painting_cleaning: "Painting & Cleaning",
+  home_services: "Home Services",
+  event_management: "Event Management",
+};
 
 function formatPhoneForLink(phone: string): string {
   return phone.replace(/[^0-9+]/g, "");
@@ -133,46 +132,7 @@ const SERVICE_VALUES: ServiceType[] = [
   "event_management",
 ];
 
-const STATUS_META: Record<
-  ServiceRequestStatus,
-  { label: string; className: string }
-> = {
-  new: {
-    label: "New",
-    className:
-      "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
-  },
-  contacted: {
-    label: "Contacted",
-    className:
-      "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300",
-  },
-  scheduled: {
-    label: "Scheduled",
-    className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  },
-  completed: {
-    label: "Completed",
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
-  },
-  cancelled: {
-    label: "Cancelled",
-    className:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300",
-  },
-};
-
-const SERVICE_META: Record<
-  ServiceType,
-  { label: string; icon: typeof Truck }
-> = {
-  packers_movers: { label: "Packers & Movers", icon: Truck },
-  painting_cleaning: { label: "Painting & Cleaning", icon: PaintBucket },
-  home_services: { label: "Home Services", icon: Wrench },
-  event_management: { label: "Event Management", icon: PartyPopper },
-};
+const STATUS_META = adminStatusOptionsToMap(SERVICE_REQUEST_STATUS_OPTIONS);
 
 const filterParsers = {
   type: parseAsStringLiteral(["all", ...SERVICE_VALUES] as const).withDefault(
@@ -192,6 +152,7 @@ export default function ServiceRequestsAdmin() {
   });
 
   const [searchDraft, setSearchDraft] = useState(q);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   useEffect(() => {
     const handle = setTimeout(() => {
       if (searchDraft !== q) {
@@ -212,12 +173,12 @@ export default function ServiceRequestsAdmin() {
     [type, status, q, page],
   );
 
-  const { data, isLoading, isError, error } = useAdminServiceRequests(query);
+  const { data, isLoading, isError, error, isFetching } = useAdminServiceRequests(query);
   const { data: stats } = useAdminServiceRequestStats();
   const updateMutation = useAdminUpdateServiceRequest();
-  const { data: vendorOptions } = useAdminVendorSelect();
 
   const [selected, setSelected] = useState<ServiceRequestDTO | null>(null);
+  const { data: vendorOptions } = useAdminVendorSelect();
   const [internalNotes, setInternalNotes] = useState("");
   const [draftStatus, setDraftStatus] =
     useState<ServiceRequestStatus>("new");
@@ -233,10 +194,6 @@ export default function ServiceRequestsAdmin() {
         : "",
     );
   };
-
-  const items = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / 20));
 
   const saveChanges = async () => {
     if (!selected) return;
@@ -282,285 +239,224 @@ export default function ServiceRequestsAdmin() {
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <h2 className="font-heading text-xl font-bold text-foreground mb-1">
-            Service Requests
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Triage Packers &amp; Movers, Painting &amp; Cleaning, Home Services, and Event Management requests.
-          </p>
-        </div>
-        {stats ? (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
-            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
-              <StatTile
-                icon={ClipboardList}
-                label="Open"
-                value={stats.openTotal}
-                tone="default"
-              />
-            </div>
-            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
-              <StatTile
-                icon={Truck}
-                label="Packers & Movers"
-                value={stats.totals.packers_movers ?? 0}
-              />
-            </div>
-            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
-              <StatTile
-                icon={PaintBucket}
-                label="Painting & Cleaning"
-                value={stats.totals.painting_cleaning ?? 0}
-              />
-            </div>
-            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
-              <StatTile
-                icon={Wrench}
-                label="Home Services"
-                value={stats.totals.home_services ?? 0}
-              />
-            </div>
-            <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
-              <StatTile
-                icon={PartyPopper}
-                label="Event Management"
-                value={stats.totals.event_management ?? 0}
-              />
-            </div>
-          </div>
-        ) : null}
-      </div>
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = data?.limit ?? 20;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasActiveFilters = type !== "all";
+  const clearFilters = () => setQuery({ type: "all", page: 1 });
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
-        <div className="min-w-0 sm:col-span-2 lg:min-w-[12rem] lg:flex-1">
-          <Label className="text-xs text-muted-foreground">Search</Label>
-          <div className="relative mt-1">
-            <Search
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              value={searchDraft}
-              onChange={(e) => setSearchDraft(e.target.value)}
-              placeholder="Search by name or phone"
-              className="pl-9 w-full"
-            />
-          </div>
-        </div>
-        <div className="min-w-0 w-full lg:w-44">
-          <Label className="text-xs text-muted-foreground">Service type</Label>
-          <Select
-            value={type}
-            onValueChange={(v) =>
-              setQuery({
-                type: v as "all" | ServiceType,
-                page: 1,
-              })
-            }
-          >
-            <SelectTrigger className="mt-1 w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All services</SelectItem>
-              {SERVICE_VALUES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {SERVICE_META[s].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="min-w-0 w-full lg:w-40">
-          <Label className="text-xs text-muted-foreground">Status</Label>
-          <Select
-            value={status}
-            onValueChange={(v) =>
-              setQuery({
-                status: v as "all" | ServiceRequestStatus,
-                page: 1,
-              })
-            }
-          >
-            <SelectTrigger className="mt-1 w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {STATUS_VALUES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_META[s].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {(type !== "all" || status !== "all" || q) && (
+  const columns = useMemo<ColumnDef<ServiceRequestDTO, unknown>[]>(
+    () => [
+      {
+        id: "created",
+        header: "Created",
+        meta: { className: "whitespace-nowrap text-xs text-muted-foreground" },
+        cell: ({ row }) =>
+          formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true }),
+      },
+      {
+        id: "type",
+        header: "Type",
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-1 text-xs">
+            <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
+            {SERVICE_TYPE_LABELS[row.original.serviceType]}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const s = STATUS_META[row.original.status] ?? STATUS_META.new;
+          return (
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-medium uppercase ${s.className}`}
+            >
+              {s.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "name",
+        header: "Name",
+        meta: { className: "font-medium text-foreground" },
+        cell: ({ row }) => row.original.name,
+      },
+      {
+        id: "phone",
+        header: "Phone",
+        cell: ({ row }) => row.original.phone,
+      },
+      {
+        id: "city",
+        header: "City",
+        cell: ({ row }) => row.original.city ?? "—",
+      },
+      {
+        id: "details",
+        header: "Details",
+        meta: { className: "whitespace-nowrap text-xs text-muted-foreground" },
+        cell: ({ row }) => {
+          const r = row.original;
+          const pm = isPackersMoversDetails(r.details) ? r.details : null;
+          const em = isEventManagementDetails(r.details) ? r.details : null;
+          const tripLabel = pm?.trip
+            ? `${pm.trip.distanceKm.toFixed(1)} km · ${formatDuration(pm.trip.durationMin)}`
+            : pm?.drops?.length
+              ? `${pm.drops.length} stop${pm.drops.length === 1 ? "" : "s"}`
+              : "—";
+          const detailLabel = em
+            ? `${EVENT_TYPE_LABELS[em.eventType] ?? em.eventType} · ${em.guestCount} guests`
+            : tripLabel;
+          return detailLabel;
+        },
+      },
+      {
+        id: "action",
+        header: "Action",
+        meta: { className: "text-right" },
+        cell: ({ row }) => (
           <Button
-            variant="ghost"
             size="sm"
-            className="w-full sm:col-span-2 sm:w-auto lg:w-auto"
-            onClick={() => {
-              setSearchDraft("");
-              setQuery({ type: "all", status: "all", q: "", page: 1 });
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              openRequest(row.original);
             }}
           >
-            <X className="mr-1 h-3.5 w-3.5" />
-            Reset
+            Open
           </Button>
-        )}
-      </div>
+        ),
+      },
+    ],
+    [],
+  );
 
-      {isError ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex gap-3 text-sm"
-        >
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <div>
-            <p className="font-medium text-destructive">
-              Could not load service requests
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              {(error as Error)?.message || "Please try again."}
-            </p>
+  return (
+    <>
+      {stats ? (
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={ClipboardList}
+              label="Open"
+              value={stats.openTotal}
+              tone="default"
+            />
+          </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={Truck}
+              label="Packers & Movers"
+              value={stats.totals.packers_movers ?? 0}
+            />
+          </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={PaintBucket}
+              label="Painting & Cleaning"
+              value={stats.totals.painting_cleaning ?? 0}
+            />
+          </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={Wrench}
+              label="Home Services"
+              value={stats.totals.home_services ?? 0}
+            />
+          </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={PartyPopper}
+              label="Event Management"
+              value={stats.totals.event_management ?? 0}
+            />
           </div>
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead>Created</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead>Details</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
-                  <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-                  </span>
-                </TableCell>
-              </TableRow>
-            ) : items.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="py-16 text-center italic text-muted-foreground"
-                >
-                  No matching service requests.
-                </TableCell>
-              </TableRow>
-            ) : (
-              items.map((r) => {
-                const meta = SERVICE_META[r.serviceType];
-                const s = STATUS_META[r.status] ?? STATUS_META.new;
-                const pm = isPackersMoversDetails(r.details) ? r.details : null;
-                const em = isEventManagementDetails(r.details)
-                  ? r.details
-                  : null;
-                const tripLabel = pm?.trip
-                  ? `${pm.trip.distanceKm.toFixed(1)} km · ${formatDuration(pm.trip.durationMin)}`
-                  : pm?.drops?.length
-                    ? `${pm.drops.length} stop${pm.drops.length === 1 ? "" : "s"}`
-                    : "—";
-                const detailLabel = em
-                  ? `${EVENT_TYPE_LABELS[em.eventType] ?? em.eventType} Â· ${em.guestCount} guests`
-                  : tripLabel;
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => openRequest(r)}
+      <AdminListPage
+        title="Service Requests"
+        description="Triage Packers & Movers, Painting & Cleaning, Home Services, and Event Management requests."
+        isLoading={isLoading}
+        loadingLabel="Loading service requests…"
+        isError={isError}
+        error={error}
+        errorTitle="Could not load service requests"
+        toolbar={
+          <AdminToolbar
+            statusFilter={{
+              value: status,
+              onChange: (value) =>
+                setQuery({ status: value as typeof status, page: 1 }),
+              options: SERVICE_REQUEST_STATUS_OPTIONS,
+              totalCount: total,
+            }}
+            search={{
+              value: searchDraft,
+              onChange: setSearchDraft,
+              placeholder: "Search by name or phone…",
+            }}
+            filterSheet={{
+              open: filterSheetOpen,
+              onOpenChange: setFilterSheetOpen,
+              title: "Filters",
+              description: "Narrow by service type.",
+              hasActiveFilters,
+              onClear: clearFilters,
+              children: (
+                <div className="space-y-2">
+                  <Label htmlFor="service-type-filter">Service type</Label>
+                  <Select
+                    value={type}
+                    onValueChange={(v) =>
+                      setQuery({ type: v as typeof type, page: 1 })
+                    }
                   >
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 text-xs">
-                        <meta.icon
-                          className="h-3.5 w-3.5 text-primary"
-                          aria-hidden
-                        />
-                        {meta.label}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] font-medium uppercase ${s.className}`}
-                      >
-                        {s.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground">
-                      {r.name}
-                    </TableCell>
-                    <TableCell>{r.phone}</TableCell>
-                    <TableCell>{r.city ?? "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {detailLabel}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openRequest(r);
-                        }}
-                      >
-                        Open
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {total > 20 ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Page {page} of {totalPages} · {total} total
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setQuery({ page: Math.max(1, page - 1) })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setQuery({ page: page + 1 })}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      ) : null}
+                    <SelectTrigger id="service-type-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All services</SelectItem>
+                      {SERVICE_VALUES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {SERVICE_TYPE_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ),
+            }}
+          />
+        }
+        isEmpty={items.length === 0}
+        emptyTitle="No matching service requests"
+        emptyDescription="Try All statuses, clearing search, or adjusting filters."
+        pagination={
+          total > pageSize
+            ? {
+                page,
+                totalPages,
+                total,
+                pageSize,
+                onPageChange: (nextPage) => setQuery({ page: nextPage }),
+                isFetching: isFetching && !isLoading,
+              }
+            : undefined
+        }
+      >
+        <AdminDataTable
+          columns={columns}
+          data={items}
+          getRowId={(row) => String(row.id)}
+          onRowClick={openRequest}
+        />
+      </AdminListPage>
 
       <Sheet
         open={Boolean(selected)}
@@ -571,7 +467,8 @@ export default function ServiceRequestsAdmin() {
             <>
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  {SERVICE_META[selected.serviceType].label}
+                  <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+                  {SERVICE_TYPE_LABELS[selected.serviceType]}
                   <span className="text-sm font-normal text-muted-foreground">
                     #{selected.id}
                   </span>
@@ -667,7 +564,10 @@ export default function ServiceRequestsAdmin() {
 
                 {selected.serviceType === "painting_cleaning" &&
                 isPaintingCleaningDetails(selected.details) ? (
-                  <PaintingCleaningDetailPanel details={selected.details} />
+                  <PaintingCleaningDetailPanel
+                    details={selected.details}
+                    subtypeLabels={SUBTYPE_LABELS}
+                  />
                 ) : null}
 
                 {selected.serviceType === "home_services" &&
@@ -773,7 +673,8 @@ export default function ServiceRequestsAdmin() {
                       </SelectContent>
                     </Select>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Vendor assignment and status updates notify customer, vendor, and admin by email.
+                      Vendor assignment and status updates notify customer,
+                      vendor, and admin by email.
                     </p>
                   </div>
                   <div>
@@ -810,7 +711,7 @@ export default function ServiceRequestsAdmin() {
           ) : null}
         </SheetContent>
       </Sheet>
-    </div>
+    </>
   );
 }
 
@@ -831,10 +732,7 @@ const BHK_LABELS: Record<NonNullable<PackersMoversDetails["bhk"]>, string> = {
   "4+": "4+ BHK",
 };
 
-const SUBTYPE_LABELS: Record<
-  NonNullable<PaintingCleaningDetails["subType"]>,
-  string
-> = {
+const SUBTYPE_LABELS: Record<string, string> = {
   full_painting: "Full home painting",
   partial_painting: "Partial / room painting",
   deep_cleaning: "Deep home cleaning",
@@ -871,18 +769,6 @@ const EVENT_TYPE_LABELS: Record<
   corporate: "Corporate event",
 };
 
-const VENUE_TYPE_LABELS: Record<
-  NonNullable<EventManagementDetails["venueType"]>,
-  string
-> = {
-  home: "Home",
-  banquet: "Banquet hall",
-  hotel: "Hotel",
-  outdoor: "Outdoor",
-  office: "Office",
-  other: "Other",
-};
-
 const EVENT_SERVICE_LABELS: Record<
   NonNullable<EventManagementDetails["services"]>[number],
   string
@@ -896,6 +782,18 @@ const EVENT_SERVICE_LABELS: Record<
   hosting: "Host / anchor",
   return_gifts: "Return gifts",
   venue_booking: "Venue booking",
+};
+
+const VENUE_TYPE_LABELS: Record<
+  NonNullable<EventManagementDetails["venueType"]>,
+  string
+> = {
+  home: "Home",
+  banquet: "Banquet hall",
+  hotel: "Hotel",
+  outdoor: "Outdoor",
+  office: "Office",
+  other: "Other",
 };
 
 const BUDGET_RANGE_LABELS: Record<string, string> = {
@@ -1134,8 +1032,10 @@ function PaintingCleaningDetailPanel({
 
 function EventManagementDetailPanel({
   details,
+  serviceLabels = EVENT_SERVICE_LABELS,
 }: {
   details: EventManagementDetails;
+  serviceLabels?: Record<string, string>;
 }) {
   const loc = details.location;
   const services = details.services ?? [];
@@ -1177,7 +1077,7 @@ function EventManagementDetailPanel({
           <div className="flex flex-wrap gap-2">
             {services.map((service) => (
               <Badge key={service} variant="secondary" className="text-xs">
-                {EVENT_SERVICE_LABELS[service] ?? service}
+                {serviceLabels[service] ?? service}
               </Badge>
             ))}
           </div>

@@ -1,154 +1,264 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { AlertCircle, ExternalLink, Loader2, MapPin, Phone } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { ExternalLink, MapPin, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  compareDates,
+  compareStrings,
+  paginateItems,
+  useAdminListControls,
+} from "@/hooks/use-admin-list-controls";
 import { useVendorLeads, usePatchVendorLeadStatus } from "@/hooks/use-vendor-leads";
-import type { VendorLeadStatus } from "@/schema/vendor-lead";
+import { VENDOR_LEAD_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead";
 
-function statusVariant(status: VendorLeadStatus) {
-  if (status === "new") return "default" as const;
-  if (status === "accepted" || status === "in_progress") return "secondary" as const;
-  if (status === "completed") return "outline" as const;
-  return "destructive" as const;
+const PAGE_SIZE = 20;
+
+type StatusFilter = "all" | VendorLeadStatus;
+type VendorLeadSortKey = "customer" | "area" | "status" | "createdAt";
+
+function vendorLeadSearchText(lead: VendorLead): string {
+  return [
+    lead.customerName,
+    lead.phone,
+    lead.area,
+    lead.budget,
+    lead.status,
+    String(lead.id),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
 }
 
-function formatStatus(status: VendorLeadStatus) {
-  return status.replace("_", " ");
+function compareVendorLeads(
+  a: VendorLead,
+  b: VendorLead,
+  key: VendorLeadSortKey,
+): number {
+  switch (key) {
+    case "customer":
+      return compareStrings(a.customerName, b.customerName);
+    case "area":
+      return compareStrings(a.area ?? "", b.area ?? "");
+    case "status":
+      return compareStrings(a.status, b.status);
+    case "createdAt":
+      return compareDates(a.createdAt, b.createdAt);
+  }
 }
 
 export default function VendorLeads() {
   const { data: leads, isLoading, isError, error } = useVendorLeads();
   const { mutate: patchStatus, isPending } = usePatchVendorLeadStatus();
+  const allLeads = useMemo(() => leads ?? [], [leads]);
+
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const {
+    page,
+    setPage,
+    search,
+    setSearch,
+    debouncedSearch,
+    sort,
+    toggleSort,
+  } = useAdminListControls<VendorLeadSortKey>({
+    defaultSort: { key: "createdAt", dir: "desc" },
+    pageSize: PAGE_SIZE,
+    resetPageDeps: [statusFilter],
+  });
+
+  const statusCounts = useMemo(
+    () =>
+      VENDOR_LEAD_STATUS_OPTIONS.reduce(
+        (counts, option) => {
+          counts[option.value] = allLeads.filter((lead) => lead.status === option.value).length;
+          return counts;
+        },
+        {} as Record<string, number>,
+      ),
+    [allLeads],
+  );
+
+  const filteredLeads = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+
+    const filtered = allLeads.filter((lead) => {
+      if (statusFilter !== "all" && lead.status !== statusFilter) return false;
+      if (q && !vendorLeadSearchText(lead).includes(q)) return false;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const result = compareVendorLeads(a, b, sort.key);
+      return sort.dir === "asc" ? result : -result;
+    });
+  }, [allLeads, debouncedSearch, sort.dir, sort.key, statusFilter]);
+
+  const pagedLeads = useMemo(
+    () => paginateItems(filteredLeads, page, PAGE_SIZE),
+    [filteredLeads, page],
+  );
+
+  const columns = useMemo<ColumnDef<VendorLead, unknown>[]>(
+    () => [
+      {
+        id: "customer",
+        header: "Customer",
+        meta: { sortKey: "customer" },
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{row.original.customerName}</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Phone className="h-3 w-3 shrink-0" />
+              {row.original.phone}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: "area",
+        header: "Area",
+        meta: { sortKey: "area" },
+        cell: ({ row }) =>
+          row.original.area ? (
+            <span className="flex items-center gap-1 text-sm">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {row.original.area}
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">-</span>
+          ),
+      },
+      {
+        id: "budget",
+        header: "Budget",
+        cell: ({ row }) =>
+          row.original.budget ? (
+            <span className="text-sm">{row.original.budget}</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">-</span>
+          ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        meta: { sortKey: "status" },
+        cell: ({ row }) => (
+          <AdminStatusBadge
+            status={row.original.status}
+            options={VENDOR_LEAD_STATUS_OPTIONS}
+          />
+        ),
+      },
+      {
+        id: "created",
+        header: "Created",
+        meta: {
+          sortKey: "createdAt",
+          className: "whitespace-nowrap text-right text-xs text-muted-foreground",
+        },
+        cell: ({ row }) =>
+          formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true }),
+      },
+      {
+        id: "action",
+        header: "Action",
+        meta: { className: "text-right" },
+        cell: ({ row }) => {
+          const lead = row.original;
+          return (
+            <div className="flex justify-end gap-2">
+              {lead.status === "new" ? (
+                <>
+                  <Button
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => patchStatus({ id: lead.id, status: "accepted" })}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={() => patchStatus({ id: lead.id, status: "rejected" })}
+                  >
+                    Reject
+                  </Button>
+                </>
+              ) : null}
+              <Button size="sm" variant="secondary" asChild>
+                <Link href={`/leads/${lead.id}`}>
+                  Details
+                  <ExternalLink className="ml-1 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [isPending, patchStatus],
+  );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-foreground">Leads</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Customer enquiries assigned by Find My Property
-        </p>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading leads...
-        </div>
-      ) : null}
-
-      {isError ? (
-        <div
-          className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
-          role="alert"
-        >
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <p>{(error as Error)?.message || "Could not load leads"}</p>
-        </div>
-      ) : null}
-
-      {!isLoading && !isError ? (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Area</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Created</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {leads?.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{lead.customerName}</span>
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3 shrink-0" />
-                        {lead.phone}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {lead.area ? (
-                      <span className="flex items-center gap-1 text-sm">
-                        <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        {lead.area}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {lead.budget ? (
-                      <span className="text-sm">{lead.budget}</span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(lead.status)} className="capitalize">
-                      {formatStatus(lead.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {lead.status === "new" ? (
-                        <>
-                          <Button
-                            size="sm"
-                            disabled={isPending}
-                            onClick={() => patchStatus({ id: lead.id, status: "accepted" })}
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isPending}
-                            onClick={() => patchStatus({ id: lead.id, status: "rejected" })}
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      ) : null}
-                      <Button size="sm" variant="secondary" asChild>
-                        <Link href={`/leads/${lead.id}`}>
-                          Details
-                          <ExternalLink className="ml-1 h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!leads?.length ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    No leads yet. When admin assigns a service request to you, it will appear here.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </div>
-      ) : null}
-    </div>
+    <AdminListPage
+      title="Leads"
+      description="Customer enquiries assigned by Find My Property"
+      isLoading={isLoading}
+      loadingLabel="Loading leads…"
+      isError={isError}
+      error={error}
+      errorTitle="Could not load leads"
+      isEmpty={!isLoading && !isError && filteredLeads.length === 0}
+      emptyTitle={allLeads.length === 0 ? "No leads yet" : "No leads match your filters"}
+      emptyDescription={
+        allLeads.length === 0
+          ? "When admin assigns a service request to you, it will appear here."
+          : "Try All statuses or clearing search."
+      }
+      toolbar={
+        <AdminToolbar
+          statusFilter={{
+            value: statusFilter,
+            onChange: (value) => setStatusFilter(value as StatusFilter),
+            options: VENDOR_LEAD_STATUS_OPTIONS,
+            counts: statusCounts,
+            totalCount: allLeads.length,
+          }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Search customer, area, budget, or ID…",
+          }}
+        />
+      }
+      pagination={{
+        page: pagedLeads.page,
+        totalPages: pagedLeads.totalPages,
+        total: pagedLeads.total,
+        pageSize: PAGE_SIZE,
+        onPageChange: setPage,
+      }}
+    >
+      <AdminDataTable
+        columns={columns}
+        data={pagedLeads.items}
+        getRowId={(row) => String(row.id)}
+        sort={sort}
+        onSort={toggleSort}
+      />
+    </AdminListPage>
   );
 }

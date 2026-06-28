@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
+import { type ColumnDef } from "@tanstack/react-table"
 import {
   ClipboardList,
   ExternalLink,
@@ -35,14 +36,6 @@ import {
 } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   useAdminVendorLead,
   useAdminVendorLeads,
   useAdminPatchVendorLead,
@@ -51,6 +44,14 @@ import {
 import type { VendorLead } from "@/schema/vendor-lead"
 import type { VendorLeadStatus } from "@/schema/vendor-lead"
 import { useToast } from "@/hooks/use-toast"
+import { AdminDataTable } from "@/components/admin/admin-data-table"
+import { AdminListPage } from "@/components/admin/admin-list-page"
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge"
+import { AdminToolbar } from "@/components/admin/admin-toolbar"
+import { useDebouncedValue } from "@/hooks/use-admin-list-controls"
+import { VENDOR_LEAD_STATUS_OPTIONS } from "@/lib/admin/status-config"
+
+const PAGE_SIZE = 20
 
 const STATUSES: VendorLeadStatus[] = [
   "new",
@@ -69,14 +70,7 @@ function formatStatus(status: VendorLeadStatus) {
   return status.replace("_", " ")
 }
 
-function statusVariant(status: VendorLeadStatus) {
-  if (status === "new") return "default" as const
-  if (status === "accepted" || status === "in_progress") {
-    return "secondary" as const
-  }
-  if (status === "completed") return "outline" as const
-  return "destructive" as const
-}
+type StatusFilter = "all" | VendorLeadStatus
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "-"
@@ -131,8 +125,37 @@ function requirementEntries(requirement: string | null): RequirementEntry[] {
   }
 }
 
+function leadSearchText(
+  lead: VendorLead,
+  vendorNameById: Map<number, string>,
+): string {
+  const vendorLabel =
+    vendorNameById.get(lead.vendorUserId) ?? `Vendor #${lead.vendorUserId}`
+  return [lead.customerName, lead.phone, lead.area, vendorLabel, String(lead.id)]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+}
+
 export default function VendorLeadsAdmin() {
-  const { data, isLoading } = useAdminVendorLeads({ limit: 50 })
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [areaFilter, setAreaFilter] = useState("")
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, debouncedSearch, areaFilter])
+
+  const listQuery = {
+    status: statusFilter === "all" ? undefined : statusFilter,
+    page,
+    limit: PAGE_SIZE,
+  }
+
+  const { data, isLoading, isFetching, isError, error } = useAdminVendorLeads(listQuery)
   const { data: vendors } = useAdminVendors({ limit: 100 })
   const { mutate: patchLead, isPending } = useAdminPatchVendorLead()
   const { toast } = useToast()
@@ -178,36 +201,160 @@ export default function VendorLeadsAdmin() {
     )
   }
 
-  const vendorNameById = new Map(
-    (vendors?.items ?? []).map((vendor) => [
-      vendor.userId,
-      vendor.user?.name || vendor.user?.phone || `Vendor #${vendor.userId}`,
-    ])
+  const vendorNameById = useMemo(
+    () =>
+      new Map(
+        (vendors?.items ?? []).map((vendor) => [
+          vendor.userId,
+          vendor.user?.name || vendor.user?.phone || `Vendor #${vendor.userId}`,
+        ]),
+      ),
+    [vendors?.items],
+  )
+
+  const items = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const displayItems = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase()
+    const area = areaFilter.trim().toLowerCase()
+    return items.filter((lead) => {
+      if (q && !leadSearchText(lead, vendorNameById).includes(q)) return false
+      if (area && !(lead.area ?? "").toLowerCase().includes(area)) return false
+      return true
+    })
+  }, [items, debouncedSearch, areaFilter, vendorNameById])
+
+  const hasActiveFilters = areaFilter.trim() !== ""
+  const clearFilters = () => setAreaFilter("")
+
+  const columns = useMemo<ColumnDef<VendorLead, unknown>[]>(
+    () => [
+      {
+        id: "customer",
+        header: "Customer",
+        meta: { className: "min-w-[9rem]" },
+        cell: ({ row }) => (
+          <>
+            <p className="font-medium">{row.original.customerName}</p>
+            <p className="text-xs text-muted-foreground">{row.original.phone}</p>
+          </>
+        ),
+      },
+      {
+        id: "vendor",
+        header: "Vendor",
+        meta: { className: "min-w-[10rem]" },
+        cell: ({ row }) => {
+          const lead = row.original
+          return (
+            <>
+              <p className="text-sm font-medium">
+                {vendorNameById.get(lead.vendorUserId) ?? `Vendor #${lead.vendorUserId}`}
+              </p>
+              <p className="text-xs text-muted-foreground">ID #{lead.vendorUserId}</p>
+            </>
+          )
+        },
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <AdminStatusBadge
+            status={row.original.status}
+            options={VENDOR_LEAD_STATUS_OPTIONS}
+            className="whitespace-nowrap"
+          />
+        ),
+      },
+      {
+        id: "jobAmount",
+        header: "Job amount",
+        meta: { className: "whitespace-nowrap" },
+        cell: ({ row }) => formatCurrency(row.original.jobAmount),
+      },
+      {
+        id: "created",
+        header: "Created",
+        meta: { className: "whitespace-nowrap text-xs text-muted-foreground" },
+        cell: ({ row }) =>
+          formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true }),
+      },
+      {
+        id: "action",
+        header: "Actions",
+        meta: { className: "text-right" },
+        cell: ({ row }) => (
+          <Button size="sm" variant="outline" onClick={() => openLead(row.original)}>
+            View detail
+          </Button>
+        ),
+      },
+    ],
+    [vendorNameById],
   )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-heading text-xl font-bold">Vendor leads</h2>
-        <p className="text-sm text-muted-foreground">
-          Complete jobs with a job amount to post earnings and commission to the
-          vendor wallet.
-        </p>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      ) : !data?.items.length ? (
-        <p className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-          No vendor leads yet. Assign a vendor on a service request.
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          {/* Mobile: card list */}
-          <ul className="divide-y divide-border md:hidden">
-            {data.items.map((lead) => {
+    <>
+      <AdminListPage
+        title="Vendor leads"
+        description="Complete jobs with a job amount to post earnings and commission to the vendor wallet."
+        isLoading={isLoading}
+        loadingLabel="Loading vendor leads…"
+        isError={isError}
+        error={error}
+        errorTitle="Could not load vendor leads"
+        toolbar={
+          <AdminToolbar
+            statusFilter={{
+              value: statusFilter,
+              onChange: (value) => setStatusFilter(value as StatusFilter),
+              options: VENDOR_LEAD_STATUS_OPTIONS,
+              totalCount: statusFilter === "all" ? total : undefined,
+            }}
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: "Search customer, phone, vendor, or area…",
+            }}
+            filterSheet={{
+              open: filterSheetOpen,
+              onOpenChange: setFilterSheetOpen,
+              title: "Filters",
+              description: "Narrow by service area.",
+              hasActiveFilters,
+              onClear: clearFilters,
+              children: (
+                <div className="space-y-2">
+                  <Label htmlFor="vendor-lead-area">Area contains</Label>
+                  <Input
+                    id="vendor-lead-area"
+                    placeholder="e.g. Koramangala"
+                    value={areaFilter}
+                    onChange={(e) => setAreaFilter(e.target.value)}
+                  />
+                </div>
+              ),
+            }}
+          />
+        }
+        isEmpty={displayItems.length === 0}
+        emptyTitle="No vendor leads match your filters"
+        emptyDescription="Assign a vendor on a service request or try All statuses."
+        pagination={{
+          page,
+          totalPages,
+          total,
+          pageSize: PAGE_SIZE,
+          onPageChange: setPage,
+          isFetching: isFetching && !isLoading,
+        }}
+      >
+        <div className="overflow-hidden rounded-xl border border-border bg-card md:hidden">
+          <ul className="divide-y divide-border">
+            {displayItems.map((lead) => {
               const vendorLabel =
                 vendorNameById.get(lead.vendorUserId) ??
                 `Vendor #${lead.vendorUserId}`
@@ -227,12 +374,11 @@ export default function VendorLeadsAdmin() {
                           {lead.phone}
                         </p>
                       </div>
-                      <Badge
-                        variant={statusVariant(lead.status)}
-                        className="shrink-0 capitalize text-[10px]"
-                      >
-                        {formatStatus(lead.status)}
-                      </Badge>
+                      <AdminStatusBadge
+                        status={lead.status}
+                        options={VENDOR_LEAD_STATUS_OPTIONS}
+                        className="shrink-0 text-[10px]"
+                      />
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                       <span className="min-w-0 text-foreground">
@@ -255,68 +401,15 @@ export default function VendorLeadsAdmin() {
               )
             })}
           </ul>
-
-          {/* Desktop: table */}
-          <div className="hidden overflow-x-auto md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[9rem]">Customer</TableHead>
-                  <TableHead className="min-w-[10rem]">Vendor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Job amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell className="min-w-[9rem]">
-                      <p className="font-medium">{lead.customerName}</p>
-                      <p className="text-xs text-muted-foreground">{lead.phone}</p>
-                    </TableCell>
-                    <TableCell className="min-w-[10rem]">
-                      <p className="text-sm font-medium">
-                        {vendorNameById.get(lead.vendorUserId) ??
-                          `Vendor #${lead.vendorUserId}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        ID #{lead.vendorUserId}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={statusVariant(lead.status)}
-                        className="capitalize whitespace-nowrap"
-                      >
-                        {formatStatus(lead.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {formatCurrency(lead.jobAmount)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(lead.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openLead(lead)}
-                      >
-                        View detail
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </div>
-      )}
+
+        <AdminDataTable
+          className="hidden md:block"
+          columns={columns}
+          data={displayItems}
+          getRowId={(row) => String(row.id)}
+        />
+      </AdminListPage>
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         {selected ? (
@@ -354,7 +447,7 @@ export default function VendorLeadsAdmin() {
           />
         ) : null}
       </Sheet>
-    </div>
+    </>
   )
 }
 
@@ -399,9 +492,10 @@ function AdminLeadDetailSheet({
                 : ""}
             </SheetDescription>
           </div>
-          <Badge variant={statusVariant(lead.status)} className="capitalize">
-            {formatStatus(lead.status)}
-          </Badge>
+          <AdminStatusBadge
+            status={lead.status}
+            options={VENDOR_LEAD_STATUS_OPTIONS}
+          />
         </div>
       </SheetHeader>
 
