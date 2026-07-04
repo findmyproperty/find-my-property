@@ -31,6 +31,7 @@ const baseSchema = z.object({
   preferredSlot: z
     .enum(["morning", "afternoon", "evening"])
     .optional(),
+  assignedVendorUserId: z.number().int().positive().nullable().optional(),
 });
 
 /** Geocoded location captured via Google Places Autocomplete. */
@@ -49,9 +50,8 @@ export const stopSchema = z.object({
 export type StopValue = z.infer<typeof stopSchema>;
 
 export const packersMoversSchema = baseSchema.extend({
-  moveType: z.enum(["home", "office", "vehicle"], {
-    required_error: "Pick a move type.",
-  }),
+  // Now supports dynamic categories mapped to 'packers_movers'
+  moveType: z.string().min(1, { message: "Pick a move type." }),
   bhk: z.enum(["1rk", "1", "2", "3", "4+"], {
     required_error: "Select size.",
   }),
@@ -69,20 +69,10 @@ export const packersMoversSchema = baseSchema.extend({
 export type PackersMoversFormValues = z.infer<typeof packersMoversSchema>;
 
 export const paintingCleaningSchema = baseSchema.extend({
-  subType: z.enum(
-    [
-      "full_painting",
-      "partial_painting",
-      "deep_cleaning",
-      "bathroom_cleaning",
-      "sofa_cleaning",
-      "kitchen_cleaning",
-    ],
-    { required_error: "Pick a service." },
-  ),
-  propertyType: z.enum(["apartment", "villa", "office"], {
-    required_error: "Pick a property type.",
-  }),
+  // Now supports dynamic categories mapped to 'painting_cleaning'
+  subType: z.string().min(1, { message: "Pick a service." }),
+  // Relaxed to support future dynamic categories (currently still uses static PROPERTY_TYPE_OPTIONS + fallback)
+  propertyType: z.string().min(1, { message: "Pick a property type." }),
   bhkOrSqft: z
     .string()
     .trim()
@@ -99,12 +89,10 @@ export type PaintingCleaningFormValues = z.infer<
 >;
 
 export const homeServicesSchema = baseSchema.extend({
-  subType: z.enum(["carpenter", "plumber", "electrician"], {
-    required_error: "Pick a service.",
-  }),
-  propertyType: z.enum(["apartment", "villa", "office"], {
-    required_error: "Pick a property type.",
-  }),
+  // Now supports dynamic categories mapped to 'home_services'
+  subType: z.string().min(1, { message: "Pick a service." }),
+  // Relaxed to support future dynamic categories (currently still uses static PROPERTY_TYPE_OPTIONS + fallback)
+  propertyType: z.string().min(1, { message: "Pick a property type." }),
   bhkOrSqft: z
     .string()
     .trim()
@@ -119,9 +107,8 @@ export const homeServicesSchema = baseSchema.extend({
 export type HomeServicesFormValues = z.infer<typeof homeServicesSchema>;
 
 export const eventManagementSchema = baseSchema.extend({
-  eventType: z.enum(["birthday", "wedding", "baby_shower", "corporate"], {
-    required_error: "Pick an event type.",
-  }),
+  // Now supports dynamic categories mapped to 'event_management' (with static fallback)
+  eventType: z.string().min(1, { message: "Pick an event type." }),
   venueType: z.enum(["home", "banquet", "hotel", "outdoor", "office", "other"], {
     required_error: "Pick a venue type.",
   }),
@@ -251,6 +238,16 @@ export const EVENT_TYPE_OPTIONS: Array<{
     description: "Team events, launches, offsites and meetings.",
   },
 ];
+
+/** Service keys for category mapping (used in admin + dynamic options in service forms). */
+export const SERVICE_OPTIONS = [
+  { value: "packers_movers", label: "Packers & Movers" },
+  { value: "painting_cleaning", label: "Painting & Cleaning" },
+  { value: "home_services", label: "Home Services" },
+  { value: "event_management", label: "Event Management" },
+] as const;
+
+export type ServiceKey = (typeof SERVICE_OPTIONS)[number]["value"];
 
 export const VENUE_TYPE_OPTIONS: Array<{
   value: EventManagementFormValues["venueType"];

@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { LogIn, Mail, MapPin, Phone } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -17,6 +18,7 @@ import {
   useAdminListControls,
 } from "@/hooks/use-admin-list-controls";
 import { useAdminUsers } from "@/hooks/use-users";
+import { useAuth } from "@/contexts/auth-context";
 import type { AdminUserListItem } from "@/lib/api";
 import { CUSTOMER_STATUS_OPTIONS } from "@/lib/admin/status-config";
 
@@ -51,6 +53,7 @@ function customerSearchText(user: AdminUserListItem): string {
     user.locationCity,
     user.locationState,
     user.locationCountry,
+    user.role,
     String(user.id),
   ]
     .filter((value): value is string => Boolean(value))
@@ -73,96 +76,25 @@ function compareCustomers(a: AdminUserListItem, b: AdminUserListItem, key: Custo
   }
 }
 
-const customerColumns: ColumnDef<AdminUserListItem, unknown>[] = [
-  {
-    id: "customer",
-    header: "Customer",
-    meta: { sortKey: "customer", className: "min-w-[160px]" },
-    cell: ({ row }) => {
-      const user = row.original;
-      return (
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-medium text-foreground">
-            {user.name || `Customer #${user.id}`}
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">#{user.id}</span>
-        </div>
-      );
-    },
-  },
-  {
-    id: "contact",
-    header: "Contact",
-    meta: { sortKey: "contact", className: "min-w-[180px]" },
-    cell: ({ row }) => {
-      const user = row.original;
-      return (
-        <div className="flex min-w-0 flex-col gap-1 text-sm">
-          {user.email ? (
-            <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-              <Mail className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{user.email}</span>
-            </span>
-          ) : null}
-          {user.phone ? (
-            <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-              <Phone className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{user.phone}</span>
-            </span>
-          ) : null}
-          {!user.email && !user.phone ? (
-            <span className="text-muted-foreground">No contact added</span>
-          ) : null}
-        </div>
-      );
-    },
-  },
-  {
-    id: "location",
-    header: "Location",
-    meta: { sortKey: "location", className: "hidden md:table-cell" },
-    cell: ({ row }) => (
-      <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-        <MapPin className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{locationLabel(row.original)}</span>
-      </span>
-    ),
-  },
-  {
-    id: "status",
-    header: "Status",
-    meta: { sortKey: "status" },
-    cell: ({ row }) => {
-      const user = row.original;
-      return (
-        <div className="flex flex-wrap gap-1.5">
-          <AdminStatusBadge
-            status={user.isEmailVerified ? "verified" : "pending"}
-            options={CUSTOMER_STATUS_OPTIONS}
-          />
-          <AdminStatusBadge
-            status={user.onboardingCompleted ? "onboarded" : "incomplete"}
-            options={CUSTOMER_STATUS_OPTIONS}
-          />
-        </div>
-      );
-    },
-  },
-  {
-    id: "joined",
-    header: "Joined",
-    meta: { sortKey: "createdAt" },
-    cell: ({ row }) => (
-      <span className="text-xs text-muted-foreground">
-        {formatDate(row.original.createdAt)}
-      </span>
-    ),
-  },
-];
+
 
 export default function CustomersAdmin() {
-  const { data, isLoading, isError, error } = useAdminUsers({ role: "tenant" });
+  const { loginAsUser } = useAuth();
+  const { data, isLoading, isError, error } = useAdminUsers({}); // list ALL users
   const customers = useMemo(() => data?.items ?? [], [data?.items]);
+
+  const handleLoginAs = async (userId: number, userName?: string | null) => {
+    if (!confirm(`Login as ${userName || "user #" + userId}? This will switch your session.`)) {
+      return;
+    }
+    const res = await loginAsUser(userId);
+    if (res.success) {
+      // Hard redirect to root after impersonating
+      window.location.href = "/";
+    } else {
+      alert(res.error || "Failed to login as user");
+    }
+  };
 
   const [statusFilter, setStatusFilter] = useState<CustomerStatusFilter>("all");
   const [locationFilter, setLocationFilter] = useState("");
@@ -221,15 +153,131 @@ export default function CustomersAdmin() {
   const clearFilters = () => setLocationFilter("");
   const hasActiveFilters = locationFilter.trim() !== "";
 
+  const customerColumns = useMemo<ColumnDef<AdminUserListItem, unknown>[]>(() => [
+    {
+      id: "customer",
+      header: "Customer",
+      meta: { sortKey: "customer", className: "min-w-[160px]" },
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="font-medium text-foreground">
+              {user.name || `User #${user.id}`}
+            </span>
+            <span className="font-mono text-xs text-muted-foreground">#{user.id}</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "contact",
+      header: "Contact",
+      meta: { sortKey: "contact", className: "min-w-[180px]" },
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex min-w-0 flex-col gap-1 text-sm">
+            {user.email ? (
+              <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <Mail className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{user.email}</span>
+              </span>
+            ) : null}
+            {user.phone ? (
+              <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <Phone className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{user.phone}</span>
+              </span>
+            ) : null}
+            {!user.email && !user.phone ? (
+              <span className="text-muted-foreground">No contact added</span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      id: "role",
+      header: "Role",
+      meta: { sortKey: "role" as any },
+      cell: ({ row }) => (
+        <span className="inline-block rounded bg-muted px-2 py-0.5 text-xs font-medium capitalize text-foreground">
+          {row.original.role}
+        </span>
+      ),
+    },
+    {
+      id: "location",
+      header: "Location",
+      meta: { sortKey: "location", className: "hidden md:table-cell" },
+      cell: ({ row }) => (
+        <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{locationLabel(row.original)}</span>
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      meta: { sortKey: "status" },
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            <AdminStatusBadge
+              status={user.isEmailVerified ? "verified" : "pending"}
+              options={CUSTOMER_STATUS_OPTIONS}
+            />
+            <AdminStatusBadge
+              status={user.onboardingCompleted ? "onboarded" : "incomplete"}
+              options={CUSTOMER_STATUS_OPTIONS}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      id: "joined",
+      header: "Joined",
+      meta: { sortKey: "createdAt" },
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {formatDate(row.original.createdAt)}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      meta: { className: "text-right w-[100px]" },
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => handleLoginAs(user.id, user.name)}
+          >
+            <LogIn className="size-3.5" />
+            Login as
+          </Button>
+        );
+      },
+    },
+  ], [handleLoginAs]);
+
   return (
     <AdminListPage
-      title="Customers"
-      description="View registered customer users, contact details, verification, and onboarding status."
+      title="All Users"
+      description="List of all registered users (tenants, agents, vendors, admins). Use 'Login as' to impersonate a user."
       isLoading={isLoading}
-      loadingLabel="Loading customers…"
+      loadingLabel="Loading users…"
       isError={isError}
       error={error}
-      errorTitle="Could not load customers"
+      errorTitle="Could not load users"
       toolbar={
         <AdminToolbar
           statusFilter={{
@@ -266,8 +314,8 @@ export default function CustomersAdmin() {
         />
       }
       isEmpty={filteredCustomers.length === 0}
-      emptyTitle="No customers match your filters"
-      emptyDescription="Try All statuses, clearing search, or adjusting filters."
+      emptyTitle="No users match your filters"
+      emptyDescription="Try clearing search or adjusting filters."
       pagination={{
         page: pagedCustomers.page,
         totalPages: pagedCustomers.totalPages,

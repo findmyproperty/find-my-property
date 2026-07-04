@@ -141,6 +141,7 @@ export interface BaseServiceRequestInput {
   preferredDate?: string;
   preferredSlot?: PreferredSlot;
   recaptchaToken?: string;
+  assignedVendorUserId?: number | null;
 }
 
 export interface PackersMoversInput extends BaseServiceRequestInput {

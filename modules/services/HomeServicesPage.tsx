@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import {
@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitHomeServices } from "@/hooks/use-service-requests";
+import { useCategories } from "@/hooks/use-categories";
 import {
   HOME_SERVICE_TYPE_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
@@ -41,6 +42,7 @@ import {
 import { ServiceHero } from "./ServiceHero";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
+import VendorSelector from "./VendorSelector";
 import { useRouter } from "next/navigation";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
@@ -91,6 +93,7 @@ export default function HomeServicesPage() {
       bhkOrSqft: "",
       location: { ...EMPTY_LOCATION },
       notes: "",
+      assignedVendorUserId: null,
     },
   });
 
@@ -106,6 +109,8 @@ export default function HomeServicesPage() {
     });
   }, [isAuthReady, user, form]);
 
+  const locationWatch = useWatch({ control: form.control, name: "location" });
+
   const onSubmit = async (values: HomeServicesFormValues) => {
     await mutation.mutateAsync({
       name: values.name.trim(),
@@ -116,9 +121,10 @@ export default function HomeServicesPage() {
       pincode: values.pincode?.trim() || undefined,
       preferredDate: values.preferredDate?.trim() || undefined,
       preferredSlot: values.preferredSlot,
+      assignedVendorUserId: values.assignedVendorUserId ?? undefined,
       details: {
-        subType: values.subType,
-        propertyType: values.propertyType,
+        subType: values.subType as any,
+        propertyType: values.propertyType as any,
         bhkOrSqft: values.bhkOrSqft.trim(),
         location: {
           label: values.location.label.trim(),
@@ -135,6 +141,7 @@ export default function HomeServicesPage() {
       bhkOrSqft: "",
       location: { ...EMPTY_LOCATION },
       notes: "",
+      assignedVendorUserId: null,
     });
   };
 
@@ -290,22 +297,37 @@ export default function HomeServicesPage() {
                     <FormField
                       control={form.control}
                       name="subType"
-                      render={({ field, fieldState }) => (
-                        <FormItem>
-                          <FormLabel required>Service</FormLabel>
-                          <FormControl>
-                            <Combobox
-                              options={HOME_SERVICE_TYPE_OPTIONS}
-                              value={field.value}
-                              onValueChange={field.onChange}
-                              placeholder="Pick a service"
-                              disableSearch
-                              aria-invalid={!!fieldState.error}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field, fieldState }) => {
+                        const { data: cats = [] } = useCategories();
+                        const svcCats = cats.filter(
+                          (c) => c.service === "home_services" && c.isActive !== false,
+                        );
+                        const options =
+                          svcCats.length > 0
+                            ? svcCats.map((c) => ({
+                                value: c.name,
+                                label: c.name,
+                                description: c.description || undefined,
+                              }))
+                            : HOME_SERVICE_TYPE_OPTIONS;
+
+                        return (
+                          <FormItem>
+                            <FormLabel required>Service</FormLabel>
+                            <FormControl>
+                              <Combobox
+                                options={options}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                placeholder="Pick a service"
+                                disableSearch
+                                aria-invalid={!!fieldState.error}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                     <FormField
                       control={form.control}
@@ -406,6 +428,27 @@ export default function HomeServicesPage() {
                             }
                           />
                         </>
+                      )}
+                    />
+                  </div>
+
+                  <div className="mt-5">
+                    <FormField
+                      control={form.control}
+                      name="assignedVendorUserId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred vendor (optional)</FormLabel>
+                          <FormControl>
+                            <VendorSelector
+                              serviceType="home_services"
+                              location={locationWatch?.label}
+                              value={field.value ?? null}
+                              onValueChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </div>

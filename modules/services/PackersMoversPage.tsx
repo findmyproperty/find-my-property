@@ -99,6 +99,7 @@ export default function PackersMoversPage() {
       drops: [{ ...EMPTY_STOP }],
       hasPackingMaterial: false,
       notes: "",
+      assignedVendorUserId: null,
     },
   });
 
@@ -117,6 +118,7 @@ export default function PackersMoversPage() {
   // Watched values feed the live TripEstimate card without re-submitting.
   const pickupWatch = useWatch({ control: form.control, name: "pickup" });
   const dropsWatch = useWatch({ control: form.control, name: "drops" });
+  const moveTypeWatch = useWatch({ control: form.control, name: "moveType" });
 
   const onSubmit = async (values: PackersMoversFormValues) => {
     await mutation.mutateAsync({
@@ -128,6 +130,7 @@ export default function PackersMoversPage() {
       pincode: values.pincode?.trim() || undefined,
       preferredDate: values.preferredDate?.trim() || undefined,
       preferredSlot: values.preferredSlot,
+      assignedVendorUserId: values.assignedVendorUserId ?? undefined,
       details: {
         moveType: values.moveType,
         bhk: values.bhk,
@@ -154,6 +157,7 @@ export default function PackersMoversPage() {
       pickup: { ...EMPTY_STOP },
       drops: [{ ...EMPTY_STOP }],
       notes: "",
+      assignedVendorUserId: null,
     });
   };
 
@@ -486,6 +490,27 @@ export default function PackersMoversPage() {
                               placeholder="Anytime"
                               disableSearch
                               aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="mt-5">
+                    <FormField
+                      control={form.control}
+                      name="assignedVendorUserId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred vendor (optional)</FormLabel>
+                          <FormControl>
+                            <VendorSelector
+                              serviceType="packers_movers"
+                              category={moveTypeWatch}
+                              value={field.value ?? null}
+                              onValueChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />

@@ -8,6 +8,8 @@ export type { Settings } from "@/schema/setting";
 export type { Agent } from "@/schema/agent";
 export type { Lead, LeadStatus } from "@/schema/lead";
 export type { AdminDashboardStats } from "@/schema/admin-dashboard-stats";
+export type { Category, CategoryCreate, CategoryUpdate } from "@/schema/category";
+export type { PublicVendorOption, PublicVendorProfile } from "@/schema/vendor";
 export type {
   ServiceType,
   ServiceRequestStatus,

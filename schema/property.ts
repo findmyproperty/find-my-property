@@ -4,7 +4,8 @@ import { userPublicSchema } from "./user";
 export const listingTypeSchema = z.enum(["Rent", "Sale", "Lease"]);
 export type ListingType = z.infer<typeof listingTypeSchema>;
 
-export const propertyTypeSchema = z.enum(["House", "Apartment", "Villa", "Townhome"]);
+/** Property category / type. Backed by admin-managed categories (string value stored on property). */
+export const propertyTypeSchema = z.string().min(1);
 export type PropertyType = z.infer<typeof propertyTypeSchema>;
 
 export const propertyStatusSchema = z.enum(["Pending", "Approved", "Rejected"]);

@@ -1,17 +1,12 @@
 import { z } from "zod";
 import type { BackendProperty } from "@/lib/property-mapper";
 
-const propertyTypeOptions = ["Apartment", "House", "Villa", "Townhome"] as const;
 const listingTypeOptions = ["Rent", "Sale", "Lease"] as const;
 
 const furnishingOptions = ["furnished", "semi-furnished", "unfurnished"] as const;
 
-type PropertyTypeOption = (typeof propertyTypeOptions)[number];
 type ListingTypeOption = (typeof listingTypeOptions)[number];
 type FurnishingOption = (typeof furnishingOptions)[number];
-
-const isPropertyTypeOption = (value: string): value is PropertyTypeOption =>
-  propertyTypeOptions.includes(value as PropertyTypeOption);
 
 const isListingTypeOption = (value: string): value is ListingTypeOption =>
   listingTypeOptions.includes(value as ListingTypeOption);
@@ -29,9 +24,8 @@ const emptyFloorPlan = {
 };
 
 export const propertyFormSchema = z.object({
-  propertyType: z.enum(propertyTypeOptions, {
-    required_error: "Please select a property type.",
-  }),
+  // Accepts any non-empty string; populated dynamically from admin-managed categories
+  propertyType: z.string().min(1, { message: "Please select a property type." }),
   listingType: z.enum(listingTypeOptions, {
     required_error: "Please select a listing type.",
   }),
@@ -105,10 +99,8 @@ export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
 
 /** Map `BackendProperty` (`PropertyWithRelations` / `PropertyRow` + relations) into form defaults. */
 export const getDefaultValues = (initialData?: BackendProperty): Partial<PropertyFormValues> => {
-  const propertyType =
-    initialData?.propertyType && isPropertyTypeOption(initialData.propertyType)
-      ? initialData.propertyType
-      : "Apartment";
+  // propertyType is now free-form string (from admin categories). Fall back to a common default.
+  const propertyType = initialData?.propertyType?.trim() || "Apartment";
   const listingType =
     initialData?.listingType && isListingTypeOption(initialData.listingType)
       ? initialData.listingType

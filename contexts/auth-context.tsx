@@ -73,6 +73,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   /** True after client has read session from localStorage (matches SSR until then). */
   isAuthReady: boolean;
+  /** Admin feature: login as another user (impersonate) */
+  loginAsUser: (userId: number) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -156,6 +158,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unable to authenticate with phone",
+      };
+    }
+  };
+
+  const loginAsUser = async (userId: number): Promise<AuthResult> => {
+    try {
+      const result = await api.adminLoginAs(userId);
+      const newUser: User = {
+        ...result.user,
+        avatar: result.user.avatarUrl || undefined,
+      };
+      persistSession(newUser, result.accessToken);
+      // Optionally store refresh if present
+      if (result.refreshToken) {
+        localStorage.setItem("nb_refresh_token", result.refreshToken);
+      }
+      return { success: true, requiresOnboarding: !newUser.onboardingCompleted };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to login as user. Make sure you are admin and backend supports /auth/admin/login-as",
       };
     }
   };
@@ -257,6 +283,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         updateProfileLocal,
         isAuthenticated: !!user && !!token,
         isAuthReady,
+        loginAsUser,
       }}
     >
       {children}

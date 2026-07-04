@@ -3,23 +3,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Briefcase, Clock, Loader2, MapPin } from "lucide-react";
+import { Briefcase, Clock, Loader2, MapPin, Star, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import type { PublicVendorProfile } from "@/schema/vendor";
-import type { VendorCategory } from "@/schema/vendor";
-
-const CATEGORY_LABELS: Record<VendorCategory, string> = {
-  real_estate: "Real estate",
-  home_services: "Home services",
-  packers: "Packers & movers",
-  lawyer: "Legal",
-  ca: "Chartered accountant",
-  web_designer: "Web design",
-  trainer: "Training",
-  tutor: "Tutoring",
-  other: "Services",
-};
 
 type Props = {
   idOrSlug: string;
@@ -76,18 +63,46 @@ export default function PublicVendorProfilePage({ idOrSlug }: Props) {
   }
 
   const name = profile.businessName?.trim() || "Verified partner";
-  const categoryLabel = CATEGORY_LABELS[profile.category as VendorCategory] ?? profile.category;
+  const categories = profile.categories ?? [];
+  const ratingText =
+    profile.overallRating && profile.reviewCount
+      ? `${profile.overallRating.toFixed(1)} (${profile.reviewCount} review${
+          profile.reviewCount === 1 ? "" : "s"
+        })`
+      : "New partner";
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
       <header className="space-y-3">
-        <Badge variant="secondary">{categoryLabel}</Badge>
+        {categories.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <Badge key={category.id} variant="secondary">
+                {category.name}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <Badge variant="secondary">Verified partner</Badge>
+        )}
         <h1 className="text-3xl font-bold tracking-tight">{name}</h1>
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Briefcase className="h-4 w-4" />
-          {profile.completedJobsCount} completed job
-          {profile.completedJobsCount === 1 ? "" : "s"}
-        </p>
+        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+          {profile.vendorName ? (
+            <p className="flex items-center gap-2">
+              <UserRound className="h-4 w-4" />
+              {profile.vendorName}
+            </p>
+          ) : null}
+          <p className="flex items-center gap-2">
+            <Star className="h-4 w-4" />
+            {ratingText}
+          </p>
+          <p className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4" />
+            {profile.completedJobsCount} completed job
+            {profile.completedJobsCount === 1 ? "" : "s"}
+          </p>
+        </div>
       </header>
 
       {profile.publicPhotoUrls?.length ? (

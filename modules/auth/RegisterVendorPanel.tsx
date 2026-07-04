@@ -2,17 +2,26 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +29,7 @@ import { parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
-import type { VendorCategory } from "@/schema/vendor";
+import { useCategories } from "@/hooks/use-categories";
 
 const normalizePhone = (value: string) => {
   const trimmed = value.trim();
@@ -30,24 +39,12 @@ const normalizePhone = (value: string) => {
   return trimmed;
 };
 
-const CATEGORIES: { value: VendorCategory; label: string }[] = [
-  { value: "real_estate", label: "Real estate agent" },
-  { value: "home_services", label: "Home services" },
-  { value: "packers", label: "Packers & movers" },
-  { value: "lawyer", label: "Lawyer" },
-  { value: "ca", label: "CA" },
-  { value: "web_designer", label: "Web designer" },
-  { value: "trainer", label: "Trainer" },
-  { value: "tutor", label: "Tutor" },
-  { value: "other", label: "Other" },
-];
-
 export default function RegisterVendorPanel() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [category, setCategory] = useState<VendorCategory>("other");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -58,6 +55,25 @@ export default function RegisterVendorPanel() {
   const { settings } = useSettings();
   const siteName = settings?.siteName?.trim() || SITE_NAME;
   const logoUrl = settings?.primaryLogoUrl?.trim() || null;
+
+  const { data: allCategories = [] } = useCategories();
+  const categoryOptions = useMemo(
+    () =>
+      allCategories
+        .filter((c) => c.isActive !== false)
+        .map((c) => ({ value: c.id.toString(), label: c.name, id: c.id })),
+    [allCategories],
+  );
+
+  const addCategory = (id: number) => {
+    if (!selectedCategoryIds.includes(id)) {
+      setSelectedCategoryIds((prev) => [...prev, id]);
+    }
+  };
+
+  const removeCategory = (id: number) => {
+    setSelectedCategoryIds((prev) => prev.filter((v) => v !== id));
+  };
 
   const handleSendOtp = async () => {
     if (!name.trim() || !businessName.trim()) {
@@ -90,7 +106,10 @@ export default function RegisterVendorPanel() {
       return;
     }
     try {
-      await api.vendors.updateProfile({ businessName: businessName.trim(), category });
+      await api.vendors.updateProfile({
+        businessName: businessName.trim(),
+        categoryIds: selectedCategoryIds,
+      });
     } catch {
       /* may run after onboarding if token not ready */
     }
@@ -123,19 +142,75 @@ export default function RegisterVendorPanel() {
             <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as VendorCategory)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Categories</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div
+                  className="min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex flex-wrap gap-1 items-center cursor-pointer hover:bg-accent"
+                >
+                  {selectedCategoryIds.length === 0 ? (
+                    <span className="text-muted-foreground">Select categories...</span>
+                  ) : (
+                    selectedCategoryIds.map((id) => {
+                      const cat = categoryOptions.find((o) => parseInt(o.value) === id);
+                      const label = cat ? cat.label : `ID ${id}`;
+                      return (
+                        <Badge
+                          key={id}
+                          variant="secondary"
+                          className="gap-1 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeCategory(id);
+                          }}
+                        >
+                          {label}
+                          <X className="size-3" />
+                        </Badge>
+                      );
+                    })
+                  )}
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search categories..." />
+                  <CommandList>
+                    <CommandEmpty>No categories found.</CommandEmpty>
+                    <CommandGroup>
+                      {categoryOptions.map((opt) => {
+                        const idNum = parseInt(opt.value);
+                        const isSelected = selectedCategoryIds.includes(idNum);
+                        return (
+                          <CommandItem
+                            key={opt.value}
+                            value={opt.value}
+                            onSelect={() => {
+                              if (isSelected) {
+                                removeCategory(idNum);
+                              } else {
+                                addCategory(idNum);
+                              }
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                isSelected ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {opt.label}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              Select multiple categories from admin-created list.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Phone</Label>

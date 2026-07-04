@@ -1,8 +1,10 @@
 import type {
+  PublicVendorOption,
   PublicVendorProfile,
   VendorProfile,
   VendorProfileUpdate,
 } from "@/schema/vendor";
+import type { ServiceType } from "@/end-points/service-requests";
 import { getStoredToken, request } from "@/end-points/http";
 
 export interface AdminListVendorsQuery {
@@ -25,6 +27,18 @@ export interface AdminUpdateVendorInput {
 }
 
 export const vendors = {
+  async listPublicSelect(query: {
+    serviceType: ServiceType;
+    category?: string;
+  }): Promise<PublicVendorOption[]> {
+    const params = new URLSearchParams({ serviceType: query.serviceType });
+    if (query.category?.trim()) params.set("category", query.category.trim());
+    return request<PublicVendorOption[]>(`/vendors/public/select?${params.toString()}`, {
+      method: "GET",
+      token: undefined,
+    });
+  },
+
   async getPublicProfile(idOrSlug: string): Promise<PublicVendorProfile> {
     return request<PublicVendorProfile>(`/vendors/public/${encodeURIComponent(idOrSlug)}`, {
       method: "GET",

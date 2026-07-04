@@ -153,4 +153,17 @@ export const auth = {
       method: "POST",
     });
   },
+
+  /**
+   * Admin-only: login as another user (impersonation).
+   * Backend should return access_token + user for the target id.
+   */
+  async adminLoginAs(userId: number) {
+    const data = await request<AuthApiResponse>("/auth/admin/login-as", {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify({ userId }),
+    });
+    return mapAuthResponse(data);
+  },
 };

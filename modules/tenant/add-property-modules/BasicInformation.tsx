@@ -15,9 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { PropertyFormValues } from "./schema";
+import { useCategories } from "@/hooks/use-categories";
 
 export const BasicInformation = () => {
   const { control } = useFormContext<PropertyFormValues>();
+  const { data: categories = [] } = useCategories();
+  const activeCategories = categories.filter((c) => c.isActive !== false && !c.service);
+  const fallback = ["Apartment", "House", "Villa", "Townhome"];
+  const propertyTypeOptions = activeCategories.length > 0 ? activeCategories.map((c) => c.name) : fallback;
 
   return (
     <div className="space-y-4 pb-2">
@@ -28,17 +33,18 @@ export const BasicInformation = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel required>Property Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Apartment">Apartment</SelectItem>
-                  <SelectItem value="House">House</SelectItem>
-                  <SelectItem value="Villa">Villa</SelectItem>
-                  <SelectItem value="Townhome">Townhome</SelectItem>
+                  {propertyTypeOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

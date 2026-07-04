@@ -49,8 +49,9 @@ function displayName(vendor: VendorProfile) {
   return vendor.businessName || vendor.user?.name || `Vendor #${vendor.userId}`;
 }
 
-function formatCategory(category: string) {
-  return category.replace(/_/g, " ");
+function formatCategory(cat: any) {
+  const name = typeof cat === 'string' ? cat : (cat && cat.name) || (Array.isArray(cat) && cat[0] && cat[0].name) || '';
+  return name.replace(/_/g, " ");
 }
 
 function formatCurrency(amount: number | null | undefined) {
@@ -222,7 +223,7 @@ export default function VendorPaymentsAdmin() {
         displayName(vendor),
         vendor.user?.phone,
         vendor.user?.email,
-        vendor.category,
+        (vendor.categories && vendor.categories[0]) || '',
         String(vendor.userId),
       ]
         .filter(Boolean)
@@ -281,7 +282,7 @@ export default function VendorPaymentsAdmin() {
         id: "category",
         header: "Category",
         meta: { className: "capitalize" },
-        cell: ({ row }) => formatCategory(row.original.category),
+        cell: ({ row }) => formatCategory((row.original.categories && row.original.categories[0]) || ''),
       },
       {
         id: "status",

@@ -21,9 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   mapBackendProperty,
   PropertyStatus,
-  PropertyType,
+  LEGACY_PROPERTY_TYPES,
   type BackendProperty,
 } from "@/lib/property-mapper";
+import { useCategories } from "@/hooks/use-categories";
 import type { Property } from "@/modules/properties/PropertyCard";
 import { buildPropertyPath } from "@/lib/property-slug";
 import { invalidatePropertyQueries } from "@/lib/invalidate-property-queries";
@@ -109,12 +110,24 @@ function rowStatus(p: BackendProperty) {
   return (p.status ?? PropertyStatus.PENDING) as string;
 }
 
-const PROPERTY_TYPE_OPTIONS = ["all", ...Object.values(PropertyType)] as const;
+// Dynamic from categories when available; fallback to legacy values
+function usePropertyTypeOptions() {
+  const { data: categories = [] } = useCategories();
+  // Only property categories (no service mapping)
+  const active = categories
+    .filter((c) => c.isActive !== false && !c.service)
+    .map((c) => c.name);
+  const base = active.length > 0 ? active : LEGACY_PROPERTY_TYPES;
+  return ["all", ...base] as const;
+}
 
 const PropertyApproval = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Only categories without a service mapping (property types)
+  const PROPERTY_TYPE_OPTIONS = usePropertyTypeOptions(); // the hook already fetches, we filter in the filter list below if needed, but keep for now. For dynamic we use the hook inside.
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusTab>("all");

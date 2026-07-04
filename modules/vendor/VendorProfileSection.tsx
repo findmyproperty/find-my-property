@@ -22,34 +22,30 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Check } from "lucide-react"
 import {
   useVendorProfile,
   useUpdateVendorProfile,
 } from "@/hooks/use-vendor-profile"
-import type { VendorCategory, VendorProfile } from "@/schema/vendor"
+import type { VendorProfile } from "@/schema/vendor"
+import { useCategories } from "@/hooks/use-categories"
 import { useToast } from "@/hooks/use-toast"
 import WorkingHoursPicker from "@/modules/vendor/WorkingHoursPicker"
 import { cn } from "@/lib/utils"
 
 const MB = 1024 * 1024
-
-const CATEGORIES: { value: VendorCategory; label: string }[] = [
-  { value: "real_estate", label: "Real estate" },
-  { value: "home_services", label: "Home services" },
-  { value: "packers", label: "Packers & movers" },
-  { value: "lawyer", label: "Lawyer" },
-  { value: "ca", label: "Chartered accountant (CA)" },
-  { value: "web_designer", label: "Web designer" },
-  { value: "trainer", label: "Trainer" },
-  { value: "tutor", label: "Tutor" },
-  { value: "other", label: "Other" },
-]
 
 const REQUIRED_KYC = ["Aadhaar", "PAN"] as const
 
@@ -270,11 +266,20 @@ export function VendorProfileStatusBanner({
 export function VendorBusinessForm({ profile }: { profile: VendorProfile | null }) {
   const { mutate: save, isPending } = useUpdateVendorProfile()
   const { toast } = useToast()
+  const { data: allCategories = [] } = useCategories()
+  const categoryOptions = useMemo(
+    () =>
+      allCategories
+        .filter((c) => c.isActive !== false)
+        .map((c) => ({ value: c.id.toString(), label: c.name, id: c.id })),
+    [allCategories],
+  )
+
   const [businessName, setBusinessName] = useState(
     () => profile?.businessName ?? "",
   )
-  const [category, setCategory] = useState<VendorCategory>(
-    () => profile?.category ?? "other",
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(
+    () => (profile?.categories ? profile.categories.map((c: any) => c.id) : []),
   )
   const [about, setAbout] = useState(() => profile?.about ?? "")
   const [experience, setExperience] = useState(() => profile?.experience ?? "")
@@ -298,11 +303,21 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
     setLocationInput("")
   }
 
+  const addCategory = (id: number) => {
+    if (!selectedCategoryIds.includes(id)) {
+      setSelectedCategoryIds((prev) => [...prev, id])
+    }
+  }
+
+  const removeCategory = (id: number) => {
+    setSelectedCategoryIds((prev) => prev.filter((v) => v !== id))
+  }
+
   const handleSave = () => {
     save(
       {
         businessName,
-        category,
+        categoryIds: selectedCategoryIds,
         about,
         experience,
         workingHours,
@@ -349,22 +364,73 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="vendor-category">Category</Label>
-          <Select
-            value={category}
-            onValueChange={(v) => setCategory(v as VendorCategory)}
-          >
-            <SelectTrigger id="vendor-category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Categories</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <div
+                className="min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex flex-wrap gap-1 items-center cursor-pointer hover:bg-accent"
+                role="combobox"
+              >
+                {selectedCategoryIds.length === 0 ? (
+                  <span className="text-muted-foreground">Select categories...</span>
+                ) : (
+                  selectedCategoryIds.map((id) => {
+                    const cat = categoryOptions.find((o) => parseInt(o.value) === id);
+                    const label = cat ? cat.label : `ID ${id}`;
+                    return (
+                      <Badge
+                        key={id}
+                        variant="secondary"
+                        className="gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeCategory(id);
+                        }}
+                      >
+                        {label}
+                        <X className="size-3" />
+                      </Badge>
+                    );
+                  })
+                )}
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search categories..." />
+                <CommandList>
+                  <CommandEmpty>No categories found.</CommandEmpty>
+                  <CommandGroup>
+                    {categoryOptions.map((opt) => {
+                      const idNum = parseInt(opt.value);
+                      const isSelected = selectedCategoryIds.includes(idNum);
+                      return (
+                        <CommandItem
+                          key={opt.value}
+                          value={opt.value}
+                          onSelect={() => {
+                            if (isSelected) {
+                              removeCategory(idNum);
+                            } else {
+                              addCategory(idNum);
+                            }
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              isSelected ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {opt.label}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

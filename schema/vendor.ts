@@ -30,7 +30,16 @@ export const vendorProfileSchema = z.object({
   id: z.number(),
   userId: z.number(),
   businessName: z.string().nullable(),
-  category: vendorCategorySchema,
+  /** Populated from categoryIds */
+  categories: z
+    .array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+      }),
+    )
+    .optional(),
+  categoryIds: z.array(z.number()).nullable().optional(),
   verificationStatus: vendorVerificationStatusSchema,
   rejectionReason: z.string().nullable(),
   documents: vendorKycDocumentsSchema.nullable(),
@@ -59,7 +68,8 @@ export type VendorCategory = z.infer<typeof vendorCategorySchema>;
 
 export const vendorProfileUpdateSchema = z.object({
   businessName: z.string().max(160).optional(),
-  category: vendorCategorySchema.optional(),
+  /** Array of category IDs from the admin categories table */
+  categoryIds: z.array(z.number().int()).optional(),
   documents: vendorKycDocumentsSchema.optional(),
   experience: z.string().max(4000).optional(),
   serviceLocations: z.array(z.string()).optional(),
@@ -81,18 +91,49 @@ export const vendorProfileUpdateSchema = z.object({
 
 export const publicVendorProfileSchema = z.object({
   userId: z.number(),
+  vendorName: z.string().nullable().optional(),
   businessName: z.string().nullable(),
-  category: vendorCategorySchema,
+  categories: z
+    .array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+      }),
+    )
+    .optional(),
   about: z.string().nullable(),
   experience: z.string().nullable(),
   serviceLocations: z.array(z.string()).nullable(),
   workingHours: z.string().nullable(),
   publicPhotoUrls: z.array(z.string()).nullable(),
   certificateUrls: z.array(z.string()).nullable(),
+  overallRating: z.number().nullable().optional(),
+  reviewCount: z.number().optional(),
   completedJobsCount: z.number(),
   slug: z.string().nullable(),
 });
 
 export type PublicVendorProfile = z.infer<typeof publicVendorProfileSchema>;
+
+export const publicVendorOptionSchema = z.object({
+  userId: z.number(),
+  businessName: z.string().nullable(),
+  vendorName: z.string().nullable(),
+  slug: z.string().nullable(),
+  categories: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+    }),
+  ),
+  serviceLocations: z.array(z.string()).nullable(),
+  workingHours: z.string().nullable(),
+  overallRating: z.number().nullable(),
+  reviewCount: z.number(),
+  completedJobsCount: z.number(),
+  photoUrl: z.string().nullable(),
+});
+
+export type PublicVendorOption = z.infer<typeof publicVendorOptionSchema>;
 
 export type VendorProfileUpdate = z.infer<typeof vendorProfileUpdateSchema>;

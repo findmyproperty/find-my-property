@@ -3,16 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Baby,
-  BriefcaseBusiness,
   CalendarCheck,
   ClipboardList,
-  Gem,
   Gift,
   MapPin,
   PartyPopper,
@@ -36,9 +33,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitEventManagement } from "@/hooks/use-service-requests";
+import { useCategories } from "@/hooks/use-categories";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import { ServiceHero } from "./ServiceHero";
+import VendorSelector from "./VendorSelector";
 import {
   BUDGET_RANGE_OPTIONS,
   EVENT_SERVICE_OPTIONS,
@@ -51,16 +50,6 @@ import {
 } from "./schemas";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
-
-const EVENT_ICONS: Record<
-  EventManagementFormValues["eventType"],
-  typeof PartyPopper
-> = {
-  birthday: PartyPopper,
-  wedding: Gem,
-  baby_shower: Baby,
-  corporate: BriefcaseBusiness,
-};
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -114,6 +103,7 @@ export default function EventManagementPage() {
       location: { ...EMPTY_LOCATION },
       themeOrStyle: "",
       notes: "",
+      assignedVendorUserId: null,
     },
   });
 
@@ -129,6 +119,9 @@ export default function EventManagementPage() {
     });
   }, [isAuthReady, user, form]);
 
+  const locationWatch = useWatch({ control: form.control, name: "location" });
+  const eventTypeWatch = useWatch({ control: form.control, name: "eventType" });
+
   const onSubmit = async (values: EventManagementFormValues) => {
     await mutation.mutateAsync({
       name: values.name.trim(),
@@ -139,8 +132,9 @@ export default function EventManagementPage() {
       pincode: values.pincode?.trim() || undefined,
       preferredDate: values.preferredDate?.trim() || undefined,
       preferredSlot: values.preferredSlot,
+      assignedVendorUserId: values.assignedVendorUserId ?? undefined,
       details: {
-        eventType: values.eventType,
+        eventType: values.eventType as any,
         venueType: values.venueType,
         guestCount: values.guestCount,
         budgetRange: values.budgetRange?.trim() || undefined,
@@ -166,6 +160,7 @@ export default function EventManagementPage() {
       location: { ...EMPTY_LOCATION },
       themeOrStyle: "",
       notes: "",
+      assignedVendorUserId: null,
     });
   };
 
@@ -329,44 +324,37 @@ export default function EventManagementPage() {
                   <FormField
                     control={form.control}
                     name="eventType"
-                    render={({ field }) => (
-                      <FormItem className="mt-5">
-                        <FormLabel required>Event type</FormLabel>
-                        <FormControl>
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            {EVENT_TYPE_OPTIONS.map((option) => {
-                              const Icon = EVENT_ICONS[option.value];
-                              const selected = field.value === option.value;
-                              return (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  onClick={() => field.onChange(option.value)}
-                                  className={`rounded-xl border p-4 text-left transition hover:border-primary/60 hover:bg-primary/5 ${
-                                    selected
-                                      ? "border-primary bg-primary/10"
-                                      : "border-border bg-card"
-                                  }`}
-                                  aria-pressed={selected}
-                                >
-                                  <Icon
-                                    className="h-5 w-5 text-primary"
-                                    aria-hidden
-                                  />
-                                  <span className="mt-3 block text-sm font-semibold text-foreground">
-                                    {option.label}
-                                  </span>
-                                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                                    {option.description}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field, fieldState }) => {
+                      const { data: cats = [] } = useCategories();
+                      const svcCats = cats.filter(
+                        (c) => c.service === "event_management" && c.isActive !== false,
+                      );
+                      const options =
+                        svcCats.length > 0
+                          ? svcCats.map((c) => ({
+                              value: c.name,
+                              label: c.name,
+                              description: c.description || undefined,
+                            }))
+                          : EVENT_TYPE_OPTIONS;
+
+                      return (
+                        <FormItem className="mt-5">
+                          <FormLabel required>Event type</FormLabel>
+                          <FormControl>
+                            <Combobox
+                              options={options}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select event type"
+                              disableSearch
+                              aria-invalid={!!fieldState.error}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <div className="mt-5 grid gap-5 sm:grid-cols-3">
@@ -492,6 +480,27 @@ export default function EventManagementPage() {
                             }
                           />
                         </>
+                      )}
+                    />
+                  </div>
+
+                  <div className="mt-5">
+                    <FormField
+                      control={form.control}
+                      name="assignedVendorUserId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred vendor (optional)</FormLabel>
+                          <FormControl>
+                            <VendorSelector
+                              serviceType="event_management"
+                              category={eventTypeWatch}
+                              value={field.value ?? null}
+                              onValueChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </div>

@@ -11,7 +11,10 @@ export const PropertyStatus = {
   REJECTED: "Rejected",
 } as const;
 
-/** Admin filters — aligned with `propertyTypeSchema`. */
+/** Legacy / fallback property type values (used when no categories loaded). */
+export const LEGACY_PROPERTY_TYPES = ["House", "Apartment", "Villa", "Townhome"] as const;
+
+/** Admin filters — aligned with `propertyTypeSchema`. Kept for compatibility. */
 export const PropertyType = {
   HOUSE: "House",
   APARTMENT: "Apartment",

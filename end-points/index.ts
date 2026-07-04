@@ -22,6 +22,7 @@ import { vendorWallet } from "@/end-points/vendor-wallet";
 import { notifications } from "@/end-points/notifications";
 import { supportTickets } from "@/end-points/support-tickets";
 import { emailLogs } from "@/end-points/email-logs";
+import { categories } from "@/end-points/categories";
 
 export const api = {
   ...auth,
@@ -44,6 +45,7 @@ export const api = {
   supportTickets,
   contact,
   emailLogs,
+  ...categories,
 };
 
 export type Api = typeof api;

@@ -80,8 +80,9 @@ const DOCUMENT_LABELS: Array<{
   { key: "addressProofUrl", label: "Address proof" },
 ]
 
-function formatCategory(category: string) {
-  return category.replace(/_/g, " ")
+function formatCategory(cat: { id: number; name: string } | string) {
+  if (typeof cat === 'string') return cat.replace(/_/g, " ")
+  return cat.name
 }
 
 function displayName(vendor: VendorProfile) {
@@ -89,9 +90,10 @@ function displayName(vendor: VendorProfile) {
 }
 
 function vendorSearchText(vendor: VendorProfile): string {
+  const cats = vendor.categories || []
   return [
     displayName(vendor),
-    vendor.category,
+    ...cats.map((c: any) => c.name || c),
     vendor.user?.phone,
     vendor.user?.email,
     vendor.rejectionReason,
@@ -106,7 +108,9 @@ function compareVendors(a: VendorProfile, b: VendorProfile, key: VendorSortKey):
     case "partner":
       return compareStrings(displayName(a), displayName(b))
     case "category":
-      return compareStrings(a.category, b.category)
+      const aCat = (a.categories && a.categories[0]) ? a.categories[0].name : ""
+      const bCat = (b.categories && b.categories[0]) ? b.categories[0].name : ""
+      return compareStrings(aCat, bCat)
     case "phone":
       return compareStrings(a.user?.phone ?? "", b.user?.phone ?? "")
     case "status":
@@ -148,7 +152,7 @@ export default function VendorApprovals() {
 
   const allItems = data?.items ?? []
   const categories = useMemo(
-    () => [...new Set(allItems.map((vendor) => vendor.category))].sort(),
+    () => [...new Set(allItems.flatMap((vendor) => (vendor.categories || []).map((c: any) => c.name)))].sort(),
     [allItems],
   )
 
@@ -164,7 +168,7 @@ export default function VendorApprovals() {
   const filteredItems = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
     const filtered = allItems.filter((vendor) => {
-      if (categoryFilter !== "all" && vendor.category !== categoryFilter) return false
+      if (categoryFilter !== "all" && !(vendor.categories || []).some((c: any) => c.name === categoryFilter)) return false
       if (blockedFilter === "blocked" && vendor.user?.isActive !== false) return false
       if (blockedFilter === "active" && vendor.user?.isActive === false) return false
       if (q && !vendorSearchText(vendor).includes(q)) return false
@@ -215,7 +219,7 @@ export default function VendorApprovals() {
         meta: { sortKey: "category" },
         cell: ({ row }) => (
           <span className="capitalize text-muted-foreground">
-            {formatCategory(row.original.category)}
+            {formatCategory((row.original.categories && row.original.categories[0]) || "")}
           </span>
         ),
       },
@@ -524,7 +528,7 @@ function VendorDetailSheet({
                   <SectionTitle icon={BriefcaseBusiness} title="Business profile" />
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                     <DetailField label="Business name" value={vendor.businessName} />
-                    <DetailField label="Category" value={formatCategory(vendor.category)} />
+                    <DetailField label="Category" value={formatCategory((vendor.categories && vendor.categories[0]) || "")} />
                     <DetailField label="Contact name" value={vendor.user?.name} />
                     <DetailField label="Phone" value={vendor.user?.phone} />
                     <DetailField label="Email" value={vendor.user?.email} />
