@@ -248,25 +248,25 @@ export default function CustomersAdmin() {
         </span>
       ),
     },
-    {
-      id: "actions",
-      header: "",
-      meta: { className: "text-right w-[100px]" },
-      cell: ({ row }) => {
-        const user = row.original;
-        return (
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => handleLoginAs(user.id, user.name)}
-          >
-            <LogIn className="size-3.5" />
-            Login as
-          </Button>
-        );
-      },
-    },
+    // {
+    //   id: "actions",
+    //   header: "",
+    //   meta: { className: "text-right w-[100px]" },
+    //   cell: ({ row }) => {
+    //     const user = row.original;
+    //     return (
+    //       <Button
+    //         size="sm"
+    //         variant="outline"
+    //         className="gap-1.5"
+    //         onClick={() => handleLoginAs(user.id, user.name)}
+    //       >
+    //         <LogIn className="size-3.5" />
+    //         Login as
+    //       </Button>
+    //     );
+    //   },
+    // },
   ], [handleLoginAs]);
 
   return (
