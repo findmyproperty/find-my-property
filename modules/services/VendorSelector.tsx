@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, Loader2, MapPin, Star, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/popover";
 import { usePublicVendorOptions } from "@/hooks/use-public-vendors";
 import { cn } from "@/lib/utils";
-import type { ServiceType } from "@/end-points/service-requests";
 import type { PublicVendorOption } from "@/schema/vendor";
 
 function vendorDisplayName(vendor: PublicVendorOption) {
@@ -70,13 +70,14 @@ function VendorOption({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0">
-            <Link
+            <a
               href={vendorProfileHref(vendor)}
               className="block truncate font-medium text-foreground hover:underline"
               onClick={(event) => event.stopPropagation()}
+              target="_blank"
             >
               {displayName}
-            </Link>
+            </a>
             {vendor.vendorName ? (
               <p className="truncate text-xs text-muted-foreground">
                 {vendor.vendorName}
@@ -116,34 +117,40 @@ function VendorOption({
 }
 
 export default function VendorSelector({
-  serviceType,
-  category,
+  categoryId,
   value,
   onValueChange,
   disabled,
 }: {
-  serviceType: ServiceType;
-  category?: string | null;
+  categoryId?: string | number | null;
   value: number | null | undefined;
   onValueChange: (value: number | null) => void;
   disabled?: boolean;
 }) {
   const { data: vendors = [], isLoading, isError } = usePublicVendorOptions({
-    serviceType,
-    category,
+    categoryId,
   });
   const selected = vendors.find((vendor) => vendor.userId === value);
   const selectedLabel = selected ? vendorDisplayName(selected) : null;
+  const normalizedCategoryId = categoryId?.toString().trim() || "";
 
-  const isTriggerDisabled = disabled || !category;
-  const triggerText = category
+  useEffect(() => {
+    if (!normalizedCategoryId || isLoading) return;
+    if (value != null && !selected) {
+      onValueChange(null);
+    }
+  }, [isLoading, normalizedCategoryId, onValueChange, selected, value]);
+
+  const isTriggerDisabled = disabled || !normalizedCategoryId;
+  const triggerText = normalizedCategoryId
     ? (selectedLabel ?? "Choose a preferred vendor")
-    : "Please select a service type first";
+    : "Please select a category first";
 
   return (
     <div className="flex flex-col gap-2">
-      <Popover>
+      <Popover> 
         <PopoverTrigger asChild>
+
           <Button
             type="button"
             variant="outline"
@@ -163,13 +170,16 @@ export default function VendorSelector({
               <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
             )}
           </Button>
+
+
         </PopoverTrigger>
+        
         <PopoverContent
           align="start"
           className="w-[var(--radix-popover-trigger-width)] p-0"
         >
           <Command>
-            <CommandInput placeholder="Search vendors..." />
+            <CommandInput placeholder="Search vendors..."   />
             <CommandList>
               <CommandEmpty>
                 {isError
@@ -205,18 +215,7 @@ export default function VendorSelector({
         </PopoverContent>
       </Popover>
 
-      {value ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="w-fit px-2 text-muted-foreground"
-          onClick={() => onValueChange(null)}
-        >
-          <X className="mr-1 size-3" aria-hidden />
-          Clear vendor
-        </Button>
-      ) : null}
+
     </div>
   );
 }

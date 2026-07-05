@@ -4,7 +4,6 @@ import type {
   VendorProfile,
   VendorProfileUpdate,
 } from "@/schema/vendor";
-import type { ServiceType } from "@/end-points/service-requests";
 import { getStoredToken, request } from "@/end-points/http";
 
 export interface AdminListVendorsQuery {
@@ -27,16 +26,26 @@ export interface AdminUpdateVendorInput {
 }
 
 export const vendors = {
-  async listPublicSelect(query: {
-    serviceType: ServiceType;
-    category?: string;
-  }): Promise<PublicVendorOption[]> {
-    const params = new URLSearchParams({ serviceType: query.serviceType });
-    if (query.category?.trim()) params.set("category", query.category.trim());
-    return request<PublicVendorOption[]>(`/vendors/public/select?${params.toString()}`, {
-      method: "GET",
-      token: undefined,
-    });
+  async listPublicSelect(query: { categoryId?: number | string }): Promise<PublicVendorOption[]> {
+    const params = new URLSearchParams();
+    const categoryId = query.categoryId?.toString().trim();
+    if (categoryId) params.set("categoryId", categoryId);
+    const vendors = await request<PublicVendorOption[]>(
+      `/vendors/public/select${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        method: "GET",
+        token: undefined,
+      },
+    );
+
+    if (!categoryId) return vendors;
+
+    const parsedCategoryId = Number(categoryId);
+    if (Number.isNaN(parsedCategoryId)) return vendors;
+
+    return vendors.filter((vendor) =>
+      vendor.categories.some((category) => category.id === parsedCategoryId),
+    );
   },
 
   async getPublicProfile(idOrSlug: string): Promise<PublicVendorProfile> {

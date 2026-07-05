@@ -31,6 +31,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitPaintingCleaning } from "@/hooks/use-service-requests";
 import { useCategories } from "@/hooks/use-categories";
+import { buildServiceOptions, resolveVendorCategoryId } from "./category-mapping";
 import {
   PROPERTY_TYPE_OPTIONS,
   SLOT_OPTIONS,
@@ -46,6 +47,11 @@ import VendorSelector from "./VendorSelector";
 import { useRouter } from "next/navigation";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
+const PAINTING_SERVICE_OPTIONS = SUB_TYPE_OPTIONS.map((option) => ({
+  value: option.value,
+  label: option.label,
+  description: option.group,
+}));
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -79,6 +85,7 @@ export default function PaintingCleaningPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitPaintingCleaning();
   const router = useRouter();
+  const { data: categories = [] } = useCategories();
 
   const form = useForm<PaintingCleaningFormValues>({
     resolver: zodResolver(paintingCleaningSchema),
@@ -112,8 +119,18 @@ export default function PaintingCleaningPage() {
     });
   }, [isAuthReady, user, form]);
 
-  const locationWatch = useWatch({ control: form.control, name: "location" });
   const subTypeWatch = useWatch({ control: form.control, name: "subType" });
+  const vendorCategoryId = resolveVendorCategoryId(
+    categories,
+    "painting_cleaning",
+    subTypeWatch,
+    PAINTING_SERVICE_OPTIONS,
+  );
+  const subTypeOptions = buildServiceOptions(
+    PAINTING_SERVICE_OPTIONS,
+    categories,
+    "painting_cleaning",
+  );
 
   const onSubmit = async (values: PaintingCleaningFormValues) => {
     await mutation.mutateAsync({
@@ -310,29 +327,12 @@ export default function PaintingCleaningPage() {
                       control={form.control}
                       name="subType"
                       render={({ field, fieldState }) => {
-                        const { data: cats = [] } = useCategories();
-                        const svcCats = cats.filter(
-                          (c) => c.service === "painting_cleaning" && c.isActive !== false,
-                        );
-                        const options =
-                          svcCats.length > 0
-                            ? svcCats.map((c) => ({
-                                value: c.name,
-                                label: c.name,
-                                description: c.description || undefined,
-                              }))
-                            : SUB_TYPE_OPTIONS.map((option) => ({
-                                value: option.value,
-                                label: option.label,
-                                description: option.group,
-                              }));
-
                         return (
                           <FormItem>
                             <FormLabel required>Service</FormLabel>
                             <FormControl>
                               <Combobox
-                                options={options}
+                                options={subTypeOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 placeholder="Pick a service"
@@ -460,10 +460,10 @@ export default function PaintingCleaningPage() {
                           <FormLabel>Preferred vendor (optional)</FormLabel>
                           <FormControl>
                             <VendorSelector
-                              serviceType="painting_cleaning"
-                              category={subTypeWatch}
+                              categoryId={vendorCategoryId}
                               value={field.value ?? null}
                               onValueChange={field.onChange}
+                              disabled={!vendorCategoryId}
                             />
                           </FormControl>
                           <FormMessage />

@@ -30,7 +30,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
+import { useCategories } from "@/hooks/use-categories";
 import { useSubmitPackersMovers } from "@/hooks/use-service-requests";
+import { resolveVendorCategoryId } from "./category-mapping";
 import {
   BHK_OPTIONS,
   MAX_DROPS,
@@ -46,6 +48,7 @@ import LocationSearchField from "./LocationSearchField";
 import StopList from "./StopList";
 import TripEstimate from "./TripEstimate";
 import { useRouter } from "next/navigation";
+import VendorSelector from "./VendorSelector";
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -81,6 +84,7 @@ export default function PackersMoversPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitPackersMovers();
   const router = useRouter();
+  const { data: categories = [] } = useCategories();
 
   const form = useForm<PackersMoversFormValues>({
     resolver: zodResolver(packersMoversSchema),
@@ -119,6 +123,12 @@ export default function PackersMoversPage() {
   const pickupWatch = useWatch({ control: form.control, name: "pickup" });
   const dropsWatch = useWatch({ control: form.control, name: "drops" });
   const moveTypeWatch = useWatch({ control: form.control, name: "moveType" });
+  const vendorCategoryId = resolveVendorCategoryId(
+    categories,
+    "packers_movers",
+    moveTypeWatch,
+    MOVE_TYPE_OPTIONS,
+  );
 
   const onSubmit = async (values: PackersMoversFormValues) => {
     await mutation.mutateAsync({
@@ -504,13 +514,13 @@ export default function PackersMoversPage() {
                       name="assignedVendorUserId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Preferred vendor (optional)</FormLabel>
+                          <FormLabel>Preferred vendor</FormLabel>
                           <FormControl>
                             <VendorSelector
-                              serviceType="packers_movers"
-                              category={moveTypeWatch}
+                              categoryId={vendorCategoryId}
                               value={field.value ?? null}
                               onValueChange={field.onChange}
+                              disabled={!vendorCategoryId}
                             />
                           </FormControl>
                           <FormMessage />

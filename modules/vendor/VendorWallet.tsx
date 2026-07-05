@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
@@ -292,7 +293,7 @@ function WithdrawalsSection({
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card p-4">
       <AdminListPage
         title="Withdrawals"
         description="Track payout requests sent to your saved accounts."
@@ -329,14 +330,14 @@ function WithdrawalsSection({
           onPageChange: setPage,
         }}
       >
-        <AdminDataTable
-          className="rounded-none border-0"
-          columns={withdrawalColumns}
-          data={pagedItems.items}
-          getRowId={(row) => String(row.id)}
-          sort={sort}
-          onSort={toggleSort}
-        />
+          <AdminDataTable
+            className="rounded-lg border"
+            columns={withdrawalColumns}
+            data={pagedItems.items}
+            getRowId={(row) => String(row.id)}
+            sort={sort}
+            onSort={toggleSort}
+          />
       </AdminListPage>
     </div>
   );
@@ -386,7 +387,7 @@ function LedgerSection({
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card p-4">
       <AdminListPage
         title="Ledger"
         description="Credits, debits, and settlement activity in your wallet."
@@ -423,14 +424,14 @@ function LedgerSection({
           onPageChange: setPage,
         }}
       >
-        <AdminDataTable
-          className="rounded-none border-0"
-          columns={ledgerColumns}
-          data={pagedItems.items}
-          getRowId={(row) => String(row.id)}
-          sort={sort}
-          onSort={toggleSort}
-        />
+          <AdminDataTable
+            className="rounded-lg border"
+            columns={ledgerColumns}
+            data={pagedItems.items}
+            getRowId={(row) => String(row.id)}
+            sort={sort}
+            onSort={toggleSort}
+          />
       </AdminListPage>
     </div>
   );
@@ -887,12 +888,27 @@ export default function VendorWallet() {
             </form>
           </section>
 
-          <WithdrawalsSection
-            items={withdrawals?.items ?? []}
-            isLoading={withdrawalsLoading}
-          />
+          <Tabs defaultValue="withdrawals" className="space-y-4">
+            <TabsList className="h-auto w-full justify-start gap-1 rounded-xl border border-border bg-card p-1">
+              <TabsTrigger value="withdrawals" className="gap-2">
+                Withdrawals
+              </TabsTrigger>
+              <TabsTrigger value="ledger" className="gap-2">
+                Ledger
+              </TabsTrigger>
+            </TabsList>
 
-          <LedgerSection items={entries?.items ?? []} isLoading={entriesLoading} />
+            <TabsContent value="withdrawals" className="mt-0">
+              <WithdrawalsSection
+                items={withdrawals?.items ?? []}
+                isLoading={withdrawalsLoading}
+              />
+            </TabsContent>
+
+            <TabsContent value="ledger" className="mt-0">
+              <LedgerSection items={entries?.items ?? []} isLoading={entriesLoading} />
+            </TabsContent>
+          </Tabs>
         </>
       }
     />

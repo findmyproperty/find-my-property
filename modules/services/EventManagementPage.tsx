@@ -34,6 +34,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitEventManagement } from "@/hooks/use-service-requests";
 import { useCategories } from "@/hooks/use-categories";
+import { buildServiceOptions, resolveVendorCategoryId } from "./category-mapping";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import { ServiceHero } from "./ServiceHero";
@@ -50,6 +51,7 @@ import {
 } from "./schemas";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
+const EVENT_SERVICE_OPTIONS_BASE = EVENT_TYPE_OPTIONS;
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -83,6 +85,7 @@ export default function EventManagementPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitEventManagement();
   const router = useRouter();
+  const { data: categories = [] } = useCategories();
 
   const form = useForm<EventManagementFormValues>({
     resolver: zodResolver(eventManagementSchema),
@@ -119,8 +122,18 @@ export default function EventManagementPage() {
     });
   }, [isAuthReady, user, form]);
 
-  const locationWatch = useWatch({ control: form.control, name: "location" });
   const eventTypeWatch = useWatch({ control: form.control, name: "eventType" });
+  const vendorCategoryId = resolveVendorCategoryId(
+    categories,
+    "event_management",
+    eventTypeWatch,
+    EVENT_SERVICE_OPTIONS_BASE,
+  );
+  const eventTypeOptions = buildServiceOptions(
+    EVENT_SERVICE_OPTIONS_BASE,
+    categories,
+    "event_management",
+  );
 
   const onSubmit = async (values: EventManagementFormValues) => {
     await mutation.mutateAsync({
@@ -321,29 +334,16 @@ export default function EventManagementPage() {
                     Event brief
                   </h3>
 
-                  <FormField
-                    control={form.control}
-                    name="eventType"
-                    render={({ field, fieldState }) => {
-                      const { data: cats = [] } = useCategories();
-                      const svcCats = cats.filter(
-                        (c) => c.service === "event_management" && c.isActive !== false,
-                      );
-                      const options =
-                        svcCats.length > 0
-                          ? svcCats.map((c) => ({
-                              value: c.name,
-                              label: c.name,
-                              description: c.description || undefined,
-                            }))
-                          : EVENT_TYPE_OPTIONS;
-
+                    <FormField
+                      control={form.control}
+                      name="eventType"
+                      render={({ field, fieldState }) => {
                       return (
                         <FormItem className="mt-5">
                           <FormLabel required>Event type</FormLabel>
                           <FormControl>
                             <Combobox
-                              options={options}
+                              options={eventTypeOptions}
                               value={field.value}
                               onValueChange={field.onChange}
                               placeholder="Select event type"
@@ -493,10 +493,10 @@ export default function EventManagementPage() {
                           <FormLabel>Preferred vendor (optional)</FormLabel>
                           <FormControl>
                             <VendorSelector
-                              serviceType="event_management"
-                              category={eventTypeWatch}
+                              categoryId={vendorCategoryId}
                               value={field.value ?? null}
                               onValueChange={field.onChange}
+                              disabled={!vendorCategoryId}
                             />
                           </FormControl>
                           <FormMessage />

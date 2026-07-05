@@ -72,7 +72,7 @@ export default function PublicVendorProfilePage({ idOrSlug }: Props) {
       : "New partner";
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+    <article className="mx-auto max-w-3xl px-4 py-10 sm:py-14 mt-20">
       <header className="space-y-3">
         {categories.length > 0 ? (
           <div className="flex flex-wrap gap-2">

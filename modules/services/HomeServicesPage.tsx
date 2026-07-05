@@ -31,6 +31,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitHomeServices } from "@/hooks/use-service-requests";
 import { useCategories } from "@/hooks/use-categories";
+import { buildServiceOptions, resolveVendorCategoryId } from "./category-mapping";
 import {
   HOME_SERVICE_TYPE_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
@@ -46,6 +47,7 @@ import VendorSelector from "./VendorSelector";
 import { useRouter } from "next/navigation";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
+const HOME_SERVICE_OPTIONS = HOME_SERVICE_TYPE_OPTIONS;
 
 const STEPS: HowItWorksStep[] = [
   {
@@ -76,6 +78,7 @@ export default function HomeServicesPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitHomeServices();
   const router = useRouter();
+  const { data: categories = [] } = useCategories();
 
   const form = useForm<HomeServicesFormValues>({
     resolver: zodResolver(homeServicesSchema),
@@ -109,7 +112,18 @@ export default function HomeServicesPage() {
     });
   }, [isAuthReady, user, form]);
 
-  const locationWatch = useWatch({ control: form.control, name: "location" });
+  const subTypeWatch = useWatch({ control: form.control, name: "subType" });
+  const vendorCategoryId = resolveVendorCategoryId(
+    categories,
+    "home_services",
+    subTypeWatch,
+    HOME_SERVICE_OPTIONS,
+  );
+  const subTypeOptions = buildServiceOptions(
+    HOME_SERVICE_OPTIONS,
+    categories,
+    "home_services",
+  );
 
   const onSubmit = async (values: HomeServicesFormValues) => {
     await mutation.mutateAsync({
@@ -298,25 +312,12 @@ export default function HomeServicesPage() {
                       control={form.control}
                       name="subType"
                       render={({ field, fieldState }) => {
-                        const { data: cats = [] } = useCategories();
-                        const svcCats = cats.filter(
-                          (c) => c.service === "home_services" && c.isActive !== false,
-                        );
-                        const options =
-                          svcCats.length > 0
-                            ? svcCats.map((c) => ({
-                                value: c.name,
-                                label: c.name,
-                                description: c.description || undefined,
-                              }))
-                            : HOME_SERVICE_TYPE_OPTIONS;
-
                         return (
                           <FormItem>
                             <FormLabel required>Service</FormLabel>
                             <FormControl>
                               <Combobox
-                                options={options}
+                                options={subTypeOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 placeholder="Pick a service"
@@ -441,10 +442,10 @@ export default function HomeServicesPage() {
                           <FormLabel>Preferred vendor (optional)</FormLabel>
                           <FormControl>
                             <VendorSelector
-                              serviceType="home_services"
-                              location={locationWatch?.label}
+                              categoryId={vendorCategoryId}
                               value={field.value ?? null}
                               onValueChange={field.onChange}
+                              disabled={!vendorCategoryId}
                             />
                           </FormControl>
                           <FormMessage />

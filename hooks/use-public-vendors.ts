@@ -2,27 +2,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { ServiceType } from "@/end-points/service-requests";
 
 export function usePublicVendorOptions({
-  serviceType,
-  category,
+  categoryId,
   enabled = true,
 }: {
-  serviceType: ServiceType;
-  category?: string | null;
+  categoryId?: string | number | null;
   enabled?: boolean;
 }) {
-  const normalizedCategory = category?.trim() || "";
+  const normalizedCategoryId = categoryId?.toString().trim() || "";
 
   return useQuery({
-    queryKey: ["public-vendor-options", serviceType, normalizedCategory],
-    queryFn: () =>
-      api.vendors.listPublicSelect({
-        serviceType,
-        category: normalizedCategory || undefined,
-      }),
-    enabled: enabled && !!normalizedCategory,
+    queryKey: ["public-vendor-options", normalizedCategoryId],
+    queryFn: () => api.vendors.listPublicSelect({ categoryId: normalizedCategoryId || undefined }),
+    enabled: enabled && !!normalizedCategoryId,
     staleTime: 30_000,
   });
 }

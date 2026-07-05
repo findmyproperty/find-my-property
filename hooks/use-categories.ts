@@ -9,14 +9,13 @@ import { useAuth } from "@/contexts/auth-context";
 export function useCategories() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user, isAuthReady } = useAuth();
+  const { isAuthReady } = useAuth();
 
   const query = useQuery({
     queryKey: ["categories"],
     queryFn: api.getCategories,
-    // Allow any authenticated user to read categories (needed for dynamic service type selectors).
-    // Management UI itself is still admin-only.
-    enabled: isAuthReady && !!user,
+    // Categories feed public service selectors as well as admin tools.
+    enabled: isAuthReady,
     staleTime: 30_000,
   });
 

@@ -31,7 +31,7 @@ export interface TripEstimate {
 }
 
 export interface PackersMoversDetails {
-  moveType: "home" | "office" | "vehicle";
+  moveType: string;
   bhk: "1rk" | "1" | "2" | "3" | "4+";
   /** Structured multi-stop representation (preferred). */
   pickup?: Stop;
@@ -46,13 +46,7 @@ export interface PackersMoversDetails {
 }
 
 export interface PaintingCleaningDetails {
-  subType:
-    | "full_painting"
-    | "partial_painting"
-    | "deep_cleaning"
-    | "bathroom_cleaning"
-    | "sofa_cleaning"
-    | "kitchen_cleaning";
+  subType: string;
   propertyType: "apartment" | "villa" | "office";
   bhkOrSqft: string;
   location?: Stop;
@@ -60,7 +54,7 @@ export interface PaintingCleaningDetails {
 }
 
 export interface HomeServicesDetails {
-  subType: "carpenter" | "plumber" | "electrician";
+  subType: string;
   propertyType: "apartment" | "villa" | "office";
   bhkOrSqft: string;
   location?: Stop;
@@ -68,7 +62,7 @@ export interface HomeServicesDetails {
 }
 
 export interface EventManagementDetails {
-  eventType: "birthday" | "wedding" | "baby_shower" | "corporate";
+  eventType: string;
   venueType: "home" | "banquet" | "hotel" | "outdoor" | "office" | "other";
   guestCount: number;
   budgetRange?: string | null;

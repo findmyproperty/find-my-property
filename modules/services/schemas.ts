@@ -31,7 +31,7 @@ const baseSchema = z.object({
   preferredSlot: z
     .enum(["morning", "afternoon", "evening"])
     .optional(),
-  assignedVendorUserId: z.number().int().positive().nullable().optional(),
+  assignedVendorUserId: z.number().int().positive().nullable(),
 });
 
 /** Geocoded location captured via Google Places Autocomplete. */

@@ -98,6 +98,17 @@ export interface AdminCreditWalletInput {
   description?: string;
 }
 
+export interface AdminCreditWalletResponse {
+  ledgerEntry: LedgerEntry;
+  paymentLink: {
+    id: string;
+    shortUrl: string | null;
+    status: string;
+    amount: number;
+    currency: string;
+  };
+}
+
 export interface AdminCreatePayoutInput extends CreateWithdrawalInput {
   vendorUserId: number;
 }
@@ -182,8 +193,8 @@ export const vendorWallet = {
     });
   },
 
-  async adminCreditWallet(input: AdminCreditWalletInput): Promise<LedgerEntry> {
-    return request<LedgerEntry>("/admin/vendor-wallet/credits", {
+  async adminCreditWallet(input: AdminCreditWalletInput): Promise<AdminCreditWalletResponse> {
+    return request<AdminCreditWalletResponse>("/admin/vendor-wallet/credits", {
       method: "POST",
       token: getStoredToken(),
       body: JSON.stringify(input),

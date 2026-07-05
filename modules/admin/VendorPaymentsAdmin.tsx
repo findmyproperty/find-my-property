@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -350,10 +351,22 @@ export default function VendorPaymentsAdmin() {
         description: description.trim() || undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
+          const paymentUrl = result.paymentLink.shortUrl;
           toast({
-            title: "Vendor wallet credited",
-            description: `${formatCurrency(parsedAmount)} is now available for vendor withdrawal.`,
+            title: "Payment link created",
+            description:
+              "Razorpay will credit the vendor wallet after the admin payment is captured.",
+            action: paymentUrl ? (
+              <ToastAction
+                altText="Open payment link"
+                onClick={() =>
+                  window.open(paymentUrl, "_blank", "noopener,noreferrer")
+                }
+              >
+                Pay now
+              </ToastAction>
+            ) : undefined,
           });
           closeCreditDialog();
         },
@@ -373,14 +386,14 @@ export default function VendorPaymentsAdmin() {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>New payment flow</AlertTitle>
         <AlertDescription>
-          Admin no longer recharges a platform wallet. Add credit to the vendor wallet here; the vendor
-          completes withdrawal from the wallet page using their saved UPI or bank account.
+          Admin creates a Razorpay payment link here. After payment is captured,
+          the vendor wallet is credited and the vendor can withdraw from their wallet page.
         </AlertDescription>
       </Alert>
 
       <AdminListPage
         title="Vendor payments"
-        description="Credit vendor wallets from admin. Vendors withdraw their available balance from their wallet."
+        description="Create payment links for vendor wallet credits. Vendors withdraw captured balance from their wallet."
         headerAction={
           <Badge variant="secondary" className="gap-1">
             <WalletCards className="h-3.5 w-3.5" />
@@ -459,7 +472,7 @@ export default function VendorPaymentsAdmin() {
           <DialogHeader>
             <DialogTitle>Credit vendor wallet</DialogTitle>
             <DialogDescription>
-              Add withdrawable balance to {selectedVendorName}. The vendor can withdraw it later.
+              Create a Razorpay payment link for {selectedVendorName}. The wallet is credited after payment is captured.
             </DialogDescription>
           </DialogHeader>
           <form className="flex flex-col gap-4" onSubmit={submitCredit}>
@@ -506,7 +519,7 @@ export default function VendorPaymentsAdmin() {
                 <ShieldCheck className="h-4 w-4" />
                 <AlertTitle>Withdrawal account not added</AlertTitle>
                 <AlertDescription>
-                  You can still credit this wallet. The vendor must add UPI or bank details before withdrawing.
+                  You can still create the payment link. The vendor must add UPI or bank details before withdrawing.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -527,10 +540,10 @@ export default function VendorPaymentsAdmin() {
                 {creditWallet.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Crediting...
+                    Creating link...
                   </>
                 ) : (
-                  "Credit wallet"
+                  "Create payment link"
                 )}
               </Button>
             </DialogFooter>
