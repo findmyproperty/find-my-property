@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +32,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useCategories } from "@/hooks/use-categories";
 import { useSubmitPackersMovers } from "@/hooks/use-service-requests";
-import { resolveVendorCategoryId } from "./category-mapping";
+import {
+  buildServiceOptions,
+  getServiceOptionsFieldState,
+  isServiceFormBlocked,
+  resolveVendorCategoryId,
+  useSyncSelectedServiceOption,
+} from "./category-mapping";
 import {
   BHK_OPTIONS,
   MAX_DROPS,
@@ -84,7 +90,7 @@ export default function PackersMoversPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitPackersMovers();
   const router = useRouter();
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   const form = useForm<PackersMoversFormValues>({
     resolver: zodResolver(packersMoversSchema),
@@ -123,6 +129,22 @@ export default function PackersMoversPage() {
   const pickupWatch = useWatch({ control: form.control, name: "pickup" });
   const dropsWatch = useWatch({ control: form.control, name: "drops" });
   const moveTypeWatch = useWatch({ control: form.control, name: "moveType" });
+  const moveTypeOptions = buildServiceOptions(
+    MOVE_TYPE_OPTIONS,
+    categories,
+    "packers_movers",
+  );
+  const syncMoveType = useCallback(
+    (value: string) => form.setValue("moveType", value),
+    [form],
+  );
+  useSyncSelectedServiceOption(moveTypeOptions, moveTypeWatch, syncMoveType);
+  const moveTypeFieldState = getServiceOptionsFieldState(
+    categoriesLoading,
+    moveTypeOptions,
+    "Select move type",
+  );
+  const serviceFormBlocked = isServiceFormBlocked(categoriesLoading, moveTypeOptions);
   const vendorCategoryId = resolveVendorCategoryId(
     categories,
     "packers_movers",
@@ -336,12 +358,14 @@ export default function PackersMoversPage() {
                           <FormLabel required>Move type</FormLabel>
                           <FormControl>
                             <Combobox
-                              options={MOVE_TYPE_OPTIONS}
+                              options={moveTypeOptions}
                               value={field.value ?? ""}
                               onValueChange={field.onChange}
-                              placeholder="Select move type"
+                              placeholder={moveTypeFieldState.placeholder}
+                              emptyMessage={moveTypeFieldState.emptyMessage}
+                              disabled={moveTypeFieldState.disabled}
                               searchPlaceholder="Search move type…"
-                              disableSearch={MOVE_TYPE_OPTIONS.length <= 6}
+                              disableSearch={moveTypeOptions.length <= 6}
                               aria-invalid={!!fieldState.error}
                             />
                           </FormControl>
@@ -580,7 +604,7 @@ export default function PackersMoversPage() {
                   <Button
                     type="button"
                     size="lg"
-                    disabled={mutation.isPending || !isAuthReady}
+                    disabled={mutation.isPending || !isAuthReady || serviceFormBlocked}
                     onClick={handleRequestCallback}
                   >
                     {mutation.isPending ? "Submitting..." : "Request a callback"}

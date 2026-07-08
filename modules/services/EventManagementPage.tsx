@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -34,7 +34,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitEventManagement } from "@/hooks/use-service-requests";
 import { useCategories } from "@/hooks/use-categories";
-import { buildServiceOptions, resolveVendorCategoryId } from "./category-mapping";
+import {
+  buildServiceOptions,
+  getServiceOptionsFieldState,
+  isServiceFormBlocked,
+  resolveVendorCategoryId,
+  useSyncSelectedServiceOption,
+} from "./category-mapping";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import { ServiceHero } from "./ServiceHero";
@@ -85,7 +91,7 @@ export default function EventManagementPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitEventManagement();
   const router = useRouter();
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   const form = useForm<EventManagementFormValues>({
     resolver: zodResolver(eventManagementSchema),
@@ -134,6 +140,17 @@ export default function EventManagementPage() {
     categories,
     "event_management",
   );
+  const syncEventType = useCallback(
+    (value: string) => form.setValue("eventType", value),
+    [form],
+  );
+  useSyncSelectedServiceOption(eventTypeOptions, eventTypeWatch, syncEventType);
+  const eventTypeFieldState = getServiceOptionsFieldState(
+    categoriesLoading,
+    eventTypeOptions,
+    "Pick an event type",
+  );
+  const serviceFormBlocked = isServiceFormBlocked(categoriesLoading, eventTypeOptions);
 
   const onSubmit = async (values: EventManagementFormValues) => {
     await mutation.mutateAsync({
@@ -346,7 +363,9 @@ export default function EventManagementPage() {
                               options={eventTypeOptions}
                               value={field.value}
                               onValueChange={field.onChange}
-                              placeholder="Select event type"
+                              placeholder={eventTypeFieldState.placeholder}
+                              emptyMessage={eventTypeFieldState.emptyMessage}
+                              disabled={eventTypeFieldState.disabled}
                               disableSearch
                               aria-invalid={!!fieldState.error}
                             />
@@ -646,7 +665,7 @@ export default function EventManagementPage() {
                   <Button
                     type="button"
                     size="lg"
-                    disabled={mutation.isPending || !isAuthReady}
+                    disabled={mutation.isPending || !isAuthReady || serviceFormBlocked}
                     onClick={handleRequestCallback}
                   >
                     {mutation.isPending ? "Submitting..." : "Request a callback"}

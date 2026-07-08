@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +31,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitHomeServices } from "@/hooks/use-service-requests";
 import { useCategories } from "@/hooks/use-categories";
-import { buildServiceOptions, resolveVendorCategoryId } from "./category-mapping";
+import {
+  buildServiceOptions,
+  getServiceOptionsFieldState,
+  isServiceFormBlocked,
+  resolveVendorCategoryId,
+  useSyncSelectedServiceOption,
+} from "./category-mapping";
 import {
   HOME_SERVICE_TYPE_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
@@ -78,7 +84,7 @@ export default function HomeServicesPage() {
   const { requireAuth, openAuthModal } = useServiceAuthModal();
   const mutation = useSubmitHomeServices();
   const router = useRouter();
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   const form = useForm<HomeServicesFormValues>({
     resolver: zodResolver(homeServicesSchema),
@@ -91,7 +97,7 @@ export default function HomeServicesPage() {
       pincode: "",
       preferredDate: "",
       preferredSlot: undefined,
-      subType: "plumber",
+      subType: "carpenter",
       propertyType: "apartment",
       bhkOrSqft: "",
       location: { ...EMPTY_LOCATION },
@@ -124,6 +130,17 @@ export default function HomeServicesPage() {
     categories,
     "home_services",
   );
+  const syncSubType = useCallback(
+    (value: string) => form.setValue("subType", value),
+    [form],
+  );
+  useSyncSelectedServiceOption(subTypeOptions, subTypeWatch, syncSubType);
+  const subTypeFieldState = getServiceOptionsFieldState(
+    categoriesLoading,
+    subTypeOptions,
+    "Pick a service",
+  );
+  const serviceFormBlocked = isServiceFormBlocked(categoriesLoading, subTypeOptions);
 
   const onSubmit = async (values: HomeServicesFormValues) => {
     await mutation.mutateAsync({
@@ -320,7 +337,9 @@ export default function HomeServicesPage() {
                                 options={subTypeOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
-                                placeholder="Pick a service"
+                                placeholder={subTypeFieldState.placeholder}
+                                emptyMessage={subTypeFieldState.emptyMessage}
+                                disabled={subTypeFieldState.disabled}
                                 disableSearch
                                 aria-invalid={!!fieldState.error}
                               />
@@ -534,7 +553,7 @@ export default function HomeServicesPage() {
                   <Button
                     type="button"
                     size="lg"
-                    disabled={mutation.isPending || !isAuthReady}
+                    disabled={mutation.isPending || !isAuthReady || serviceFormBlocked}
                     onClick={handleRequestCallback}
                   >
                     {mutation.isPending ? "Submitting..." : "Request a callback"}

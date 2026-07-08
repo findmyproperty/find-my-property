@@ -506,7 +506,7 @@ const CategoryManagement = () => {
 
         <TabsContent value="mappings" className="mt-4 space-y-6">
           <p className="text-sm text-muted-foreground">
-            Assign unmapped categories to services. These will appear as options in the corresponding service request forms (e.g. event type for Event Management).
+            Assign categories to services. Only mapped, active categories appear in service request forms. If none are mapped, the form shows no options.
           </p>
 
           {SERVICE_OPTIONS.map((svc) => {
