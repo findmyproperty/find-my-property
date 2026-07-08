@@ -103,7 +103,7 @@ export default function PackersMoversPage() {
       drops: [{ ...EMPTY_STOP }],
       hasPackingMaterial: false,
       notes: "",
-      assignedVendorUserId: null,
+      assignedVendorUserId: undefined,
     },
   });
 
@@ -134,13 +134,13 @@ export default function PackersMoversPage() {
     await mutation.mutateAsync({
       name: values.name.trim(),
       phone: values.phone.trim(),
-      email: values.email?.trim() || undefined,
+      email: values.email.trim(),
       city: values.city?.trim() || undefined,
       addressLine: values.addressLine?.trim() || undefined,
       pincode: values.pincode?.trim() || undefined,
       preferredDate: values.preferredDate?.trim() || undefined,
       preferredSlot: values.preferredSlot,
-      assignedVendorUserId: values.assignedVendorUserId ?? undefined,
+      assignedVendorUserId: values.assignedVendorUserId,
       details: {
         moveType: values.moveType,
         bhk: values.bhk,
@@ -167,7 +167,7 @@ export default function PackersMoversPage() {
       pickup: { ...EMPTY_STOP },
       drops: [{ ...EMPTY_STOP }],
       notes: "",
-      assignedVendorUserId: null,
+      assignedVendorUserId: undefined,
     });
   };
 
@@ -295,7 +295,7 @@ export default function PackersMoversPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email (optional)</FormLabel>
+                        <FormLabel required>Email</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
@@ -514,7 +514,7 @@ export default function PackersMoversPage() {
                       name="assignedVendorUserId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Preferred vendor</FormLabel>
+                          <FormLabel required>Preferred vendor</FormLabel>
                           <FormControl>
                             <VendorSelector
                               categoryId={vendorCategoryId}

@@ -45,15 +45,33 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import {
   useAdminServiceRequestStats,
   useAdminServiceRequests,
   useAdminUpdateServiceRequest,
 } from "@/hooks/use-service-requests";
-import { useAdminVendorSelect } from "@/hooks/use-vendor-leads";
+import {
+  useAdminVendorSelect,
+  useAdminVendorLeadByServiceRequest,
+  useAdminApproveVendorLead,
+  useAdminRejectVendorLead,
+} from "@/hooks/use-vendor-leads";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   EventManagementDetails,
   PackersMoversDetails,
@@ -65,7 +83,7 @@ import type {
   Stop,
 } from "@/lib/api";
 import RouteMap from "@/modules/services/RouteMap";
-import { adminStatusOptionsToMap, SERVICE_REQUEST_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import { adminStatusOptionsToMap, SERVICE_REQUEST_STATUS_OPTIONS, VENDOR_LEAD_STATUS_OPTIONS } from "@/lib/admin/status-config";
 
 const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   packers_movers: "Packers & Movers",
@@ -176,13 +194,23 @@ export default function ServiceRequestsAdmin() {
   const { data, isLoading, isError, error, isFetching } = useAdminServiceRequests(query);
   const { data: stats } = useAdminServiceRequestStats();
   const updateMutation = useAdminUpdateServiceRequest();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [selected, setSelected] = useState<ServiceRequestDTO | null>(null);
   const { data: vendorOptions } = useAdminVendorSelect();
+  const { data: linkedLead, isFetching: isFetchingLead } =
+    useAdminVendorLeadByServiceRequest(
+      selected?.assignedVendorUserId != null ? selected.id : null,
+    );
+  const { mutate: approveLead, isPending: isApprovePending } = useAdminApproveVendorLead();
+  const { mutate: rejectLead, isPending: isRejectPending } = useAdminRejectVendorLead();
   const [internalNotes, setInternalNotes] = useState("");
   const [draftStatus, setDraftStatus] =
     useState<ServiceRequestStatus>("new");
   const [draftVendorId, setDraftVendorId] = useState<string>("");
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const openRequest = (request: ServiceRequestDTO) => {
     setSelected(request);
@@ -237,7 +265,59 @@ export default function ServiceRequestsAdmin() {
         ? String(updated.assignedVendorUserId)
         : "",
     );
+    if (updated.assignedVendorUserId != null) {
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-vendor-lead-by-sr", updated.id],
+      });
+    }
   };
+
+  const approveLinkedLead = () => {
+    if (!linkedLead) return;
+    approveLead(
+      { id: linkedLead.id },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Lead approved",
+            description: "The vendor can now accept or reject this lead.",
+          });
+        },
+        onError: (e) =>
+          toast({
+            title: "Approval failed",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+      },
+    );
+  };
+
+  const rejectLinkedLead = () => {
+    if (!linkedLead || !rejectReason.trim()) return;
+    rejectLead(
+      { id: linkedLead.id, reason: rejectReason.trim() },
+      {
+        onSuccess: () => {
+          setRejectDialogOpen(false);
+          setRejectReason("");
+          toast({ title: "Lead rejected" });
+        },
+        onError: (e) =>
+          toast({
+            title: "Reject failed",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+        onSettled: () => setRejectDialogOpen(false),
+      },
+    );
+  };
+
+  const vendorAssignmentDirty =
+    selected != null &&
+    (draftVendorId ? Number(draftVendorId) : null) !==
+      (selected.assignedVendorUserId ?? null);
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -677,6 +757,77 @@ export default function ServiceRequestsAdmin() {
                       vendor, and admin by email.
                     </p>
                   </div>
+
+                  {selected.assignedVendorUserId != null ? (
+                    <div className="space-y-3 rounded-lg border border-border bg-card p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Vendor lead
+                        </h4>
+                        {linkedLead ? (
+                          <AdminStatusBadge
+                            status={linkedLead.status}
+                            options={VENDOR_LEAD_STATUS_OPTIONS}
+                            className="text-[10px]"
+                          />
+                        ) : null}
+                      </div>
+
+                      {vendorAssignmentDirty ? (
+                        <p className="text-sm text-amber-800">
+                          Save vendor assignment first to create or update the linked lead.
+                        </p>
+                      ) : isFetchingLead ? (
+                        <p className="text-sm text-muted-foreground">Loading lead…</p>
+                      ) : !linkedLead ? (
+                        <p className="text-sm text-muted-foreground">
+                          No vendor lead found for this request yet.
+                        </p>
+                      ) : linkedLead.status === "pending_admin_review" ? (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            Approve the lead so the vendor can accept or reject it. Customer
+                            phone stays hidden from the vendor until both approvals are complete.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={isApprovePending || isRejectPending}
+                              onClick={approveLinkedLead}
+                            >
+                              {isApprovePending ? "Approving…" : "Approve lead"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={isApprovePending || isRejectPending}
+                              onClick={() => setRejectDialogOpen(true)}
+                            >
+                              Reject lead
+                            </Button>
+                          </div>
+                        </>
+                      ) : linkedLead.status === "open" || linkedLead.status === "new" ? (
+                        <p className="text-sm text-muted-foreground">
+                          Lead approved — waiting for the vendor to accept or reject.
+                        </p>
+                      ) : linkedLead.status === "admin_rejected" ? (
+                        <p className="text-sm text-destructive">
+                          Lead rejected
+                          {linkedLead.adminRejectionReason
+                            ? `: ${linkedLead.adminRejectionReason}`
+                            : "."}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Lead #{linkedLead.id} is in vendor workflow ({linkedLead.status.replaceAll("_", " ")}).
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+
                   <div>
                     <Label className="text-xs">Internal notes</Label>
                     <Textarea
@@ -711,6 +862,40 @@ export default function ServiceRequestsAdmin() {
           ) : null}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The vendor will not be able to accept this assignment. Provide a reason for the
+              audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Label htmlFor="sr-reject-reason">Rejection reason</Label>
+            <Textarea
+              id="sr-reject-reason"
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="e.g. Duplicate assignment, customer cancelled"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRejectPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRejectPending || !rejectReason.trim()}
+              onClick={(event) => {
+                event.preventDefault();
+                rejectLinkedLead();
+              }}
+            >
+              {isRejectPending ? "Rejecting…" : "Reject lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

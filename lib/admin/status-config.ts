@@ -90,7 +90,10 @@ export const PAYOUT_STATUS_OPTIONS: AdminStatusOption[] = [
 ]
 
 export const VENDOR_LEAD_STATUS_OPTIONS: AdminStatusOption[] = [
-  opt("new", "New", "sky"),
+  opt("pending_admin_review", "Awaiting approval", "amber"),
+  opt("open", "Open", "sky"),
+  opt("new", "New (legacy)", "sky"),
+  opt("admin_rejected", "Admin rejected", "red"),
   opt("accepted", "Accepted", "blue"),
   opt("in_progress", "In progress", "violet"),
   opt("completed", "Completed", "emerald"),

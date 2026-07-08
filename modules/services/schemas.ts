@@ -16,9 +16,7 @@ const baseSchema = z.object({
     .string()
     .trim()
     .email("Enter a valid email.")
-    .max(160)
-    .optional()
-    .or(z.literal("")),
+    .max(160),
   city: z.string().trim().max(120).optional().or(z.literal("")),
   addressLine: z.string().trim().max(500).optional().or(z.literal("")),
   pincode: z
@@ -31,7 +29,9 @@ const baseSchema = z.object({
   preferredSlot: z
     .enum(["morning", "afternoon", "evening"])
     .optional(),
-  assignedVendorUserId: z.number().int().positive().nullable(),
+  assignedVendorUserId: z.number().int().positive({
+    message: "Please select a preferred vendor.",
+  }),
 });
 
 /** Geocoded location captured via Google Places Autocomplete. */

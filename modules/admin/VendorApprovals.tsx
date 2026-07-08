@@ -25,6 +25,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -80,10 +85,51 @@ const DOCUMENT_LABELS: Array<{
   { key: "addressProofUrl", label: "Address proof" },
 ]
 
-function formatCategory(cat: { id: number; name: string } | string) {
-  if (typeof cat === 'string') return cat.replace(/_/g, " ")
-  return cat.name
+function formatCategories(input: any): string {
+  if (!input) return "—"
+  const arr = Array.isArray(input) ? input : [input]
+  const names = arr
+    .map((c: any) => (typeof c === "string" ? c : c?.name || ""))
+    .filter(Boolean)
+    .map((n: string) => n.replace(/_/g, " "))
+  return names.length ? names.join(", ") : "—"
 }
+
+function renderCategoryCell(categories: any) {
+  const names: string[] = (categories || [])
+    .map((c: any) => (typeof c === "string" ? c : c?.name || ""))
+    .filter(Boolean)
+    .map((n: string) => n.replace(/_/g, " "))
+
+  if (names.length === 0) {
+    return <span className="text-muted-foreground">—</span>
+  }
+
+  const visible = names.slice(0, 3)
+  const overflow = names.length - 3
+  const parts = overflow > 0 ? [...visible, `+${overflow} more`] : visible
+  const display = parts.join(", ")
+  const full = names.join(", ")
+
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>
+        <span className="cursor-default">{display}</span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-[min(24rem,calc(100vw-2rem))]"
+      >
+        {full}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+// Keep alias for any remaining internal calls (filter uses raw names)
+const formatCategory = (cat: any) =>
+  typeof cat === "string" ? cat.replace(/_/g, " ") : (cat && cat.name ? cat.name.replace(/_/g, " ") : "")
 
 function displayName(vendor: VendorProfile) {
   return vendor.businessName || vendor.user?.name || `Vendor #${vendor.userId}`
@@ -219,7 +265,7 @@ export default function VendorApprovals() {
         meta: { sortKey: "category" },
         cell: ({ row }) => (
           <span className="capitalize text-muted-foreground">
-            {formatCategory((row.original.categories && row.original.categories[0]) || "")}
+            {renderCategoryCell(row.original.categories)}
           </span>
         ),
       },
@@ -408,8 +454,7 @@ function VendorRowActions({
         <DropdownMenuContent align="end" className="w-44">
           <DropdownMenuItem
             className="gap-2"
-            onSelect={(e) => {
-              e.preventDefault()
+            onClick={() => {
               onDetails()
             }}
           >
@@ -528,7 +573,7 @@ function VendorDetailSheet({
                   <SectionTitle icon={BriefcaseBusiness} title="Business profile" />
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                     <DetailField label="Business name" value={vendor.businessName} />
-                    <DetailField label="Category" value={formatCategory((vendor.categories && vendor.categories[0]) || "")} />
+                    <DetailField label="Category" value={formatCategories(vendor.categories)} />
                     <DetailField label="Contact name" value={vendor.user?.name} />
                     <DetailField label="Phone" value={vendor.user?.phone} />
                     <DetailField label="Email" value={vendor.user?.email} />

@@ -20,6 +20,7 @@ export interface AdminPatchVendorLeadInput {
 
 export interface AdminListVendorLeadsQuery {
   status?: VendorLeadStatus;
+  serviceRequestId?: number;
   page?: number;
   limit?: number;
 }
@@ -69,6 +70,9 @@ export const vendorLeads = {
   async listLeadsAdmin(query: AdminListVendorLeadsQuery = {}): Promise<AdminListVendorLeadsResponse> {
     const params = new URLSearchParams();
     if (query.status) params.set("status", query.status);
+    if (query.serviceRequestId) {
+      params.set("serviceRequestId", String(query.serviceRequestId));
+    }
     if (query.page) params.set("page", String(query.page));
     if (query.limit) params.set("limit", String(query.limit));
     const qs = params.toString();
@@ -96,6 +100,36 @@ export const vendorLeads = {
   async adminPatch(id: number, input: AdminPatchVendorLeadInput): Promise<VendorLead> {
     return request<VendorLead>(`/admin/vendor-leads/${id}`, {
       method: "PATCH",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+  },
+
+  async adminReopenSettlement(
+    id: number,
+    input: { reason: string },
+  ): Promise<VendorLead & { reopen: { message: string } }> {
+    return request(`/admin/vendor-leads/${id}/reopen-settlement`, {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+  },
+
+  async adminApproveLead(
+    id: number,
+    input: { notes?: string } = {},
+  ): Promise<VendorLead> {
+    return request<VendorLead>(`/admin/vendor-leads/${id}/approve`, {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+  },
+
+  async adminRejectLead(id: number, input: { reason: string }): Promise<VendorLead> {
+    return request<VendorLead>(`/admin/vendor-leads/${id}/reject`, {
+      method: "POST",
       token: getStoredToken(),
       body: JSON.stringify(input),
     });

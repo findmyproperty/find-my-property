@@ -55,6 +55,16 @@ import {
 } from "@/hooks/use-vendor-leads"
 import { useToast } from "@/hooks/use-toast"
 import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead"
+import {
+  canVendorAcceptOrRejectLead,
+  canVendorPostWorkUpdate,
+} from "@/schema/vendor-lead"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const MB = 1024 * 1024
 
@@ -246,18 +256,15 @@ function mapsHref(point: LocationPoint): string | null {
 }
 
 function statusVariant(status: VendorLeadStatus) {
-  if (status === "new") return "default" as const
+  if (status === "pending_admin_review") return "outline" as const
+  if (status === "open" || status === "new") return "default" as const
   if (status === "accepted" || status === "in_progress") return "secondary" as const
   if (status === "completed") return "outline" as const
   return "destructive" as const
 }
 
 function formatStatus(status: VendorLeadStatus) {
-  return status.replace("_", " ")
-}
-
-function canPostWorkUpdate(status: VendorLeadStatus) {
-  return status !== "new" && status !== "rejected"
+  return status.replaceAll("_", " ")
 }
 
 export default function VendorLeadDetail() {
@@ -339,7 +346,8 @@ export default function VendorLeadDetail() {
 
           <div className="flex flex-wrap gap-2">
             <LeadActions lead={lead} patching={patching} onPatch={patchStatus} />
-            {canPostWorkUpdate(lead.status) ? (
+            <CustomerContactButton lead={lead} />
+            {canVendorPostWorkUpdate(lead.status) ? (
               <Button
                 variant="secondary"
                 onClick={() => setActiveTab("updates")}
@@ -351,8 +359,7 @@ export default function VendorLeadDetail() {
           </div>
         </div>
 
-        <div className="grid border-t border-border md:grid-cols-4">
-          <SummaryStat icon={Phone} label="Phone" value={lead.phone} />
+        <div className="grid border-t border-border md:grid-cols-3">
           <SummaryStat icon={MapPin} label="Area" value={lead.area || "-"} />
           <SummaryStat icon={WalletCards} label="Budget" value={lead.budget || "-"} />
           <SummaryStat
@@ -399,7 +406,6 @@ export default function VendorLeadDetail() {
                   <AccordionContent>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <InfoField label="Customer name" value={lead.customerName} />
-                      <InfoField label="Phone" value={lead.phone} />
                       <InfoField label="Area" value={lead.area || "-"} />
                       <InfoField label="Budget" value={lead.budget || "-"} />
                       <InfoField
@@ -431,7 +437,7 @@ export default function VendorLeadDetail() {
             </TabsContent>
 
             <TabsContent value="updates" className="mt-0 space-y-6">
-              {canPostWorkUpdate(lead.status) ? (
+              {canVendorPostWorkUpdate(lead.status) ? (
                 <section className="rounded-xl border border-border bg-card p-5">
                   <div className="mb-5">
                     <h2 className="font-heading text-base font-semibold text-foreground">
@@ -616,9 +622,11 @@ export default function VendorLeadDetail() {
               ) : (
                 <section className="rounded-xl border border-dashed border-border bg-muted/20 p-5">
                   <p className="text-sm text-muted-foreground">
-                    {lead.status === "new"
-                      ? "Accept this lead before posting work updates."
-                      : "This lead is closed — work updates can no longer be posted."}
+                    {lead.status === "pending_admin_review"
+                      ? "This lead is awaiting admin approval. You can post work updates after it is approved and you accept it."
+                      : canVendorAcceptOrRejectLead(lead.status)
+                        ? "Accept this lead before posting work updates."
+                        : "This lead is closed — work updates can no longer be posted."}
                   </p>
                 </section>
               )}
@@ -641,15 +649,17 @@ export default function VendorLeadDetail() {
                 Next best action
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                {lead.status === "new"
-                  ? "Accept the lead once you can take the work, or reject it so the team can reassign."
-                  : lead.status === "accepted"
-                    ? "Move it to in progress after contacting the customer, then post updates on the Work updates tab."
-                    : canPostWorkUpdate(lead.status)
-                      ? "Keep the customer informed with updates, then mark the lead completed when work is finished."
-                      : "This lead is closed for vendor action."}
+                {lead.status === "pending_admin_review"
+                  ? "Admin is reviewing this assignment. Accept and reject will unlock after approval."
+                  : canVendorAcceptOrRejectLead(lead.status)
+                    ? "Accept the lead once you can take the work, or reject it so the team can reassign."
+                    : lead.status === "accepted"
+                      ? "Move it to in progress after contacting the customer, then post updates on the Work updates tab."
+                      : canVendorPostWorkUpdate(lead.status)
+                        ? "Keep the customer informed with updates, then mark the lead completed when work is finished."
+                        : "This lead is closed for vendor action."}
               </p>
-              {canPostWorkUpdate(lead.status) && activeTab === "details" ? (
+              {canVendorPostWorkUpdate(lead.status) && activeTab === "details" ? (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -694,7 +704,15 @@ function LeadActions({
   patching: boolean
   onPatch: (input: { id: number; status: VendorLeadStatus }) => void
 }) {
-  if (lead.status === "new") {
+  if (lead.status === "pending_admin_review") {
+    return (
+      <p className="max-w-xs text-sm text-amber-800">
+        Awaiting admin approval before you can accept or reject this lead.
+      </p>
+    )
+  }
+
+  if (canVendorAcceptOrRejectLead(lead.status)) {
     return (
       <div className="flex flex-wrap gap-2">
         <Button
@@ -749,6 +767,26 @@ function LeadActions({
   }
 
   return null
+}
+
+function CustomerContactButton({ lead }: { lead: VendorLead }) {
+  if (!lead.contactAvailable) return null
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <Button variant="outline" disabled>
+              <Phone className="mr-2 h-4 w-4" />
+              Call customer
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Masked calling will be enabled soon</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 function SummaryStat({

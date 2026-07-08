@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, Wallet, CheckCircle, Star } from "lucide-react";
+import { Users, Wallet, CheckCircle, Star, Clock } from "lucide-react";
 import Link from "next/link";
 import { useVendorLeads } from "@/hooks/use-vendor-leads";
 import { useVendorWalletSummary } from "@/hooks/use-vendor-wallet";
@@ -13,11 +13,15 @@ export default function VendorOverview() {
   const { data: wallet } = useVendorWalletSummary();
   const { data: profile } = useVendorProfile();
 
-  const newLeads = leads?.filter((l) => l.status === "new").length ?? 0;
+  const readyToRespond =
+    leads?.filter((l) => l.status === "open" || l.status === "new").length ?? 0;
+  const awaitingApproval =
+    leads?.filter((l) => l.status === "pending_admin_review").length ?? 0;
   const completed = leads?.filter((l) => l.status === "completed").length ?? 0;
 
   const stats = [
-    { label: "New leads", value: String(newLeads), icon: Users },
+    { label: "Ready to accept", value: String(readyToRespond), icon: Users },
+    { label: "Awaiting approval", value: String(awaitingApproval), icon: Clock },
     { label: "Completed jobs", value: String(completed), icon: CheckCircle },
     {
       label: "Pending payout",
@@ -49,7 +53,7 @@ export default function VendorOverview() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}

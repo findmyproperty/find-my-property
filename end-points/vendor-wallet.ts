@@ -5,6 +5,8 @@ export interface WalletSummary {
   pendingSettlement: number;
   availableBalance?: number;
   pendingPayouts?: number;
+  pendingPaymentCredits?: number;
+  pendingPaymentCreditAmount?: number;
   paidOut: number;
   commissionDeducted: number;
 }
@@ -17,6 +19,9 @@ export interface LedgerEntry {
   amount: number;
   status: string;
   description: string | null;
+  externalReferenceId?: string | null;
+  webhookEventId?: string | null;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -109,6 +114,13 @@ export interface AdminCreditWalletResponse {
   };
 }
 
+export interface AdminCreditPaymentActionResponse {
+  entry: LedgerEntry;
+  linkStatus: string;
+  message: string;
+  resolved: boolean;
+}
+
 export interface AdminCreatePayoutInput extends CreateWithdrawalInput {
   vendorUserId: number;
 }
@@ -142,6 +154,17 @@ export const vendorWallet = {
   ): Promise<LedgerListResponse> {
     return request<LedgerListResponse>(
       `/admin/vendor-wallet/${vendorUserId}/entries?page=${page}&limit=${limit}`,
+      { method: "GET", token: getStoredToken() },
+    );
+  },
+
+  async adminWithdrawals(
+    vendorUserId: number,
+    page = 1,
+    limit = 30,
+  ): Promise<WithdrawalListResponse> {
+    return request<WithdrawalListResponse>(
+      `/admin/vendor-wallet/${vendorUserId}/withdrawals?page=${page}&limit=${limit}`,
       { method: "GET", token: getStoredToken() },
     );
   },
@@ -199,6 +222,30 @@ export const vendorWallet = {
       token: getStoredToken(),
       body: JSON.stringify(input),
     });
+  },
+
+  async adminSyncCreditPayment(
+    ledgerEntryId: number,
+  ): Promise<AdminCreditPaymentActionResponse> {
+    return request<AdminCreditPaymentActionResponse>(
+      `/admin/vendor-wallet/credits/${ledgerEntryId}/sync`,
+      {
+        method: "POST",
+        token: getStoredToken(),
+      },
+    );
+  },
+
+  async adminCancelCreditPayment(
+    ledgerEntryId: number,
+  ): Promise<AdminCreditPaymentActionResponse> {
+    return request<AdminCreditPaymentActionResponse>(
+      `/admin/vendor-wallet/credits/${ledgerEntryId}/cancel`,
+      {
+        method: "POST",
+        token: getStoredToken(),
+      },
+    );
   },
 
   async adminCreatePayout(input: AdminCreatePayoutInput): Promise<Withdrawal> {

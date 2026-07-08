@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { type ColumnDef } from "@tanstack/react-table";
-import { ExternalLink, MapPin, Phone } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CalendarClock, ExternalLink, IndianRupee, MapPin, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
@@ -19,21 +18,38 @@ import {
 } from "@/hooks/use-admin-list-controls";
 import { useVendorLeads, usePatchVendorLeadStatus } from "@/hooks/use-vendor-leads";
 import { VENDOR_LEAD_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import {
+  formatVendorLeadJobAmount,
+  formatVendorLeadPreferredDate,
+  getVendorLeadServiceSummary,
+} from "@/lib/vendor/lead-display";
 import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead";
+import { canVendorAcceptOrRejectLead } from "@/schema/vendor-lead";
 
 const PAGE_SIZE = 20;
 
 type StatusFilter = "all" | VendorLeadStatus;
-type VendorLeadSortKey = "customer" | "area" | "status" | "createdAt";
+type VendorLeadSortKey =
+  | "customer"
+  | "service"
+  | "area"
+  | "preferredDate"
+  | "jobAmount"
+  | "status"
+  | "createdAt";
 
 function vendorLeadSearchText(lead: VendorLead): string {
+  const service = getVendorLeadServiceSummary(lead.requirement);
   return [
     lead.customerName,
-    lead.phone,
     lead.area,
-    lead.budget,
     lead.status,
+    service.title,
+    service.detail,
+    formatVendorLeadPreferredDate(lead.preferredDate),
+    lead.jobAmount != null ? String(lead.jobAmount) : "",
     String(lead.id),
+    lead.serviceRequestId != null ? String(lead.serviceRequestId) : "",
   ]
     .filter((value): value is string => Boolean(value))
     .join(" ")
@@ -48,8 +64,17 @@ function compareVendorLeads(
   switch (key) {
     case "customer":
       return compareStrings(a.customerName, b.customerName);
+    case "service":
+      return compareStrings(
+        getVendorLeadServiceSummary(a.requirement).title,
+        getVendorLeadServiceSummary(b.requirement).title,
+      );
     case "area":
       return compareStrings(a.area ?? "", b.area ?? "");
+    case "preferredDate":
+      return compareStrings(a.preferredDate ?? "", b.preferredDate ?? "");
+    case "jobAmount":
+      return (a.jobAmount ?? 0) - (b.jobAmount ?? 0);
     case "status":
       return compareStrings(a.status, b.status);
     case "createdAt":
@@ -116,15 +141,40 @@ export default function VendorLeads() {
         id: "customer",
         header: "Customer",
         meta: { sortKey: "customer" },
-        cell: ({ row }) => (
-          <div className="flex flex-col gap-1">
-            <span className="font-medium">{row.original.customerName}</span>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3 shrink-0" />
-              {row.original.phone}
-            </span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const lead = row.original;
+          return (
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">{lead.customerName}</span>
+              <span className="text-xs text-muted-foreground">
+                Lead #{lead.id}
+                {lead.serviceRequestId ? ` · Request #${lead.serviceRequestId}` : ""}
+              </span>
+              {lead.status === "pending_admin_review" ? (
+                <span className="text-xs text-amber-700">Awaiting admin approval</span>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: "service",
+        header: "Service",
+        meta: { sortKey: "service" },
+        cell: ({ row }) => {
+          const summary = getVendorLeadServiceSummary(row.original.requirement);
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="flex items-center gap-1 text-sm">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                {summary.title}
+              </span>
+              {summary.detail ? (
+                <span className="text-xs text-muted-foreground">{summary.detail}</span>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         id: "area",
@@ -137,18 +187,48 @@ export default function VendorLeads() {
               {row.original.area}
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">-</span>
+            <span className="text-sm text-muted-foreground">—</span>
           ),
       },
       {
-        id: "budget",
-        header: "Budget",
-        cell: ({ row }) =>
-          row.original.budget ? (
-            <span className="text-sm">{row.original.budget}</span>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          ),
+        id: "preferred",
+        header: "Preferred",
+        meta: { sortKey: "preferredDate", className: "whitespace-nowrap" },
+        cell: ({ row }) => {
+          const label = formatVendorLeadPreferredDate(row.original.preferredDate);
+          const isFlexible = label === "Flexible";
+          return (
+            <span className="flex items-center gap-1 text-sm">
+              <CalendarClock
+                className={`h-3.5 w-3.5 shrink-0 ${isFlexible ? "text-muted-foreground" : "text-primary"}`}
+                aria-hidden
+              />
+              <span className={isFlexible ? "text-muted-foreground" : "text-foreground"}>
+                {label}
+              </span>
+            </span>
+          );
+        },
+      },
+      {
+        id: "jobAmount",
+        header: "Job amount",
+        meta: { sortKey: "jobAmount", className: "whitespace-nowrap" },
+        cell: ({ row }) => {
+          const amount = formatVendorLeadJobAmount(row.original.jobAmount);
+          const hasAmount = amount !== "—";
+          return (
+            <span className="flex items-center gap-1 text-sm">
+              <IndianRupee
+                className={`h-3.5 w-3.5 shrink-0 ${hasAmount ? "text-primary" : "text-muted-foreground"}`}
+                aria-hidden
+              />
+              <span className={hasAmount ? "font-medium text-foreground" : "text-muted-foreground"}>
+                {amount}
+              </span>
+            </span>
+          );
+        },
       },
       {
         id: "status",
@@ -166,7 +246,7 @@ export default function VendorLeads() {
         header: "Created",
         meta: {
           sortKey: "createdAt",
-          className: "whitespace-nowrap text-right text-xs text-muted-foreground",
+          className: "whitespace-nowrap text-xs text-muted-foreground",
         },
         cell: ({ row }) =>
           formatDistanceToNow(new Date(row.original.createdAt), { addSuffix: true }),
@@ -179,7 +259,7 @@ export default function VendorLeads() {
           const lead = row.original;
           return (
             <div className="flex justify-end gap-2">
-              {lead.status === "new" ? (
+              {canVendorAcceptOrRejectLead(lead.status) ? (
                 <>
                   <Button
                     size="sm"
@@ -240,7 +320,7 @@ export default function VendorLeads() {
           search={{
             value: search,
             onChange: setSearch,
-            placeholder: "Search customer, area, budget, or ID…",
+            placeholder: "Search customer, service, area, or ID…",
           }}
         />
       }

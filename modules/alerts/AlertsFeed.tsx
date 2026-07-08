@@ -33,6 +33,14 @@ type AlertSortKey = "alert" | "type" | "status" | "createdAt";
 function notificationHref(n: Notification): string | null {
   const meta = n.metadata;
   if (!meta || typeof meta !== "object") return null;
+
+  // Service request related alerts should go to service requests admin (even if delivered as email)
+  const serviceRequestId =
+    meta.serviceRequestId ?? meta.requestId ?? meta.entityId ?? meta.service_request_id;
+  if (typeof serviceRequestId === "number") {
+    return "/admin/service-requests";
+  }
+
   const leadId = meta.leadId;
   if (typeof leadId === "number") return `/leads/${leadId}`;
   const ticketId = meta.ticketId;

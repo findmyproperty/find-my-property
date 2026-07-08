@@ -11,13 +11,25 @@ import {
   Loader2,
   MapPin,
   Phone,
+  RotateCcw,
   UserRound,
   WalletCards,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -27,6 +39,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ToastAction } from "@/components/ui/toast"
 import {
   Sheet,
   SheetContent,
@@ -39,10 +60,12 @@ import {
   useAdminVendorLead,
   useAdminVendorLeads,
   useAdminPatchVendorLead,
+  useAdminReopenVendorLeadSettlement,
+  useAdminApproveVendorLead,
+  useAdminRejectVendorLead,
   useAdminVendors,
 } from "@/hooks/use-vendor-leads"
-import type { VendorLead } from "@/schema/vendor-lead"
-import type { VendorLeadStatus } from "@/schema/vendor-lead"
+import type { VendorLead, VendorLeadSettlement, VendorLeadStatus } from "@/schema/vendor-lead"
 import { useToast } from "@/hooks/use-toast"
 import { AdminDataTable } from "@/components/admin/admin-data-table"
 import { AdminListPage } from "@/components/admin/admin-list-page"
@@ -54,7 +77,10 @@ import { VENDOR_LEAD_STATUS_OPTIONS } from "@/lib/admin/status-config"
 const PAGE_SIZE = 20
 
 const STATUSES: VendorLeadStatus[] = [
+  "pending_admin_review",
+  "open",
   "new",
+  "admin_rejected",
   "accepted",
   "rejected",
   "in_progress",
@@ -67,7 +93,7 @@ type RequirementEntry = {
 }
 
 function formatStatus(status: VendorLeadStatus) {
-  return status.replace("_", " ")
+  return status.replaceAll("_", " ")
 }
 
 type StatusFilter = "all" | VendorLeadStatus
@@ -137,6 +163,103 @@ function leadSearchText(
     .toLowerCase()
 }
 
+function formatInr(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+function showJobSettlementToast(
+  toast: ReturnType<typeof useToast>["toast"],
+  settlement: VendorLeadSettlement | undefined,
+) {
+  if (!settlement) return
+
+  const paymentUrl = settlement.paymentLink?.shortUrl
+  if (paymentUrl) {
+    toast({
+      title: "Pay to credit vendor wallet",
+      description: settlement.message,
+      action: (
+        <ToastAction
+          altText="Open payment link"
+          onClick={() => window.open(paymentUrl, "_blank", "noopener,noreferrer")}
+        >
+          Pay {formatInr(settlement.netAmount)}
+        </ToastAction>
+      ),
+    })
+    return
+  }
+
+  toast({
+    title: settlement.ledgerStatus === "pending" ? "Job already settled" : "Job marked completed",
+    description: settlement.message,
+  })
+}
+
+type SettlementDialogState = {
+  settlement: VendorLeadSettlement
+  leadLabel: string
+}
+
+function JobSettlementPayDialog({
+  state,
+  onClose,
+}: {
+  state: SettlementDialogState | null
+  onClose: () => void
+}) {
+  const paymentUrl = state?.settlement.paymentLink?.shortUrl
+
+  return (
+    <Dialog open={Boolean(state)} onOpenChange={(open) => !open && onClose()}>
+      {state ? (
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Pay to credit vendor wallet</DialogTitle>
+            <DialogDescription>{state.settlement.message}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">{state.leadLabel}</span>
+              <span className="font-semibold text-foreground">
+                {formatInr(state.settlement.netAmount)}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Commission deducted: {formatInr(state.settlement.commissionAmount)}. The vendor
+              wallet is credited only after this payment succeeds.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Skip for now
+            </Button>
+            <Button
+              type="button"
+              disabled={!paymentUrl}
+              onClick={() => {
+                if (paymentUrl) {
+                  window.open(paymentUrl, "_blank", "noopener,noreferrer")
+                }
+                onClose()
+              }}
+            >
+              <ExternalLink className="size-4" />
+              Pay {formatInr(state.settlement.netAmount)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      ) : null}
+    </Dialog>
+  )
+}
+
 export default function VendorLeadsAdmin() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [page, setPage] = useState(1)
@@ -157,10 +280,21 @@ export default function VendorLeadsAdmin() {
 
   const { data, isLoading, isFetching, isError, error } = useAdminVendorLeads(listQuery)
   const { data: vendors } = useAdminVendors({ limit: 100 })
-  const { mutate: patchLead, isPending } = useAdminPatchVendorLead()
+  const { mutate: patchLead } = useAdminPatchVendorLead()
+  const { mutate: reopenSettlement, isPending: isReopenPending } =
+    useAdminReopenVendorLeadSettlement()
+  const { mutate: approveLead, isPending: isApprovePending } = useAdminApproveVendorLead()
+  const { mutate: rejectLead, isPending: isRejectPending } = useAdminRejectVendorLead()
   const { toast } = useToast()
   const [selected, setSelected] = useState<VendorLead | null>(null)
-  const [draftStatus, setDraftStatus] = useState<VendorLeadStatus>("new")
+  const [settlementDialog, setSettlementDialog] = useState<SettlementDialogState | null>(null)
+  const [settlementEditable, setSettlementEditable] = useState(false)
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [reopenReason, setReopenReason] = useState("")
+  const [rejectReason, setRejectReason] = useState("")
+  const [submittingAction, setSubmittingAction] = useState<"save" | "complete" | null>(null)
+  const [draftStatus, setDraftStatus] = useState<VendorLeadStatus>("open")
   const [jobAmount, setJobAmount] = useState("")
   const { data: selectedDetail, isFetching: isFetchingDetail } =
     useAdminVendorLead(selected?.id ?? null)
@@ -169,6 +303,91 @@ export default function VendorLeadsAdmin() {
     setSelected(lead)
     setDraftStatus(lead.status)
     setJobAmount(lead.jobAmount != null ? String(lead.jobAmount) : "")
+    setSettlementEditable(false)
+    setReopenReason("")
+  }
+
+  const activeLead = selectedDetail ?? selected
+  const isSettlementLocked = Boolean(
+    activeLead?.status === "completed" &&
+      activeLead.jobAmount != null &&
+      !settlementEditable,
+  )
+
+  const handleSettlementResult = (
+    updated: VendorLead,
+    options: { closeSheet?: boolean; usePayDialog?: boolean; lockSettlement?: boolean } = {},
+  ) => {
+    if (options.closeSheet) {
+      setSelected(null)
+    }
+
+    if (options.lockSettlement !== false && updated.status === "completed" && updated.jobAmount) {
+      setSettlementEditable(false)
+    }
+
+    const settlement = updated.settlement
+    if (!settlement) {
+      if (updated.status === "completed") {
+        toast({ title: "Job marked completed" })
+      }
+      return
+    }
+
+    const paymentUrl = settlement.paymentLink?.shortUrl
+    if (paymentUrl && options.usePayDialog) {
+      setSettlementDialog({
+        settlement,
+        leadLabel: `${updated.customerName} · Lead #${updated.id}`,
+      })
+      return
+    }
+
+    showJobSettlementToast(toast, settlement)
+  }
+
+  const approveSelectedLead = () => {
+    if (!selected) return
+    approveLead(
+      { id: selected.id },
+      {
+        onSuccess: (updated) => {
+          openLead(updated)
+          toast({
+            title: "Lead approved",
+            description: "The vendor can now accept or reject this lead.",
+          })
+        },
+        onError: (e) =>
+          toast({
+            title: "Approval failed",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+      },
+    )
+  }
+
+  const rejectSelectedLead = () => {
+    if (!selected || !rejectReason.trim()) return
+    rejectLead(
+      { id: selected.id, reason: rejectReason.trim() },
+      {
+        onSuccess: (updated) => {
+          openLead(updated)
+          setRejectDialogOpen(false)
+          setRejectReason("")
+          toast({ title: "Lead rejected" })
+        },
+        onError: (e) =>
+          toast({
+            title: "Reject failed",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+        onSettled: () => setRejectDialogOpen(false),
+      },
+    )
   }
 
   const save = () => {
@@ -179,17 +398,17 @@ export default function VendorLeadsAdmin() {
     if (amt !== selected.jobAmount) input.jobAmount = amt
     if (Object.keys(input).length === 0) return
 
+    setSubmittingAction("save")
     patchLead(
       { id: selected.id, input },
       {
         onSuccess: (updated) => {
           openLead(updated)
-          toast({
-            title:
-              updated.status === "completed" && updated.jobAmount
-                ? "Lead completed — ledger updated"
-                : "Lead saved",
-          })
+          if (updated.status === "completed" && updated.jobAmount) {
+            handleSettlementResult(updated, { lockSettlement: true })
+          } else {
+            toast({ title: "Lead saved" })
+          }
         },
         onError: (e) =>
           toast({
@@ -197,7 +416,80 @@ export default function VendorLeadsAdmin() {
             description: e instanceof Error ? e.message : undefined,
             variant: "destructive",
           }),
-      }
+        onSettled: () => setSubmittingAction(null),
+      },
+    )
+  }
+
+  const issuePaymentLink = (closeSheet: boolean) => {
+    if (!selected) return
+    const amt = Number(jobAmount)
+    if (!jobAmount.trim() || Number.isNaN(amt) || amt <= 0) {
+      toast({
+        title: "Job amount required",
+        description: "Enter a valid job amount before creating a payment link.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubmittingAction("complete")
+    patchLead(
+      {
+        id: selected.id,
+        input: { status: "completed", jobAmount: amt },
+      },
+      {
+        onSuccess: (updated) => {
+          openLead(updated)
+          handleSettlementResult(updated, {
+            closeSheet,
+            usePayDialog: true,
+            lockSettlement: true,
+          })
+        },
+        onError: (e) =>
+          toast({
+            title: "Could not create payment link",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+        onSettled: () => setSubmittingAction(null),
+      },
+    )
+  }
+
+  const confirmReopenSettlement = () => {
+    if (!selected) return
+    const reason = reopenReason.trim()
+    if (reason.length < 3) {
+      toast({
+        title: "Reason required",
+        description: "Enter at least 3 characters explaining why settlement is being adjusted.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    reopenSettlement(
+      { id: selected.id, reason },
+      {
+        onSuccess: (result) => {
+          setSettlementEditable(true)
+          setReopenDialogOpen(false)
+          setReopenReason("")
+          toast({
+            title: "Settlement unlocked",
+            description: result.reopen.message,
+          })
+        },
+        onError: (e) =>
+          toast({
+            title: "Could not adjust settlement",
+            description: e instanceof Error ? e.message : undefined,
+            variant: "destructive",
+          }),
+      },
     )
   }
 
@@ -215,6 +507,15 @@ export default function VendorLeadsAdmin() {
   const items = data?.items ?? []
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    items.forEach((lead: any) => {
+      const s = lead.status as string
+      counts[s] = (counts[s] || 0) + 1
+    })
+    return counts
+  }, [items])
 
   const displayItems = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
@@ -312,7 +613,8 @@ export default function VendorLeadsAdmin() {
               value: statusFilter,
               onChange: (value) => setStatusFilter(value as StatusFilter),
               options: VENDOR_LEAD_STATUS_OPTIONS,
-              totalCount: statusFilter === "all" ? total : undefined,
+              counts: statusCounts,
+              totalCount: total,
             }}
             search={{
               value: search,
@@ -422,31 +724,104 @@ export default function VendorLeadsAdmin() {
             isFetchingDetail={isFetchingDetail}
             draftStatus={draftStatus}
             jobAmount={jobAmount}
-            isPending={isPending}
+            isSavePending={submittingAction === "save"}
+            isCompletePending={submittingAction === "complete"}
+            isSettlementLocked={isSettlementLocked}
+            settlementEditable={settlementEditable}
             onStatusChange={setDraftStatus}
             onJobAmountChange={setJobAmount}
             onSave={save}
-            onComplete={() => {
-              setDraftStatus("completed")
-              const amt = Number(jobAmount)
-              patchLead(
-                {
-                  id: selected.id,
-                  input: { status: "completed", jobAmount: amt },
-                },
-                {
-                  onSuccess: (updated) => {
-                    openLead(updated)
-                    toast({
-                      title: "Job completed - wallet entries created",
-                    })
-                  },
-                }
-              )
-            }}
+            onAdjustSettlement={() => setReopenDialogOpen(true)}
+            onComplete={() => issuePaymentLink(true)}
+            onReissuePayment={() => issuePaymentLink(false)}
+            onApproveLead={approveSelectedLead}
+            onRejectLeadClick={() => setRejectDialogOpen(true)}
+            isApprovePending={isApprovePending}
+            isRejectPending={isRejectPending}
           />
         ) : null}
       </Sheet>
+
+      <AlertDialog open={reopenDialogOpen} onOpenChange={setReopenDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Adjust job settlement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cancels any open payment link for this job so you can change the job amount
+              and issue a new payment link. The vendor wallet is not changed unless a new payment
+              is completed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Label htmlFor="reopen-reason">Reason for adjustment</Label>
+            <Textarea
+              id="reopen-reason"
+              value={reopenReason}
+              onChange={(event) => setReopenReason(event.target.value)}
+              placeholder="e.g. Job amount was recorded incorrectly"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReopenPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isReopenPending || reopenReason.trim().length < 3}
+              onClick={(event) => {
+                event.preventDefault()
+                confirmReopenSettlement()
+              }}
+            >
+              {isReopenPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Unlocking...
+                </>
+              ) : (
+                "Unlock settlement"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The vendor will not be able to accept this assignment. Provide a reason for the
+              audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Label htmlFor="reject-reason">Rejection reason</Label>
+            <Textarea
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="e.g. Duplicate assignment, customer cancelled"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRejectPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRejectPending || !rejectReason.trim()}
+              onClick={(event) => {
+                event.preventDefault()
+                rejectSelectedLead()
+              }}
+            >
+              {isRejectPending ? "Rejecting..." : "Reject lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <JobSettlementPayDialog
+        state={settlementDialog}
+        onClose={() => setSettlementDialog(null)}
+      />
     </>
   )
 }
@@ -457,25 +832,54 @@ function AdminLeadDetailSheet({
   isFetchingDetail,
   draftStatus,
   jobAmount,
-  isPending,
+  isSavePending,
+  isCompletePending,
+  isSettlementLocked,
+  settlementEditable,
   onStatusChange,
   onJobAmountChange,
   onSave,
+  onAdjustSettlement,
   onComplete,
+  onReissuePayment,
+  onApproveLead,
+  onRejectLeadClick,
+  isApprovePending,
+  isRejectPending,
 }: {
   lead: VendorLead
   vendorName: string
   isFetchingDetail: boolean
   draftStatus: VendorLeadStatus
   jobAmount: string
-  isPending: boolean
+  isSavePending: boolean
+  isCompletePending: boolean
+  isSettlementLocked: boolean
+  settlementEditable: boolean
   onStatusChange: (status: VendorLeadStatus) => void
   onJobAmountChange: (value: string) => void
   onSave: () => void
+  onAdjustSettlement: () => void
   onComplete: () => void
+  onReissuePayment: () => void
+  onApproveLead: () => void
+  onRejectLeadClick: () => void
+  isApprovePending: boolean
+  isRejectPending: boolean
 }) {
   const entries = requirementEntries(lead.requirement)
   const updates = lead.updates ?? []
+  const isCompleted = lead.status === "completed"
+  const completedWithoutJobAmount =
+    isCompleted && (lead.jobAmount == null || Number(lead.jobAmount) <= 0)
+  const settlementFieldsDisabled =
+    isSettlementLocked ||
+    (isCompleted && !settlementEditable && !completedWithoutJobAmount)
+  const showAdjustSettlement = isSettlementLocked
+  const showInitialComplete = !isCompleted && !isSettlementLocked
+  const showReissuePayment = isCompleted && settlementEditable
+  const showCreatePaymentForCompleted =
+    completedWithoutJobAmount && !isSettlementLocked
 
   return (
     <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-3xl">
@@ -501,7 +905,7 @@ function AdminLeadDetailSheet({
 
       <div className="flex flex-col gap-5 py-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailStat icon={Phone} label="Phone" value={lead.phone} />
+          <DetailStat icon={Phone} label="Phone" value={lead.phone ?? "-"} />
           <DetailStat icon={MapPin} label="Area" value={lead.area || "-"} />
           <DetailStat icon={UserRound} label="Vendor" value={vendorName} />
           <DetailStat
@@ -580,7 +984,71 @@ function AdminLeadDetailSheet({
 
           <TabsContent value="manage" className="mt-0">
             <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-              <SectionTitle icon={WalletCards} title="Status and settlement" />
+              <SectionTitle icon={WalletCards} title="Status and job payment" />
+
+              {lead.status === "pending_admin_review" ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-3">
+                  <p className="text-sm text-amber-900">
+                    This lead is waiting for admin approval before the vendor can accept or
+                    reject it.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      disabled={isApprovePending || isRejectPending}
+                      onClick={onApproveLead}
+                    >
+                      {isApprovePending ? "Approving..." : "Approve lead"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isApprovePending || isRejectPending}
+                      onClick={onRejectLeadClick}
+                    >
+                      Reject lead
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {lead.adminApprovedAt ? (
+                <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                  Approved{" "}
+                  {format(new Date(lead.adminApprovedAt), "dd MMM yyyy, p")}
+                  {lead.adminApprovalNotes ? ` — ${lead.adminApprovalNotes}` : ""}
+                </div>
+              ) : null}
+
+              {lead.adminRejectedAt ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  Rejected {format(new Date(lead.adminRejectedAt), "dd MMM yyyy, p")}
+                  {lead.adminRejectionReason ? ` — ${lead.adminRejectionReason}` : ""}
+                </div>
+              ) : null}
+
+              {isSettlementLocked ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-sm text-amber-900">
+                  Settlement is locked after completion. Use{" "}
+                  <span className="font-medium">Adjust settlement</span> to change the job amount
+                  and issue a new payment link.
+                </div>
+              ) : null}
+
+              {showCreatePaymentForCompleted ? (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
+                  The vendor marked this job completed, but no job amount was set yet. Enter the
+                  job amount below, then create the payment link to credit the vendor
+                  wallet.
+                </div>
+              ) : null}
+
+              {settlementEditable && isCompleted ? (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
+                  Settlement unlocked. Update the job amount, then issue a new payment link.
+                </div>
+              ) : null}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <Label>Status</Label>
@@ -589,6 +1057,7 @@ function AdminLeadDetailSheet({
                     onValueChange={(value) =>
                       onStatusChange(value as VendorLeadStatus)
                     }
+                    disabled={settlementFieldsDisabled || isCompleted}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -613,11 +1082,13 @@ function AdminLeadDetailSheet({
                     step="0.01"
                     value={jobAmount}
                     onChange={(event) => onJobAmountChange(event.target.value)}
-                    placeholder="Required to complete and settle wallet"
+                    placeholder="Required to complete and create payment link"
+                    disabled={settlementFieldsDisabled}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {lead.commissionPercent}% commission is deducted on
-                    completion.
+                    {lead.commissionPercent}% commission is deducted. A payment
+                    link is created for the net amount — the vendor wallet is credited only
+                    after you pay it. Do not use Vendor Payments manual credit for job amounts.
                   </p>
                 </div>
               </div>
@@ -625,16 +1096,78 @@ function AdminLeadDetailSheet({
               <Separator />
 
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" disabled={isPending} onClick={onSave}>
-                  {isPending ? "Saving..." : "Save changes"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={isPending || !jobAmount.trim()}
-                  onClick={onComplete}
-                >
-                  Mark completed and settle
-                </Button>
+                {showAdjustSettlement ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-amber-300 text-amber-900 hover:bg-amber-50"
+                    onClick={onAdjustSettlement}
+                  >
+                    <RotateCcw className="size-4" />
+                    Adjust settlement
+                  </Button>
+                ) : null}
+
+                {!isSettlementLocked && !showReissuePayment ? (
+                  <Button
+                    variant="outline"
+                    disabled={isSavePending || isCompletePending}
+                    onClick={onSave}
+                  >
+                    {isSavePending ? "Saving..." : "Save changes"}
+                  </Button>
+                ) : null}
+
+                {showInitialComplete ? (
+                  <Button
+                    variant="secondary"
+                    disabled={isSavePending || isCompletePending || !jobAmount.trim()}
+                    onClick={onComplete}
+                  >
+                    {isCompletePending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Creating payment link...
+                      </>
+                    ) : (
+                      "Mark completed and pay vendor"
+                    )}
+                  </Button>
+                ) : null}
+
+                {showCreatePaymentForCompleted ? (
+                  <Button
+                    variant="secondary"
+                    disabled={isSavePending || isCompletePending || !jobAmount.trim()}
+                    onClick={onComplete}
+                  >
+                    {isCompletePending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Creating payment link...
+                      </>
+                    ) : (
+                      "Create payment link"
+                    )}
+                  </Button>
+                ) : null}
+
+                {showReissuePayment ? (
+                  <Button
+                    variant="secondary"
+                    disabled={isSavePending || isCompletePending || !jobAmount.trim()}
+                    onClick={onReissuePayment}
+                  >
+                    {isCompletePending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Creating payment link...
+                      </>
+                    ) : (
+                      "Issue new payment link"
+                    )}
+                  </Button>
+                ) : null}
               </div>
             </section>
           </TabsContent>

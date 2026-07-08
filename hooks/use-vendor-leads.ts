@@ -79,6 +79,21 @@ export function useAdminVendorLead(id: number | null) {
   });
 }
 
+export function useAdminVendorLeadByServiceRequest(serviceRequestId: number | null) {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: ["admin-vendor-lead-by-sr", serviceRequestId],
+    queryFn: async () => {
+      const result = await api.vendorLeads.listLeadsAdmin({
+        serviceRequestId: serviceRequestId!,
+        limit: 1,
+      });
+      return result.items[0] ?? null;
+    },
+    enabled: isAuthReady && user?.role === "admin" && serviceRequestId != null,
+  });
+}
+
 export function useAdminVendors(
   query: Parameters<typeof api.vendors.listVendorsAdmin>[0] = {},
 ) {
@@ -132,9 +147,65 @@ export function useAdminPatchVendorLead() {
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: AdminPatchVendorLeadInput }) =>
       api.vendorLeads.adminPatch(id, input),
-    onSuccess: (_, { id }) => {
+    onSuccess: (updatedLead, { id }) => {
       void qc.invalidateQueries({ queryKey: ["admin-vendor-leads"] });
       void qc.invalidateQueries({ queryKey: ["admin-vendor-lead", id] });
+      const vuid = updatedLead?.vendorUserId;
+      if (vuid) {
+        void qc.invalidateQueries({ queryKey: ["admin-vendor-wallet-summary", vuid] });
+        void qc.invalidateQueries({ queryKey: ["admin-vendor-wallet-entries", vuid] });
+      }
+    },
+  });
+}
+
+export function useAdminReopenVendorLeadSettlement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      api.vendorLeads.adminReopenSettlement(id, { reason }),
+    onSuccess: (updatedLead, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-leads"] });
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-lead", id] });
+      const vuid = updatedLead?.vendorUserId;
+      if (vuid) {
+        void qc.invalidateQueries({ queryKey: ["admin-vendor-wallet-summary", vuid] });
+        void qc.invalidateQueries({ queryKey: ["admin-vendor-wallet-entries", vuid] });
+      }
+    },
+  });
+}
+
+export function useAdminApproveVendorLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
+      api.vendorLeads.adminApproveLead(id, { notes }),
+    onSuccess: (updated, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-leads"] });
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-lead", id] });
+      if (updated.serviceRequestId != null) {
+        void qc.invalidateQueries({
+          queryKey: ["admin-vendor-lead-by-sr", updated.serviceRequestId],
+        });
+      }
+    },
+  });
+}
+
+export function useAdminRejectVendorLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      api.vendorLeads.adminRejectLead(id, { reason }),
+    onSuccess: (updated, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-leads"] });
+      void qc.invalidateQueries({ queryKey: ["admin-vendor-lead", id] });
+      if (updated.serviceRequestId != null) {
+        void qc.invalidateQueries({
+          queryKey: ["admin-vendor-lead-by-sr", updated.serviceRequestId],
+        });
+      }
     },
   });
 }

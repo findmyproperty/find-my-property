@@ -623,7 +623,7 @@ export default function VendorWallet() {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1">
             <ShieldCheck className="h-3.5 w-3.5" />
-            RazorpayX payouts
+            Bank payouts
           </Badge>
           <Button
             onClick={openWithdrawDialog}
@@ -727,7 +727,7 @@ export default function VendorWallet() {
                   <ShieldCheck className="h-4 w-4" />
                   <AlertTitle>Withdrawal request</AlertTitle>
                   <AlertDescription>
-                    The amount moves to pending withdrawals while RazorpayX processes it.
+                    The amount moves to pending withdrawals while the payout is processed.
                   </AlertDescription>
                 </Alert>
 

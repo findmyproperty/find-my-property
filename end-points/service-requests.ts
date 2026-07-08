@@ -128,14 +128,14 @@ export interface ServiceRequestDTO {
 export interface BaseServiceRequestInput {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
   city?: string;
   addressLine?: string;
   pincode?: string;
   preferredDate?: string;
   preferredSlot?: PreferredSlot;
   recaptchaToken?: string;
-  assignedVendorUserId?: number | null;
+  assignedVendorUserId: number;
 }
 
 export interface PackersMoversInput extends BaseServiceRequestInput {

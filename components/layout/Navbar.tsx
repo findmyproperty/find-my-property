@@ -58,7 +58,7 @@ type ServiceMenuItem = {
   icon: LucideIcon;
 };
 
-type ProfileMenuItem = {
+export type ProfileMenuItem = {
   href: string;
   label: string;
   icon: LucideIcon;
@@ -103,7 +103,7 @@ const serviceMenuItems: ServiceMenuItem[] = [
   },
 ];
 
-function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem[] {
+export function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem[] {
   const items: ProfileMenuItem[] = [
     { href: "/profile", label: "Edit profile", icon: UserCircle },
     { href: "/browse", label: "Browse properties", icon: Search },

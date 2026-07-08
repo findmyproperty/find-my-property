@@ -106,7 +106,7 @@ export default function EventManagementPage() {
       location: { ...EMPTY_LOCATION },
       themeOrStyle: "",
       notes: "",
-      assignedVendorUserId: null,
+      assignedVendorUserId: undefined,
     },
   });
 
@@ -139,13 +139,13 @@ export default function EventManagementPage() {
     await mutation.mutateAsync({
       name: values.name.trim(),
       phone: values.phone.trim(),
-      email: values.email?.trim() || undefined,
+      email: values.email.trim(),
       city: values.city?.trim() || undefined,
       addressLine: values.addressLine?.trim() || undefined,
       pincode: values.pincode?.trim() || undefined,
       preferredDate: values.preferredDate?.trim() || undefined,
       preferredSlot: values.preferredSlot,
-      assignedVendorUserId: values.assignedVendorUserId ?? undefined,
+      assignedVendorUserId: values.assignedVendorUserId,
       details: {
         eventType: values.eventType as any,
         venueType: values.venueType,
@@ -173,7 +173,7 @@ export default function EventManagementPage() {
       location: { ...EMPTY_LOCATION },
       themeOrStyle: "",
       notes: "",
-      assignedVendorUserId: null,
+      assignedVendorUserId: undefined,
     });
   };
 
@@ -301,7 +301,7 @@ export default function EventManagementPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email (optional)</FormLabel>
+                        <FormLabel required>Email</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
@@ -490,7 +490,7 @@ export default function EventManagementPage() {
                       name="assignedVendorUserId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Preferred vendor (optional)</FormLabel>
+                          <FormLabel required>Preferred vendor</FormLabel>
                           <FormControl>
                             <VendorSelector
                               categoryId={vendorCategoryId}

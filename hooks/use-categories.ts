@@ -4,18 +4,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Category, CategoryCreate, CategoryUpdate } from "@/schema/category";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context";
 
 export function useCategories() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isAuthReady } = useAuth();
 
   const query = useQuery({
     queryKey: ["categories"],
     queryFn: api.getCategories,
-    // Categories feed public service selectors as well as admin tools.
-    enabled: isAuthReady,
+    // Public read — used on vendor register and service forms without login.
     staleTime: 30_000,
   });
 
