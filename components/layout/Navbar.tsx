@@ -14,6 +14,8 @@ import {
   PaintBucket,
   PartyPopper,
   Wrench,
+  Monitor,
+  HandHelping,
   LayoutDashboard,
   UserCircle,
   ClipboardList,
@@ -88,6 +90,18 @@ const serviceMenuItems: ServiceMenuItem[] = [
     label: "Event Management",
     description: "Planning support for celebrations and corporate events.",
     icon: PartyPopper,
+  },
+  {
+    href: "/it-services",
+    label: "IT Services",
+    description: "Laptop repair, networking, CCTV, and software support.",
+    icon: Monitor,
+  },
+  {
+    href: "/general-services",
+    label: "General Services",
+    description: "Handyman help, errands, and everyday assistance.",
+    icon: HandHelping,
   },
   {
     href: "/loans",

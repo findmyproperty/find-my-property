@@ -22,6 +22,8 @@ import {
   Star,
   Truck,
   Wrench,
+  Monitor,
+  HandHelping,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,8 @@ import type {
   PackersMoversDetails,
   PaintingCleaningDetails,
   HomeServicesDetails,
+  ItServicesDetails,
+  GeneralServicesDetails,
   ServiceRequestDTO,
   ServiceRequestFeedbackInput,
   ServiceRequestStatus,
@@ -120,6 +124,16 @@ const SERVICE_META: Record<
     icon: PartyPopper,
     href: "/event-management",
   },
+  it: {
+    label: "IT Services",
+    icon: Monitor,
+    href: "/it-services",
+  },
+  general: {
+    label: "General Services",
+    icon: HandHelping,
+    href: "/general-services",
+  },
 };
 
 const EVENT_TYPE_LABELS: Record<EventManagementDetails["eventType"], string> = {
@@ -142,6 +156,22 @@ const HOME_SUBTYPE_LABELS: Record<HomeServicesDetails["subType"], string> = {
   carpenter: "Carpenter",
   plumber: "Plumber",
   electrician: "Electrician",
+};
+
+const IT_SUBTYPE_LABELS: Record<string, string> = {
+  web_design: "Web design",
+  server_tech: "Server tech",
+  networking: "Networking / Wi-Fi",
+  software_installation: "Software installation",
+  cctv_setup: "CCTV setup",
+  printer_setup: "Printer setup",
+};
+
+const GENERAL_SUBTYPE_LABELS: Record<string, string> = {
+  handyman: "Handyman",
+  errands: "Errands & assistance",
+  furniture_assembly: "Furniture assembly",
+  other: "Other general help",
 };
 
 const PROPERTY_TYPE_LABELS: Record<
@@ -211,9 +241,23 @@ function detailSummary(r: ServiceRequestDTO): string[] {
   if (r.serviceType === "home_services") {
     const d = r.details as HomeServicesDetails;
     return [
-      d.subType ? HOME_SUBTYPE_LABELS[d.subType] : null,
+      d.subType ? HOME_SUBTYPE_LABELS[d.subType] ?? d.subType : null,
       d.propertyType ? PROPERTY_TYPE_LABELS[d.propertyType] : null,
       d.bhkOrSqft ?? null,
+    ].filter((x): x is string => Boolean(x));
+  }
+  if (r.serviceType === "it") {
+    const d = r.details as ItServicesDetails;
+    return [
+      d.subType ? IT_SUBTYPE_LABELS[d.subType] ?? d.subType : null,
+      d.notes?.trim() ? d.notes.trim().slice(0, 80) : null,
+    ].filter((x): x is string => Boolean(x));
+  }
+  if (r.serviceType === "general") {
+    const d = r.details as GeneralServicesDetails;
+    return [
+      d.subType ? GENERAL_SUBTYPE_LABELS[d.subType] ?? d.subType : null,
+      d.notes?.trim() ? d.notes.trim().slice(0, 80) : null,
     ].filter((x): x is string => Boolean(x));
   }
   if (r.serviceType === "event_management") {
@@ -445,6 +489,18 @@ export default function MyServiceRequests() {
               <Link href="/event-management">
                 <PartyPopper data-icon="inline-start" />
                 Event Management
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/it-services">
+                <Monitor data-icon="inline-start" />
+                IT Services
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/general-services">
+                <HandHelping data-icon="inline-start" />
+                General Services
               </Link>
             </Button>
           </div>

@@ -439,7 +439,7 @@ const CategoryManagement = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <AdminPageHeader
           title="Category Management"
-          description="Manage categories for properties and services. Use the Mappings tab to assign categories to Packers & Movers, Painting & Cleaning, Home Services or Event Management."
+          description="Manage categories for properties and services. Use the Mappings tab to assign categories to Packers & Movers, Painting & Cleaning, Home Services, Event Management, IT, or General Services."
         />
       </div>
 

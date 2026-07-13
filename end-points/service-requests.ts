@@ -4,7 +4,9 @@ export type ServiceType =
   | "packers_movers"
   | "painting_cleaning"
   | "home_services"
-  | "event_management";
+  | "event_management"
+  | "it"
+  | "general";
 
 export type ServiceRequestStatus =
   | "new"
@@ -61,6 +63,16 @@ export interface HomeServicesDetails {
   notes?: string | null;
 }
 
+export interface ItServicesDetails {
+  subType: string;
+  notes?: string | null;
+}
+
+export interface GeneralServicesDetails {
+  subType: string;
+  notes?: string | null;
+}
+
 export interface EventManagementDetails {
   eventType: string;
   venueType: "home" | "banquet" | "hotel" | "outdoor" | "office" | "other";
@@ -112,6 +124,8 @@ export interface ServiceRequestDTO {
     | PackersMoversDetails
     | PaintingCleaningDetails
     | HomeServicesDetails
+    | ItServicesDetails
+    | GeneralServicesDetails
     | EventManagementDetails
     | null;
   internalNotes: string | null;
@@ -148,6 +162,14 @@ export interface PaintingCleaningInput extends BaseServiceRequestInput {
 
 export interface HomeServicesInput extends BaseServiceRequestInput {
   details: HomeServicesDetails;
+}
+
+export interface ItServicesInput extends BaseServiceRequestInput {
+  details: ItServicesDetails;
+}
+
+export interface GeneralServicesInput extends BaseServiceRequestInput {
+  details: GeneralServicesDetails;
 }
 
 export interface EventManagementInput extends BaseServiceRequestInput {
@@ -341,6 +363,22 @@ export const serviceRequests = {
 
   async submitHomeServices(input: HomeServicesInput): Promise<ServiceRequestDTO> {
     return request<ServiceRequestDTO>("/service-requests/home-services", {
+      method: "POST",
+      body: JSON.stringify(input),
+      token: getStoredToken(),
+    });
+  },
+
+  async submitItServices(input: ItServicesInput): Promise<ServiceRequestDTO> {
+    return request<ServiceRequestDTO>("/service-requests/it-services", {
+      method: "POST",
+      body: JSON.stringify(input),
+      token: getStoredToken(),
+    });
+  },
+
+  async submitGeneralServices(input: GeneralServicesInput): Promise<ServiceRequestDTO> {
+    return request<ServiceRequestDTO>("/service-requests/general-services", {
       method: "POST",
       body: JSON.stringify(input),
       token: getStoredToken(),

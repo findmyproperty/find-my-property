@@ -53,6 +53,8 @@ export const SERVICE_AUTH_MODAL_PATHS = [
   "/packers-movers",
   "/painting-cleaning",
   "/home-services",
+  "/it-services",
+  "/general-services",
   "/loans",
   "/job-consultancy",
 ] as const;

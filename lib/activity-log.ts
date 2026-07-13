@@ -92,6 +92,22 @@ const ROUTE_MAP: Array<{
     },
   },
   {
+    method: "POST",
+    test: /^\/service-requests\/it-services$/,
+    match: {
+      title: () => "New IT Services request submitted",
+      category: "service",
+    },
+  },
+  {
+    method: "POST",
+    test: /^\/service-requests\/general-services$/,
+    match: {
+      title: () => "New General Services request submitted",
+      category: "service",
+    },
+  },
+  {
     method: "PATCH",
     test: /^\/admin\/service-requests\/(\d+)$/,
     match: {

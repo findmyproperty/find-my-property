@@ -6,7 +6,9 @@ import {
   type AdminListServiceRequestsQuery,
   type AdminUpdateServiceRequestInput,
   type EventManagementInput,
+  type GeneralServicesInput,
   type HomeServicesInput,
+  type ItServicesInput,
   type PackersMoversInput,
   type PaintingCleaningInput,
   type ServiceRequestFeedbackInput,
@@ -89,6 +91,52 @@ export function useSubmitHomeServices() {
         title: "Request received",
         description:
           "Our team will reach out shortly to confirm your Home Services request.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not submit request",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useSubmitItServices() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (input: ItServicesInput) => api.submitItServices(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.mine });
+      toast({
+        title: "Request received",
+        description:
+          "Our team will reach out shortly to confirm your IT Services request.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not submit request",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useSubmitGeneralServices() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (input: GeneralServicesInput) => api.submitGeneralServices(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.mine });
+      toast({
+        title: "Request received",
+        description:
+          "Our team will reach out shortly to confirm your General Services request.",
       });
     },
     onError: (error: Error) => {

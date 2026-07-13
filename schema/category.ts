@@ -5,6 +5,8 @@ export const SERVICE_TYPE = {
   PAINTING_CLEANING: 'painting_cleaning',
   HOME_SERVICES: 'home_services',
   EVENT_MANAGEMENT: 'event_management',
+  IT: 'it',
+  GENERAL: 'general',
 } as const;
 
 export type ServiceType = (typeof SERVICE_TYPE)[keyof typeof SERVICE_TYPE];
@@ -22,6 +24,8 @@ export const categorySchema = z.object({
     SERVICE_TYPE.PAINTING_CLEANING,
     SERVICE_TYPE.HOME_SERVICES,
     SERVICE_TYPE.EVENT_MANAGEMENT,
+    SERVICE_TYPE.IT,
+    SERVICE_TYPE.GENERAL,
   ]).nullable().optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
@@ -40,6 +44,8 @@ export const categoryCreateSchema = categorySchema
       SERVICE_TYPE.PAINTING_CLEANING,
       SERVICE_TYPE.HOME_SERVICES,
       SERVICE_TYPE.EVENT_MANAGEMENT,
+      SERVICE_TYPE.IT,
+      SERVICE_TYPE.GENERAL,
     ]).nullable().optional(),
   });
 

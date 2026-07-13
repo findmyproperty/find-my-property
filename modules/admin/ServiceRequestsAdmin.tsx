@@ -26,6 +26,8 @@ import {
   Star,
   Truck,
   Wrench,
+  Monitor,
+  HandHelping,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +79,8 @@ import type {
   PackersMoversDetails,
   PaintingCleaningDetails,
   HomeServicesDetails,
+  ItServicesDetails,
+  GeneralServicesDetails,
   ServiceRequestDTO,
   ServiceRequestStatus,
   ServiceType,
@@ -90,6 +94,8 @@ const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   painting_cleaning: "Painting & Cleaning",
   home_services: "Home Services",
   event_management: "Event Management",
+  it: "IT Services",
+  general: "General Services",
 };
 
 function formatPhoneForLink(phone: string): string {
@@ -135,6 +141,12 @@ function isEventManagementDetails(
   return !!d && "eventType" in d;
 }
 
+function isSimpleServiceDetails(
+  d: ServiceRequestDTO["details"],
+): d is ItServicesDetails | GeneralServicesDetails {
+  return !!d && "subType" in d && !("eventType" in d) && !("moveType" in d);
+}
+
 const STATUS_VALUES: ServiceRequestStatus[] = [
   "new",
   "contacted",
@@ -148,6 +160,8 @@ const SERVICE_VALUES: ServiceType[] = [
   "painting_cleaning",
   "home_services",
   "event_management",
+  "it",
+  "general",
 ];
 
 const STATUS_META = adminStatusOptionsToMap(SERVICE_REQUEST_STATUS_OPTIONS);
@@ -456,12 +470,26 @@ export default function ServiceRequestsAdmin() {
               value={stats.totals.event_management ?? 0}
             />
           </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={Monitor}
+              label="IT Services"
+              value={stats.totals.it ?? 0}
+            />
+          </div>
+          <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+            <StatTile
+              icon={HandHelping}
+              label="General Services"
+              value={stats.totals.general ?? 0}
+            />
+          </div>
         </div>
       ) : null}
 
       <AdminListPage
         title="Service Requests"
-        description="Triage Packers & Movers, Painting & Cleaning, Home Services, and Event Management requests."
+        description="Triage Packers & Movers, Painting & Cleaning, Home Services, Event Management, IT, and General requests."
         isLoading={isLoading}
         loadingLabel="Loading service requests…"
         isError={isError}
@@ -655,6 +683,22 @@ export default function ServiceRequestsAdmin() {
                   <PaintingCleaningDetailPanel
                     details={selected.details}
                     subtypeLabels={HOME_SUBTYPE_LABELS}
+                  />
+                ) : null}
+
+                {selected.serviceType === "it" &&
+                isSimpleServiceDetails(selected.details) ? (
+                  <SimpleServiceDetailPanel
+                    details={selected.details}
+                    subtypeLabels={IT_SUBTYPE_LABELS}
+                  />
+                ) : null}
+
+                {selected.serviceType === "general" &&
+                isSimpleServiceDetails(selected.details) ? (
+                  <SimpleServiceDetailPanel
+                    details={selected.details}
+                    subtypeLabels={GENERAL_SUBTYPE_LABELS}
                   />
                 ) : null}
 
@@ -935,6 +979,22 @@ const HOME_SUBTYPE_LABELS: Record<
   electrician: "Electrician",
 };
 
+const IT_SUBTYPE_LABELS: Record<string, string> = {
+  web_design: "Web design",
+  server_tech: "Server tech",
+  networking: "Networking / Wi-Fi",
+  software_installation: "Software installation",
+  cctv_setup: "CCTV setup",
+  printer_setup: "Printer setup",
+};
+
+const GENERAL_SUBTYPE_LABELS: Record<string, string> = {
+  handyman: "Handyman",
+  errands: "Errands & assistance",
+  furniture_assembly: "Furniture assembly",
+  other: "Other general help",
+};
+
 const PROPERTY_TYPE_LABELS: Record<
   NonNullable<PaintingCleaningDetails["propertyType"]>,
   string
@@ -1136,6 +1196,38 @@ function PackersMoversDetailPanel({ details }: { details: PackersMoversDetails }
           </p>
           <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
             {details.notes}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SimpleServiceDetailPanel({
+  details,
+  subtypeLabels,
+}: {
+  details: ItServicesDetails | GeneralServicesDetails;
+  subtypeLabels: Record<string, string>;
+}) {
+  return (
+    <section className="space-y-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Service details
+      </h3>
+      <dl className="grid grid-cols-2 gap-2 text-sm">
+        <Field
+          label="Service"
+          value={subtypeLabels[details.subType] ?? details.subType}
+        />
+      </dl>
+      {details.notes?.trim() ? (
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Customer notes
+          </p>
+          <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+            {details.notes.trim()}
           </p>
         </div>
       ) : null}
@@ -1397,6 +1489,20 @@ export function ServiceRequestsOverviewTiles() {
           icon={PartyPopper}
           label="Event Management"
           value={stats.totals.event_management ?? 0}
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={Monitor}
+          label="IT Services"
+          value={stats.totals.it ?? 0}
+        />
+      </div>
+      <div className="min-w-[10.5rem] shrink-0 snap-start sm:min-w-0">
+        <StatTile
+          icon={HandHelping}
+          label="General Services"
+          value={stats.totals.general ?? 0}
         />
       </div>
     </div>

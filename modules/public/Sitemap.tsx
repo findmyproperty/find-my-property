@@ -31,6 +31,8 @@ const sections: Section[] = [
       { href: "/painting-cleaning", label: "Painting & Cleaning" },
       { href: "/home-services", label: "Home Services" },
       { href: "/event-management", label: "Event Management" },
+      { href: "/it-services", label: "IT Services" },
+      { href: "/general-services", label: "General Services" },
     ],
   },
   {

@@ -2,6 +2,26 @@ import { z } from "zod";
 
 const phoneRegex = /^\+?[0-9\s\-()]{7,20}$/;
 
+const vendorPickServiceContactSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Please enter your name (min 2 characters).")
+    .max(120, "Name is too long."),
+  phone: z
+    .string()
+    .trim()
+    .regex(phoneRegex, "Please enter a valid phone number."),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email.")
+    .max(160),
+  assignedVendorUserId: z.number().int().positive({
+    message: "Please select a preferred vendor.",
+  }),
+});
+
 const baseSchema = z.object({
   name: z
     .string()
@@ -106,6 +126,20 @@ export const homeServicesSchema = baseSchema.extend({
 
 export type HomeServicesFormValues = z.infer<typeof homeServicesSchema>;
 
+export const itServicesSchema = vendorPickServiceContactSchema.extend({
+  subType: z.string().min(1, { message: "Pick a service." }),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type ItServicesFormValues = z.infer<typeof itServicesSchema>;
+
+export const generalServicesSchema = vendorPickServiceContactSchema.extend({
+  subType: z.string().min(1, { message: "Pick a service." }),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type GeneralServicesFormValues = z.infer<typeof generalServicesSchema>;
+
 export const eventManagementSchema = baseSchema.extend({
   // Now supports dynamic categories mapped to 'event_management' (with static fallback)
   eventType: z.string().min(1, { message: "Pick an event type." }),
@@ -197,6 +231,28 @@ export const HOME_SERVICE_TYPE_OPTIONS: Array<{
   { value: "electrician", label: "Electrician" },
 ];
 
+export const IT_SERVICE_TYPE_OPTIONS: Array<{
+  value: ItServicesFormValues["subType"];
+  label: string;
+}> = [
+  { value: "web_design", label: "Web design" },
+  { value: "server_tech", label: "Server tech" },
+  { value: "networking", label: "Networking / Wi-Fi" },
+  { value: "software_installation", label: "Software installation" },
+  { value: "cctv_setup", label: "CCTV setup" },
+  { value: "printer_setup", label: "Printer setup" },
+];
+
+export const GENERAL_SERVICE_TYPE_OPTIONS: Array<{
+  value: GeneralServicesFormValues["subType"];
+  label: string;
+}> = [
+  { value: "handyman", label: "Handyman" },
+  { value: "errands", label: "Errands & assistance" },
+  { value: "furniture_assembly", label: "Furniture assembly" },
+  { value: "other", label: "Other general help" },
+];
+
 export const PROPERTY_TYPE_OPTIONS: Array<{
   value: PaintingCleaningFormValues["propertyType"];
   label: string;
@@ -245,6 +301,8 @@ export const SERVICE_OPTIONS = [
   { value: "painting_cleaning", label: "Painting & Cleaning" },
   { value: "home_services", label: "Home Services" },
   { value: "event_management", label: "Event Management" },
+  { value: "it", label: "IT Services" },
+  { value: "general", label: "General Services" },
 ] as const;
 
 export type ServiceKey = (typeof SERVICE_OPTIONS)[number]["value"];

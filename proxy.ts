@@ -28,6 +28,8 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/packers-movers") return true;
   if (pathname === "/painting-cleaning") return true;
   if (pathname === "/home-services") return true;
+  if (pathname === "/it-services") return true;
+  if (pathname === "/general-services") return true;
   if (pathname === "/event-management") return true;
   if (pathname === "/loans") return true;
   if (pathname.startsWith("/loans/")) return true;
