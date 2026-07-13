@@ -14,15 +14,16 @@ import {
   Home,
   Loader2,
   MapPin,
+  Monitor,
   PackageCheck,
   PaintBucket,
-  Phone,
   PlusCircle,
   PartyPopper,
   Truck,
   Upload,
   UserRound,
   WalletCards,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react"
@@ -52,7 +53,6 @@ import {
   useVendorLead,
   usePatchVendorLeadStatus,
   useAddVendorLeadUpdate,
-  useCallVendorLeadCustomer,
 } from "@/hooks/use-vendor-leads"
 import { useToast } from "@/hooks/use-toast"
 import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead"
@@ -60,12 +60,7 @@ import {
   canVendorAcceptOrRejectLead,
   canVendorPostWorkUpdate,
 } from "@/schema/vendor-lead"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { formatVendorLeadJobAmount } from "@/lib/vendor/lead-display"
 
 const MB = 1024 * 1024
 
@@ -97,9 +92,35 @@ const PAINTING_SUBTYPE_LABELS: Record<string, string> = {
   bathroom_cleaning: "Bathroom cleaning",
   sofa_cleaning: "Sofa / upholstery cleaning",
   kitchen_cleaning: "Kitchen deep cleaning",
+}
+
+const HOME_SUBTYPE_LABELS: Record<string, string> = {
   carpenter: "Carpenter",
   plumber: "Plumber",
   electrician: "Electrician",
+}
+
+const IT_SUBTYPE_LABELS: Record<string, string> = {
+  web_design: "Web design",
+  server_tech: "Server tech",
+  networking: "Networking / Wi-Fi",
+  software_installation: "Software installation",
+  cctv_setup: "CCTV setup",
+  printer_setup: "Printer setup",
+}
+
+const GENERAL_SUBTYPE_LABELS: Record<string, string> = {
+  handyman: "Handyman",
+  errands: "Errands & assistance",
+  furniture_assembly: "Furniture assembly",
+  other: "Other general help",
+}
+
+const ALL_SUBTYPE_LABELS: Record<string, string> = {
+  ...PAINTING_SUBTYPE_LABELS,
+  ...HOME_SUBTYPE_LABELS,
+  ...IT_SUBTYPE_LABELS,
+  ...GENERAL_SUBTYPE_LABELS,
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -159,6 +180,9 @@ type ParsedRequirement =
   | { kind: "text"; text: string }
   | { kind: "packers"; data: JsonRecord }
   | { kind: "painting"; data: JsonRecord }
+  | { kind: "home"; data: JsonRecord }
+  | { kind: "it"; data: JsonRecord }
+  | { kind: "general"; data: JsonRecord }
   | { kind: "event"; data: JsonRecord }
   | { kind: "generic"; data: JsonRecord }
 
@@ -213,12 +237,30 @@ function parseRequirement(requirement: string | null): ParsedRequirement {
       return { kind: "event", data: parsed }
     }
 
+    // Painting / home services include property + location fields.
+    // IT / general only send subType (+ notes) — do not treat those as painting.
     if (
-      "subType" in parsed ||
       "propertyType" in parsed ||
+      "bhkOrSqft" in parsed ||
       "location" in parsed
     ) {
+      const subType = stringValue(parsed.subType)
+      if (subType && subType in HOME_SUBTYPE_LABELS) {
+        return { kind: "home", data: parsed }
+      }
       return { kind: "painting", data: parsed }
+    }
+
+    if ("subType" in parsed) {
+      const subType = stringValue(parsed.subType)
+      if (subType && subType in IT_SUBTYPE_LABELS) {
+        return { kind: "it", data: parsed }
+      }
+      if (subType && subType in GENERAL_SUBTYPE_LABELS) {
+        return { kind: "general", data: parsed }
+      }
+      // Unknown simple subtype (e.g. dynamic admin category) — still not painting.
+      return { kind: "generic", data: parsed }
     }
 
     return { kind: "generic", data: parsed }
@@ -329,8 +371,8 @@ export default function VendorLeadDetail() {
       </Button>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-heading text-2xl font-bold text-foreground">
                 {lead.customerName}
@@ -339,18 +381,19 @@ export default function VendorLeadDetail() {
                 {formatStatus(lead.status)}
               </Badge>
             </div>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Lead #{lead.id}
-              {lead.serviceRequestId ? ` from service request #${lead.serviceRequestId}` : ""}
+              {lead.serviceRequestId
+                ? ` from service request #${lead.serviceRequestId}`
+                : ""}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <LeadActions lead={lead} patching={patching} onPatch={patchStatus} />
-            <CustomerContactButton lead={lead} />
             {canVendorPostWorkUpdate(lead.status) ? (
               <Button
-                variant="secondary"
+                variant="outline"
                 onClick={() => setActiveTab("updates")}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -360,9 +403,13 @@ export default function VendorLeadDetail() {
           </div>
         </div>
 
-        <div className="grid border-t border-border md:grid-cols-3">
+        <div className="grid border-t border-border sm:grid-cols-3">
           <SummaryStat icon={MapPin} label="Area" value={lead.area || "-"} />
-          <SummaryStat icon={WalletCards} label="Budget" value={lead.budget || "-"} />
+          <SummaryStat
+            icon={WalletCards}
+            label="Job amount"
+            value={formatVendorLeadJobAmount(lead.jobAmount)}
+          />
           <SummaryStat
             icon={CalendarClock}
             label="Created"
@@ -408,16 +455,13 @@ export default function VendorLeadDetail() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <InfoField label="Customer name" value={lead.customerName} />
                       <InfoField label="Area" value={lead.area || "-"} />
-                      <InfoField label="Budget" value={lead.budget || "-"} />
                       <InfoField
                         label="Commission"
                         value={`${lead.commissionPercent}%`}
                       />
                       <InfoField
                         label="Job amount"
-                        value={
-                          lead.jobAmount != null ? String(lead.jobAmount) : "-"
-                        }
+                        value={formatVendorLeadJobAmount(lead.jobAmount)}
                       />
                     </div>
                   </AccordionContent>
@@ -707,7 +751,7 @@ function LeadActions({
 }) {
   if (lead.status === "pending_admin_review") {
     return (
-      <p className="max-w-xs text-sm text-amber-800">
+      <p className="max-w-xs self-center text-sm text-amber-800">
         Awaiting admin approval before you can accept or reject this lead.
       </p>
     )
@@ -715,7 +759,7 @@ function LeadActions({
 
   if (canVendorAcceptOrRejectLead(lead.status)) {
     return (
-      <div className="flex flex-wrap gap-2">
+      <>
         <Button
           disabled={patching}
           onClick={() => onPatch({ id: lead.id, status: "accepted" })}
@@ -729,13 +773,13 @@ function LeadActions({
         >
           Reject
         </Button>
-      </div>
+      </>
     )
   }
 
   if (lead.status === "accepted") {
     return (
-      <div className="flex flex-wrap gap-2">
+      <>
         <Button
           disabled={patching}
           onClick={() => onPatch({ id: lead.id, status: "in_progress" })}
@@ -743,21 +787,20 @@ function LeadActions({
           Mark in progress
         </Button>
         <Button
-          variant="secondary"
+          variant="outline"
           disabled={patching}
           onClick={() => onPatch({ id: lead.id, status: "completed" })}
         >
           <CheckCircle2 className="mr-2 h-4 w-4" />
           Mark completed
         </Button>
-      </div>
+      </>
     )
   }
 
   if (lead.status === "in_progress") {
     return (
       <Button
-        variant="secondary"
         disabled={patching}
         onClick={() => onPatch({ id: lead.id, status: "completed" })}
       >
@@ -770,55 +813,8 @@ function LeadActions({
   return null
 }
 
-function CustomerContactButton({ lead }: { lead: VendorLead }) {
-  const callCustomer = useCallVendorLeadCustomer()
-
-  if (!lead.contactAvailable) return null
-
-  if (!lead.maskedCallingEnabled) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <Button variant="outline" disabled>
-                <Phone className="mr-2 h-4 w-4" />
-                Call customer
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Secure calling is not configured on the server yet.</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-start gap-2">
-      {lead.contactPhone ? (
-        <p className="text-xs text-muted-foreground">
-          Secure line: {lead.contactPhone}
-        </p>
-      ) : null}
-      <Button
-        variant="outline"
-        disabled={callCustomer.isPending}
-        onClick={() => callCustomer.mutate(lead.id)}
-      >
-        {callCustomer.isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Phone className="mr-2 h-4 w-4" />
-        )}
-        {callCustomer.isPending ? "Connecting…" : "Call customer"}
-      </Button>
-      <p className="max-w-sm text-xs text-muted-foreground">
-        We call your registered phone first. When you answer, you are connected to
-        the customer. Neither party sees the other&apos;s personal number.
-      </p>
-    </div>
-  )
-}
+// Call customer (masked calling) is temporarily hidden until the feature is ready.
+// Restore CustomerContactButton here when re-enabling.
 
 function SummaryStat({
   icon: Icon,
@@ -830,7 +826,7 @@ function SummaryStat({
   value: string
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 border-t border-border p-4 first:border-t-0 md:border-l md:border-t-0 md:first:border-l-0">
+    <div className="flex min-w-0 items-start gap-3 border-t border-border p-4 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -1027,21 +1023,27 @@ function RequirementDetails({ requirement }: { requirement: string | null }) {
     )
   }
 
-  if (parsed.kind === "painting") {
+  if (parsed.kind === "painting" || parsed.kind === "home") {
     const subType = stringValue(parsed.data.subType)
     const propertyType = stringValue(parsed.data.propertyType)
     const size = stringValue(parsed.data.bhkOrSqft)
     const location = locationPoint(parsed.data.location)
+    const notes = stringValue(parsed.data.notes)
+    const isHome = parsed.kind === "home"
+    const subtypeLabels = isHome
+      ? { ...HOME_SUBTYPE_LABELS, ...PAINTING_SUBTYPE_LABELS }
+      : { ...PAINTING_SUBTYPE_LABELS, ...HOME_SUBTYPE_LABELS }
+    const Icon = isHome ? Wrench : PaintBucket
 
     return (
       <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-            <PaintBucket className="h-4 w-4 text-primary" aria-hidden />
+            <Icon className="h-4 w-4 text-primary" aria-hidden />
           </span>
           <div>
             <p className="font-heading text-sm font-semibold text-foreground">
-              Painting & Cleaning request
+              {isHome ? "Home Services request" : "Painting & Cleaning request"}
             </p>
             <p className="text-xs text-muted-foreground">
               Customer service details
@@ -1050,11 +1052,11 @@ function RequirementDetails({ requirement }: { requirement: string | null }) {
         </div>
         <dl className="grid gap-2 sm:grid-cols-3">
           <DetailField
-            icon={PaintBucket}
+            icon={Icon}
             label="Service"
             value={
               subType
-                ? (PAINTING_SUBTYPE_LABELS[subType] ?? readableKey(subType))
+                ? (subtypeLabels[subType] ?? readableKey(subType))
                 : "-"
             }
           />
@@ -1077,6 +1079,62 @@ function RequirementDetails({ requirement }: { requirement: string | null }) {
             label="Service location"
             point={location}
           />
+        ) : null}
+        {notes ? (
+          <div className="rounded-md border border-border bg-card p-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Customer notes
+            </p>
+            <p className="mt-1 text-sm whitespace-pre-wrap text-foreground">
+              {notes}
+            </p>
+          </div>
+        ) : null}
+      </section>
+    )
+  }
+
+  if (parsed.kind === "it" || parsed.kind === "general") {
+    const subType = stringValue(parsed.data.subType)
+    const notes = stringValue(parsed.data.notes)
+    const isIt = parsed.kind === "it"
+    const Icon = isIt ? Monitor : Wrench
+
+    return (
+      <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" aria-hidden />
+          </span>
+          <div>
+            <p className="font-heading text-sm font-semibold text-foreground">
+              {isIt ? "IT Services request" : "General Services request"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Customer service details
+            </p>
+          </div>
+        </div>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <DetailField
+            icon={Icon}
+            label="Service"
+            value={
+              subType
+                ? (ALL_SUBTYPE_LABELS[subType] ?? readableKey(subType))
+                : "-"
+            }
+          />
+        </dl>
+        {notes ? (
+          <div className="rounded-md border border-border bg-card p-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Customer notes
+            </p>
+            <p className="mt-1 text-sm whitespace-pre-wrap text-foreground">
+              {notes}
+            </p>
+          </div>
         ) : null}
       </section>
     )
@@ -1172,6 +1230,46 @@ function RequirementDetails({ requirement }: { requirement: string | null }) {
           />
         ) : null}
 
+        {notes ? (
+          <div className="rounded-md border border-border bg-card p-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Customer notes
+            </p>
+            <p className="mt-1 text-sm whitespace-pre-wrap text-foreground">
+              {notes}
+            </p>
+          </div>
+        ) : null}
+      </section>
+    )
+  }
+
+  // Simple subType-only payloads (dynamic IT/general categories, etc.)
+  const subType = stringValue(parsed.data.subType)
+  const notes = stringValue(parsed.data.notes)
+  if (subType) {
+    return (
+      <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <ClipboardList className="h-4 w-4 text-primary" aria-hidden />
+          </span>
+          <div>
+            <p className="font-heading text-sm font-semibold text-foreground">
+              Service request
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Customer service details
+            </p>
+          </div>
+        </div>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <DetailField
+            icon={ClipboardList}
+            label="Service"
+            value={ALL_SUBTYPE_LABELS[subType] ?? readableKey(subType)}
+          />
+        </dl>
         {notes ? (
           <div className="rounded-md border border-border bg-card p-3">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

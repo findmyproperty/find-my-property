@@ -36,6 +36,16 @@ const SERVICE_SUBTYPE_LABELS: Record<string, string> = {
   carpenter: "Carpenter",
   plumber: "Plumber",
   electrician: "Electrician",
+  web_design: "Web design",
+  server_tech: "Server tech",
+  networking: "Networking / Wi-Fi",
+  software_installation: "Software installation",
+  cctv_setup: "CCTV setup",
+  printer_setup: "Printer setup",
+  handyman: "Handyman",
+  errands: "Errands & assistance",
+  furniture_assembly: "Furniture assembly",
+  other: "Other general help",
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {

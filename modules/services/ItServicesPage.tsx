@@ -309,7 +309,7 @@ export default function ItServicesPage() {
                       name="assignedVendorUserId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel required>Preferred vendor</FormLabel>
+                          <FormLabel required >Preferred vendor</FormLabel>
                           <FormControl>
                             <VendorSelector
                               categoryId={vendorCategoryId}

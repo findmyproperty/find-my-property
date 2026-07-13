@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { type ColumnDef } from "@tanstack/react-table";
-import { CalendarClock, ExternalLink, IndianRupee, MapPin, Sparkles } from "lucide-react";
+import { CalendarClock, ExternalLink, MapPin, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
@@ -218,14 +218,10 @@ export default function VendorLeads() {
           const amount = formatVendorLeadJobAmount(row.original.jobAmount);
           const hasAmount = amount !== "—";
           return (
-            <span className="flex items-center gap-1 text-sm">
-              <IndianRupee
-                className={`h-3.5 w-3.5 shrink-0 ${hasAmount ? "text-primary" : "text-muted-foreground"}`}
-                aria-hidden
-              />
-              <span className={hasAmount ? "font-medium text-foreground" : "text-muted-foreground"}>
-                {amount}
-              </span>
+            <span
+              className={`text-sm ${hasAmount ? "font-medium text-foreground" : "text-muted-foreground"}`}
+            >
+              {amount}
             </span>
           );
         },

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import { useAuth } from "@/contexts/auth-context";
 import {
   compareDates,
   compareStrings,
@@ -22,39 +23,15 @@ import {
   useNotifications,
 } from "@/hooks/use-notifications";
 import { NOTIFICATION_READ_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import { getNotificationHref } from "@/lib/notification-href";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/schema/notification";
+import type { UserRole } from "@/end-points/types";
 
 const PAGE_SIZE = 20;
 
 type ReadFilter = "all" | "unread" | "read";
 type AlertSortKey = "alert" | "type" | "status" | "createdAt";
-
-function notificationHref(n: Notification): string | null {
-  const meta = n.metadata;
-  if (!meta || typeof meta !== "object") return null;
-
-  // Service request related alerts should go to service requests admin (even if delivered as email)
-  const serviceRequestId =
-    meta.serviceRequestId ?? meta.requestId ?? meta.entityId ?? meta.service_request_id;
-  if (typeof serviceRequestId === "number") {
-    return "/admin/service-requests";
-  }
-
-  const leadId = meta.leadId;
-  if (typeof leadId === "number") return `/leads/${leadId}`;
-  const ticketId = meta.ticketId;
-  if (typeof ticketId === "number") return "/support";
-  if (n.type === "vendor_payout") return "/wallet";
-  if (n.type === "property_lead_new" && typeof leadId === "number") {
-    return `/leads/${leadId}`;
-  }
-  const emailLogId = meta.emailLogId;
-  if (n.type === "email_received" && typeof emailLogId === "number") {
-    return "/admin/email-logs";
-  }
-  return null;
-}
 
 function formatType(type: string) {
   return type.replace(/_/g, " ");
@@ -80,6 +57,8 @@ function compareAlerts(a: Notification, b: Notification, key: AlertSortKey): num
 }
 
 export default function AlertsFeed() {
+  const { user } = useAuth();
+  const role = user?.role as UserRole | undefined;
   const { data, isLoading, isError, error } = useNotifications();
   const { mutate: markRead, isPending: markingOne } = useMarkNotificationRead();
   const { mutate: markAll, isPending: markingAll } = useMarkAllNotificationsRead();
@@ -186,7 +165,7 @@ export default function AlertsFeed() {
         meta: { className: "text-right" },
         cell: ({ row }) => {
           const n = row.original;
-          const href = notificationHref(n);
+          const href = getNotificationHref(n, role);
           return (
             <div className="flex justify-end gap-2">
               {!n.read ? (
@@ -212,7 +191,7 @@ export default function AlertsFeed() {
         },
       },
     ],
-    [markRead, markingOne],
+    [markRead, markingOne, role],
   );
 
   return (
@@ -278,6 +257,7 @@ export default function AlertsFeed() {
             <AlertCard
               key={n.id}
               notification={n}
+              role={role}
               isMarking={markingOne}
               onMarkRead={markRead}
             />
@@ -299,14 +279,16 @@ export default function AlertsFeed() {
 
 function AlertCard({
   notification,
+  role,
   isMarking,
   onMarkRead,
 }: {
   notification: Notification;
+  role: UserRole | undefined;
   isMarking: boolean;
   onMarkRead: (id: number) => void;
 }) {
-  const href = notificationHref(notification);
+  const href = getNotificationHref(notification, role);
   const createdDate = new Date(notification.createdAt);
   const createdAt = formatDistanceToNow(createdDate, {
     addSuffix: true,
