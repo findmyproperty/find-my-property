@@ -162,6 +162,7 @@ export default function LoginPanel({
               <Input
                 placeholder="+91"
                 value={phone}
+                inputMode="numeric"
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={otpSent || sendingOtp}

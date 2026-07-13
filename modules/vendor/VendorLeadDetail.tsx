@@ -52,6 +52,7 @@ import {
   useVendorLead,
   usePatchVendorLeadStatus,
   useAddVendorLeadUpdate,
+  useCallVendorLeadCustomer,
 } from "@/hooks/use-vendor-leads"
 import { useToast } from "@/hooks/use-toast"
 import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead"
@@ -770,22 +771,52 @@ function LeadActions({
 }
 
 function CustomerContactButton({ lead }: { lead: VendorLead }) {
+  const callCustomer = useCallVendorLeadCustomer()
+
   if (!lead.contactAvailable) return null
 
+  if (!lead.maskedCallingEnabled) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button variant="outline" disabled>
+                <Phone className="mr-2 h-4 w-4" />
+                Call customer
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Secure calling is not configured on the server yet.</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">
-            <Button variant="outline" disabled>
-              <Phone className="mr-2 h-4 w-4" />
-              Call customer
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>Masked calling will be enabled soon</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="flex flex-col items-start gap-2">
+      {lead.contactPhone ? (
+        <p className="text-xs text-muted-foreground">
+          Secure line: {lead.contactPhone}
+        </p>
+      ) : null}
+      <Button
+        variant="outline"
+        disabled={callCustomer.isPending}
+        onClick={() => callCustomer.mutate(lead.id)}
+      >
+        {callCustomer.isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Phone className="mr-2 h-4 w-4" />
+        )}
+        {callCustomer.isPending ? "Connecting…" : "Call customer"}
+      </Button>
+      <p className="max-w-sm text-xs text-muted-foreground">
+        We call your registered phone first. When you answer, you are connected to
+        the customer. Neither party sees the other&apos;s personal number.
+      </p>
+    </div>
   )
 }
 

@@ -59,6 +59,7 @@ export const vendorLeadSchema = z.object({
   settlement: vendorLeadSettlementSchema.optional(),
   contactAvailable: z.boolean().optional(),
   contactPhone: z.string().nullable().optional(),
+  maskedCallingEnabled: z.boolean().optional(),
   adminApprovedAt: z.union([z.string(), z.date()]).nullable().optional(),
   adminApprovedByUserId: z.number().nullable().optional(),
   adminApprovalNotes: z.string().nullable().optional(),

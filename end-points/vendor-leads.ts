@@ -56,6 +56,17 @@ export const vendorLeads = {
     });
   },
 
+  async callCustomer(id: number): Promise<{
+    callSid: string;
+    virtualNumber: string;
+    message: string;
+  }> {
+    return request(`/vendor-leads/${id}/call-customer`, {
+      method: "POST",
+      token: getStoredToken(),
+    });
+  },
+
   async addUpdate(
     id: number,
     input: { milestone: string; note?: string; photoUrls?: string[] },

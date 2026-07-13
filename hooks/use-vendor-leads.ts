@@ -9,6 +9,7 @@ import type {
   AdminListVendorLeadsQuery,
 } from "@/end-points/vendor-leads";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
 
 export function useVendorLeads() {
   const { user, isAuthReady } = useAuth();
@@ -36,6 +37,26 @@ export function usePatchVendorLeadStatus() {
     onSuccess: (_, { id }) => {
       void qc.invalidateQueries({ queryKey: ["vendor-leads"] });
       void qc.invalidateQueries({ queryKey: ["vendor-lead", id] });
+    },
+  });
+}
+
+export function useCallVendorLeadCustomer() {
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (id: number) => api.vendorLeads.callCustomer(id),
+    onSuccess: (data) => {
+      toast({
+        title: "Connecting your call",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not start call",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 }
