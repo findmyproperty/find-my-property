@@ -17,8 +17,9 @@ import {
   Monitor,
   PackageCheck,
   PaintBucket,
-  PlusCircle,
   PartyPopper,
+  Phone,
+  PlusCircle,
   Truck,
   Upload,
   UserRound,
@@ -55,6 +56,7 @@ import {
   useAddVendorLeadUpdate,
 } from "@/hooks/use-vendor-leads"
 import { useToast } from "@/hooks/use-toast"
+import { useSupportTelContact } from "@/hooks/use-support-tel-contact"
 import type { VendorLead, VendorLeadStatus } from "@/schema/vendor-lead"
 import {
   canVendorAcceptOrRejectLead,
@@ -391,6 +393,9 @@ export default function VendorLeadDetail() {
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <LeadActions lead={lead} patching={patching} onPatch={patchStatus} />
+            {canVendorPostWorkUpdate(lead.status) ? (
+              <PlatformContactButton label="Call customer" />
+            ) : null}
             {canVendorPostWorkUpdate(lead.status) ? (
               <Button
                 variant="outline"
@@ -813,8 +818,28 @@ function LeadActions({
   return null
 }
 
-// Call customer (masked calling) is temporarily hidden until the feature is ready.
-// Restore CustomerContactButton here when re-enabling.
+/** Opens the device dialer to Admin Settings → Support phone (not the customer’s private number). */
+function PlatformContactButton({ label }: { label: string }) {
+  const { canCall, telHref, disabledReason } = useSupportTelContact()
+
+  if (canCall && telHref) {
+    return (
+      <Button variant="secondary" asChild>
+        <a href={telHref}>
+          <Phone className="mr-2 h-4 w-4" />
+          {label}
+        </a>
+      </Button>
+    )
+  }
+
+  return (
+    <Button variant="secondary" disabled title={disabledReason ?? undefined}>
+      <Phone className="mr-2 h-4 w-4" />
+      {label}
+    </Button>
+  )
+}
 
 function SummaryStat({
   icon: Icon,

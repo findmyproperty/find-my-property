@@ -186,7 +186,7 @@ const AdminSettings = () => {
               <Field
                 label="Support phone"
                 htmlFor="support-phone"
-                hint="Shown in the footer and contact page. Leave blank to hide."
+                hint="Shown in the footer and contact page. Also used when vendors or customers tap Call (opens the phone dialer). Leave blank to hide Call actions."
                 icon={<Phone className="h-3.5 w-3.5" />}
               >
                 <Input

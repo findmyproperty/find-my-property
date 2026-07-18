@@ -18,6 +18,7 @@ import {
   PaintBucket,
   PartyPopper,
   Phone,
+  PhoneCall,
   Route,
   Star,
   Truck,
@@ -42,6 +43,7 @@ import {
   useMyServiceRequests,
   useSubmitServiceRequestFeedback,
 } from "@/hooks/use-service-requests";
+import { useSupportTelContact } from "@/hooks/use-support-tel-contact";
 import { cn } from "@/lib/utils";
 import type {
   EventManagementDetails,
@@ -596,6 +598,9 @@ function ServiceRequestCard({
           <span className="text-xs text-muted-foreground">
             {formatRelativeTimestamp(request.createdAt)}
           </span>
+          {request.assignedVendorUserId != null ? (
+            <PlatformContactButton />
+          ) : null}
           <Button size="sm" variant="ghost" asChild>
             <Link href={meta.href}>
               Book again
@@ -608,6 +613,34 @@ function ServiceRequestCard({
       <CustomerReview request={request} onRate={onRate} />
       <ServiceTimeline request={request} />
     </motion.article>
+  );
+}
+
+/** Opens the device dialer to Admin Settings → Support phone (not the vendor’s private number). */
+function PlatformContactButton() {
+  const { canCall, telHref, disabledReason } = useSupportTelContact();
+
+  if (canCall && telHref) {
+    return (
+      <Button size="sm" variant="secondary" asChild>
+        <a href={telHref}>
+          <PhoneCall data-icon="inline-start" />
+          Contact
+        </a>
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled
+      title={disabledReason ?? undefined}
+    >
+      <PhoneCall data-icon="inline-start" />
+      Contact
+    </Button>
   );
 }
 
