@@ -6,10 +6,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await getBranding();
   return {
     title: "Contact",
-    description: `Get in touch with ${siteName} — support, partnerships, and product feedback.`,
+    description: `Contact ${siteName} for help with property listings, service requests, accounts, vendor partnerships, and platform feedback.`,
+    alternates: {
+      canonical: "/contact",
+    },
     openGraph: {
       title: `Contact | ${siteName}`,
-      description: `Contact ${siteName} by email or phone.`,
+      description: `Get help with property listings, service requests, accounts, and vendor partnerships on ${siteName}.`,
     },
   };
 }

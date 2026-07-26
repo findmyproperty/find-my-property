@@ -2,85 +2,121 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Search, Home } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Home,
+  PaintBucket,
+  Search,
+  Truck,
+  Wrench,
+} from "lucide-react";
 
-/** Same asset + srcset target as Framer reference (`sizes` matches half of (min(100vw, 1200px) − 90px)). */
-const HERO_IMG =
-  "https://framerusercontent.com/images/oSCsz14veQXmjGyGMAQAK0BUUA.png?width=800&height=1200";
+import { Button } from "@/components/ui/button";
 
-const heroImageSizes =
-  "(max-width: 1024px) 100vw, max(calc((min(100vw, 1200px) - 90px) / 2), 1px)";
+const HERO_IMAGE = "/images/hero-bg.jpg";
 
-const HeroSection = () => {
+const servicePreview = [
+  { icon: Truck, label: "Packers & movers" },
+  { icon: PaintBucket, label: "Painting & cleaning" },
+  { icon: Wrench, label: "Home repairs" },
+];
+
+export default function HeroSection() {
   return (
-    <section className="relative bg-white pt-16 dark:bg-background">
-      <div className="mx-auto w-full max-w-[1200px] p-4 sm:p-6 md:p-[45px]">
-        <div className="grid min-h-[calc(100dvh-20rem)] grid-cols-1 items-stretch gap-10 py-10 lg:grid-cols-2 lg:gap-10 lg:py-0">
-          <div className="order-2 flex flex-col justify-center lg:order-1 lg:py-12">
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex max-w-[520px] flex-col gap-8 lg:max-w-none"
-            >
-              {/* Tag container */}
-              <div className="inline-flex w-fit items-center rounded-full border border-[#E8E8E8] bg-[#FAFAFA] px-3.5 py-1.5 dark:border-border dark:bg-muted/40">
-                <p className="text-center text-[12px] leading-[1.4] tracking-[0.02em] text-[#8A8A8A] dark:text-muted-foreground">
-                  Trusted by 1,200+ families
-                </p>
-              </div>
+    <section className="relative overflow-hidden border-b border-border pt-24">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_16%_12%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_34%),linear-gradient(to_bottom,var(--background),color-mix(in_oklab,var(--muted)_35%,var(--background)))]"
+      />
+      <div className="mx-auto grid min-h-180 w-full min-w-0 max-w-310 gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55 }}
+          className="min-w-0 max-w-2xl"
+        >
+          {/* <Badge variant="outline" className="border-primary/25 bg-primary/5 px-3 py-1 text-primary">
+            <BadgeCheck data-icon="inline-start" aria-hidden />
+            Property, home &amp; everyday services
+          </Badge> */}
 
-              {/* H1 + subtitle */}
-              <div className="flex flex-col gap-5">
-                <h1 className="font-heading text-left text-[clamp(1.75rem,4vw,2.75rem)] font-bold leading-[1.12] tracking-tight text-[#0A0A0A] dark:text-foreground">
-                  Helping Buyers Find Homes and Sellers Get Results
-                </h1>
-                <p className="max-w-[520px] text-left text-base leading-relaxed text-[#525252] sm:text-[17px] dark:text-muted-foreground">
-                  From buying to selling, we handle every step with precision, discretion, and a
-                  tailored approach that maximizes your property&apos;s value and potential.
-                </p>
-              </div>
+          <h1 className="mt-7 max-w-full font-heading text-4xl font-bold leading-[1.04] tracking-[-0.04em] text-foreground min-[420px]:text-5xl sm:text-6xl lg:text-7xl">
+            Find the right place.
+            <span className="mt-2 block text-primary">Get life around it sorted.</span>
+          </h1>
 
-              {/* Buttons — Framer: inner radius 8px, primary #000 / secondary #fff + #E0E0E0 border */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <Link
-                  href="/browse"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[15px] font-medium text-white transition-opacity hover:opacity-90"
-                >
-                  <Search className="size-[18px] shrink-0" strokeWidth={1.5} aria-hidden />
-                  Browse Properties
-                </Link>
-                <Link
-                  href="/add-property"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#E0E0E0] bg-white px-5 text-[15px] font-medium text-[#212121] transition-colors hover:bg-[#FAFAFA] dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/50"
-                >
-                  <Home className="size-[18px] shrink-0" strokeWidth={1.5} aria-hidden />
-                  Sell Your Home
-                </Link>
-              </div>
-            </motion.div>
+          <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            Discover properties, connect with owners, and request trusted help for moving,
+            cleaning, repairs, loans, careers, events, and more—all through one platform.
+          </p>
+
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" asChild className="h-12 w-full rounded-xl px-6 sm:w-auto">
+              <Link href="/browse">
+                <Search data-icon="inline-start" aria-hidden />
+                Browse properties
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="h-12 w-full rounded-xl px-6 sm:w-auto">
+              <Link href="/#services">
+                Explore services
+                <ArrowRight data-icon="inline-end" aria-hidden />
+              </Link>
+            </Button>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.45, delay: 0.05 }}
-            className="order-1 relative min-h-[min(380px,48vh)] w-full overflow-hidden rounded-2xl lg:order-2 lg:h-full lg:min-h-0"
-          >
+          <div className="mt-10 grid max-w-xl grid-cols-3 gap-3 border-t border-border pt-6">
+            {["Verified listings", "Choice of vendors", "Requests in one place"].map((item) => (
+              <p key={item} className="text-xs font-medium leading-5 text-muted-foreground sm:text-sm">
+                {item}
+              </p>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.08 }}
+          className="relative mx-auto w-full min-w-0 max-w-140 pb-10 lg:pb-0"
+        >
+          <div className="relative aspect-4/5 overflow-hidden rounded-[2rem] bg-muted shadow-2xl ring-1 ring-foreground/10">
             <Image
-              src={HERO_IMG}
-              alt="Modern luxury house on a hillside surrounded by trees, featuring large glass windows, a terrace, and a small pool at sunset."
+              src={HERO_IMAGE}
+              alt="Contemporary home representing property discovery and move-in services"
               fill
               priority
-              className="object-cover object-center"
-              sizes={heroImageSizes}
+              sizes="(max-width: 1023px) 90vw, 44vw"
+              className="object-cover"
             />
-          </motion.div>
-        </div>
+            <div aria-hidden className="absolute inset-0 bg-linear-to-t from-foreground/35 via-transparent to-transparent" />
+            <div className="absolute right-5 top-5 rounded-full bg-foreground/75 px-3 py-1.5 text-xs font-semibold text-background backdrop-blur">
+              Property + services
+            </div>
+          </div>
+
+          <div className="absolute -bottom-2 left-3 right-3 max-w-[calc(100%-1.5rem)] rounded-2xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur sm:-left-8 sm:bottom-8 sm:right-auto sm:w-77.5 sm:max-w-none">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">Popular after a move</p>
+              <Home className="text-primary" aria-hidden />
+            </div>
+            <ul className="flex flex-col gap-2">
+              {servicePreview.map(({ icon: Icon, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl bg-muted/55 px-3 py-2.5 text-sm text-foreground"
+                >
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon aria-hidden />
+                  </span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
-};
-
-export default HeroSection;
+}

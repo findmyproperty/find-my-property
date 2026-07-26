@@ -4,38 +4,81 @@ import type { ElementRef } from "react";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, MapPin, Phone, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  ClipboardList,
+  HandHelping,
+  Mail,
+  MapPin,
+  Phone,
+  Send,
+  Store,
+} from "lucide-react";
 import ReCAPTCHA from "react-google-recaptcha";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/branding";
-import { useToast } from "@/hooks/use-toast";
-import { useSettings } from "@/contexts/settings-context";
-import { api } from "@/lib/api";
 
-const DEFAULT_SUPPORT_PHONE = "+91 98765 43210";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
+import { useSettings } from "@/contexts/settings-context";
+import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/branding";
 
 const RECAPTCHA_SITE_KEY =
   process.env.NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY?.trim() ||
   process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() ||
   "";
 
+const quickPaths = [
+  {
+    href: "/browse",
+    icon: Building2,
+    title: "Property search",
+    description: "Explore current listings and property details.",
+  },
+  {
+    href: "/my-requests",
+    icon: ClipboardList,
+    title: "Existing request",
+    description: "Review the service requests linked to your account.",
+  },
+  {
+    href: "/register-vendor",
+    icon: Store,
+    title: "Vendor partnership",
+    description: "Join the platform as a service provider.",
+  },
+];
+
 type ContactPageProps = {
-  /** SSR-resolved branding used as the source of truth on first paint. */
   siteName?: string;
 };
 
 export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps = {}) {
   const { toast } = useToast();
   const { settings } = useSettings();
-  // Contact cards prefer the live, admin-managed values but stay usable if the
-  // settings query is unavailable (e.g. during SSR-to-CSR hydration gaps).
   const supportEmail = settings?.supportEmail?.trim() || SUPPORT_EMAIL;
-  const supportPhone = settings?.supportPhone?.trim() || DEFAULT_SUPPORT_PHONE;
-  const siteName =
-    settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
+  const supportPhone = settings?.supportPhone?.trim() || null;
+  const siteName = settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
   const recaptchaRef = useRef<ElementRef<typeof ReCAPTCHA>>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -43,12 +86,13 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
-    const trimmedMessage = message.trim();
     const trimmedSubject = subject.trim();
+    const trimmedMessage = message.trim();
 
     if (!trimmedEmail || !trimmedMessage) {
       toast({
@@ -62,7 +106,8 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
     if (!RECAPTCHA_SITE_KEY) {
       toast({
         title: "reCAPTCHA not configured",
-        description: "Set NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY (or NEXT_PUBLIC_RECAPTCHA_SITE_KEY) in your environment.",
+        description:
+          "Set NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY in your environment.",
         variant: "destructive",
       });
       return;
@@ -79,27 +124,33 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
     }
 
     setSubmitting(true);
+
     try {
       await api.contact.submit({
         name: trimmedName || "Visitor",
         email: trimmedEmail,
-        message: trimmedMessage,
         subject: trimmedSubject || "Contact form",
+        message: trimmedMessage,
         recaptchaToken,
       });
+
       toast({
         title: "Message sent",
-        description: "Thanks — we’ll get back to you as soon as we can.",
+        description: "Thanks—we’ll get back to you as soon as we can.",
       });
+
       setName("");
       setEmail("");
       setSubject("");
       setMessage("");
       recaptchaRef.current?.reset();
-    } catch (err) {
+    } catch (error) {
       toast({
         title: "Couldn’t send message",
-        description: err instanceof Error ? err.message : "Something went wrong. Try again later.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Try again later.",
         variant: "destructive",
       });
     } finally {
@@ -109,179 +160,283 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
 
   return (
     <main className="pb-20 pt-24">
-      <div className="container mx-auto max-w-5xl px-4">
-        <Button variant="ghost" size="sm" asChild className="mb-8 -ml-2 text-muted-foreground">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to home
-          </Link>
-        </Button>
+      <section className="relative overflow-hidden border-b border-border">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_12%,color-mix(in_oklab,var(--primary)_15%,transparent),transparent_30%),linear-gradient(to_bottom,var(--background),color-mix(in_oklab,var(--muted)_32%,var(--background)))]"
+        />
+        <div className="container mx-auto max-w-[1200px] px-4 py-14 sm:py-20">
+          <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground">
+            <Link href="/">
+              <ArrowLeft data-icon="inline-start" aria-hidden />
+              Back to home
+            </Link>
+          </Button>
 
-        <div className="mb-12 max-w-2xl">
-          <motion.h1
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-heading text-4xl font-bold tracking-tight text-foreground md:text-5xl"
-          >
-            Contact
-          </motion.h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Questions about listings, your account, or working with {siteName}? Send us a note — we typically reply
-            within a few business days.
-          </p>
+          <div className="mt-12 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+            >
+              <Badge variant="outline">Contact &amp; support</Badge>
+              <h1 className="mt-6 max-w-3xl font-heading text-5xl font-bold leading-[1.03] tracking-[-0.04em] text-foreground sm:text-6xl lg:text-7xl">
+                Tell us what you&apos;re
+                <span className="mt-2 block text-primary">working through.</span>
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+                Property question, service request, account issue, or partnership idea—send
+                it to the {siteName} team and include the details that will help us route it
+                correctly.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.08 }}
+              className="rounded-[2rem] bg-foreground p-6 text-background sm:p-8"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-background/60">
+                Find the shortest path
+              </p>
+              <div className="mt-5 flex flex-col gap-2">
+                {quickPaths.map(({ href, icon: Icon, title, description }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="group flex items-center gap-4 rounded-2xl bg-background/5 p-4 transition-colors hover:bg-background/10"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-background/10">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-heading text-sm font-semibold">{title}</span>
+                      <span className="mt-1 block text-xs leading-5 text-background/60">
+                        {description}
+                      </span>
+                    </span>
+                    <ArrowRight
+                      className="size-4 shrink-0 text-background/50 transition-transform group-hover:translate-x-1"
+                      aria-hidden
+                    />
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
+      </section>
 
-        <div className="grid gap-12 lg:grid-cols-5">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="space-y-8 lg:col-span-2"
-          >
-            <div>
-              <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Direct
-              </h2>
-              <ul className="mt-4 space-y-4 text-sm">
-                <li className="flex gap-3">
-                  <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <div>
-                    <p className="font-medium text-foreground">Email</p>
-                    <a
-                      href={`mailto:${supportEmail}`}
-                      className="text-primary underline-offset-4 hover:underline break-all"
-                    >
-                      {supportEmail}
-                    </a>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <div>
-                    <p className="font-medium text-foreground">Phone</p>
-                    <a
-                      href={`tel:${supportPhone.replace(/\s+/g, "")}`}
-                      className="text-foreground hover:text-primary"
-                    >
+      <section className="py-16 sm:py-20">
+        <div className="container mx-auto grid max-w-[1200px] gap-10 px-4 lg:grid-cols-[0.72fr_1.28fr] lg:gap-14">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              Direct contact
+            </p>
+            <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-foreground">
+              Reach the team directly.
+            </h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
+              Email is the best route for detailed enquiries. If a support phone is
+              configured, you can also call during normal business hours.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3">
+              <a
+                href={`mailto:${supportEmail}`}
+                className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Mail className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">Email</span>
+                  <span className="mt-1 block break-all text-sm text-muted-foreground">
+                    {supportEmail}
+                  </span>
+                </span>
+              </a>
+
+              {supportPhone ? (
+                <a
+                  href={`tel:${supportPhone.replace(/\s+/g, "")}`}
+                  className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Phone className="size-5" aria-hidden />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-foreground">Phone</span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
                       {supportPhone}
-                    </a>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <div>
-                    <p className="font-medium text-foreground">Based in</p>
-                    <p className="text-muted-foreground">India</p>
-                  </div>
-                </li>
+                    </span>
+                  </span>
+                </a>
+              ) : null}
+
+              <div className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <MapPin className="size-5" aria-hidden />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-foreground">Based in</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">India</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-2xl bg-muted/50 p-5">
+              <p className="font-heading text-sm font-semibold text-foreground">
+                Help us answer faster
+              </p>
+              <ul className="mt-3 flex list-disc flex-col gap-2 pl-4 text-sm leading-6 text-muted-foreground">
+                <li>Include the listing or request reference when available.</li>
+                <li>Do not send passwords, OTPs, or payment credentials.</li>
+                <li>Describe the outcome you need, not only the error message.</li>
               </ul>
             </div>
-          </motion.div>
+          </div>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="lg:col-span-3"
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45 }}
           >
-            <form
-              onSubmit={handleSubmit}
-              className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8"
-            >
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-name">Name</Label>
-                    <Input
-                      id="contact-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Jane Doe"
-                      autoComplete="name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-email">Email</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="jane@example.com"
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact-subject">Subject</Label>
-                  <Input
-                    id="contact-subject"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    placeholder="Question"
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact-message">Message</Label>
-                  <Textarea
-                    id="contact-message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="How can we help?"
-                    rows={6}
-                    required
-                    className="resize-y min-h-[140px]"
-                  />
-                </div>
-                {RECAPTCHA_SITE_KEY ? (
-                  <div className="flex justify-center sm:justify-start">
-                    <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} theme="light" />
-                  </div>
-                ) : (
-                  <p className="text-sm text-destructive">
-                    Contact form is missing{" "}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY</code>.
+            <Card className="overflow-hidden">
+              <CardHeader className="p-6 sm:p-8">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <HandHelping className="size-6" aria-hidden />
+                </span>
+                <CardTitle className="pt-5 font-heading text-3xl">Send us a message</CardTitle>
+                <CardDescription className="max-w-xl text-base leading-7">
+                  Share enough context for us to understand the property, service, account,
+                  or partnership question.
+                </CardDescription>
+              </CardHeader>
+
+              <form onSubmit={handleSubmit}>
+                <CardContent className="px-6 sm:px-8">
+                  <FieldGroup>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field>
+                        <FieldLabel htmlFor="contact-name">Name</FieldLabel>
+                        <Input
+                          id="contact-name"
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                          placeholder="Your name"
+                          autoComplete="name"
+                          required
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="contact-email">Email</FieldLabel>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="you@example.com"
+                          autoComplete="email"
+                          required
+                        />
+                      </Field>
+                    </div>
+
+                    <Field>
+                      <FieldLabel htmlFor="contact-subject">Subject</FieldLabel>
+                      <Input
+                        id="contact-subject"
+                        value={subject}
+                        onChange={(event) => setSubject(event.target.value)}
+                        placeholder="Property, service, account, or partnership"
+                        autoComplete="off"
+                      />
+                      <FieldDescription>
+                        A clear subject helps us send your message to the right team.
+                      </FieldDescription>
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor="contact-message">Message</FieldLabel>
+                      <Textarea
+                        id="contact-message"
+                        value={message}
+                        onChange={(event) => setMessage(event.target.value)}
+                        placeholder="Tell us what happened and what you need next."
+                        rows={7}
+                        required
+                        className="min-h-40 resize-y"
+                      />
+                    </Field>
+
+                    {RECAPTCHA_SITE_KEY ? (
+                      <Field>
+                        <FieldLabel>Verification</FieldLabel>
+                        <div className="max-w-full overflow-x-auto">
+                          <ReCAPTCHA
+                            ref={recaptchaRef}
+                            sitekey={RECAPTCHA_SITE_KEY}
+                            theme="light"
+                          />
+                        </div>
+                      </Field>
+                    ) : (
+                      <Alert variant="destructive">
+                        <AlertTitle>Contact form unavailable</AlertTitle>
+                        <AlertDescription>
+                          Add NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY to enable secure form
+                          submissions. You can still email us directly.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </FieldGroup>
+                </CardContent>
+
+                <CardFooter className="mt-7 flex flex-col items-stretch gap-4 border-t border-border p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+                  <p className="max-w-md text-xs leading-5 text-muted-foreground">
+                    Protected by reCAPTCHA. Google&apos;s{" "}
+                    <a
+                      href="https://policies.google.com/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-foreground"
+                    >
+                      Privacy Policy
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="https://policies.google.com/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-foreground"
+                    >
+                      Terms
+                    </a>{" "}
+                    apply.
                   </p>
-                )}
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  disabled={submitting || !RECAPTCHA_SITE_KEY}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  {submitting ? "Sending…" : "Send message"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Your message is sent securely to our team. You can still reach us directly at {supportEmail}. This site
-                  is protected by reCAPTCHA and the Google{" "}
-                  <a
-                    href="https://policies.google.com/privacy"
-                    className="underline underline-offset-2 hover:text-foreground"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={submitting || !RECAPTCHA_SITE_KEY}
+                    className="shrink-0"
                   >
-                    Privacy Policy
-                  </a>{" "}
-                  and{" "}
-                  <a
-                    href="https://policies.google.com/terms"
-                    className="underline underline-offset-2 hover:text-foreground"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Terms of Service
-                  </a>{" "}
-                  apply.
-                </p>
-              </div>
-            </form>
+                    {submitting ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <Send data-icon="inline-start" aria-hidden />
+                    )}
+                    {submitting ? "Sending…" : "Send message"}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
           </motion.div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

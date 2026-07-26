@@ -24,8 +24,8 @@ const Footer = () => {
   return (
     <footer className="bg-card border-t border-border">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-3">
             <Link href="/" className="flex items-center gap-2">
               {logoUrl ? (
                 <span className="relative inline-flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden">
@@ -48,27 +48,38 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs wrap-break-word">
-              {siteName} helps you find and list homes with verified details and direct owner contact.
+              Find property and request practical services for moving, home, work, finance, and everyday life.
             </p>
           </div>
 
           <div>
             <h4 className="font-heading font-semibold text-foreground mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
               <li><Link href="/browse" className="hover:text-primary transition-colors">Browse listings</Link></li>
+              <li><Link href="/owner" className="hover:text-primary transition-colors">List a property</Link></li>
               <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
               <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
               <li><Link href="/terms-and-conditions" className="hover:text-primary transition-colors">Terms &amp; Conditions</Link></li>
-              <li><Link href="/login" className="hover:text-primary transition-colors">Sign in</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="mb-4 font-heading font-semibold text-foreground">Popular Services</h4>
+            <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <li><Link href="/packers-movers" className="transition-colors hover:text-primary">Packers &amp; movers</Link></li>
+              <li><Link href="/painting-cleaning" className="transition-colors hover:text-primary">Painting &amp; cleaning</Link></li>
+              <li><Link href="/home-services" className="transition-colors hover:text-primary">Home services</Link></li>
+              <li><Link href="/loans" className="transition-colors hover:text-primary">Loan assistance</Link></li>
+              <li><Link href="/#services" className="transition-colors hover:text-primary">View all services</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-heading font-semibold text-foreground mb-4">Contact</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground wrap-break-word">
+            <ul className="flex flex-col gap-2 text-sm text-muted-foreground wrap-break-word">
               {phone ? (
                 <li className="flex items-center gap-2 min-w-0">
-                  <Phone className="w-4 h-4 shrink-0" />
+                  <Phone className="size-4 shrink-0" />
                   <a
                     href={`tel:${phone.replace(/\s+/g, "")}`}
                     className="min-w-0 break-all hover:text-primary transition-colors"
@@ -78,7 +89,7 @@ const Footer = () => {
                 </li>
               ) : null}
               <li className="flex items-center gap-2 min-w-0">
-                <Mail className="w-4 h-4 shrink-0" />
+                <Mail className="size-4 shrink-0" />
                 <a
                   href={`mailto:${email}`}
                   className="min-w-0 break-all hover:text-primary transition-colors"

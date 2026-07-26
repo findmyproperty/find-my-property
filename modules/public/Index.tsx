@@ -1,387 +1,448 @@
-"use client"
+"use client";
 
-import Navbar from "@/components/layout/Navbar"
-import HeroSection from "@/components/layout/HeroSection"
-import PropertyCard, { type Property } from "@/components/property/PropertyCard"
-import Footer from "@/components/layout/Footer"
-import AuthGateModal from "@/components/auth/AuthGateModal"
-import { PropertyCardSkeleton } from "@/components/skeletons/property-card-skeleton"
-import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton"
-import { useAuth } from "@/contexts/auth-context"
-import { useProperties } from "@/hooks/use-properties"
-import { useState, useMemo } from "react"
-import { motion } from "framer-motion"
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Shield,
+  ArrowUpRight,
+  BriefcaseBusiness,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  HandHelping,
+  Home,
+  MapPin,
+  Monitor,
+  MoveRight,
+  PaintBucket,
+  PartyPopper,
+  Search,
+  Truck,
   Users,
   Wallet,
-  Search,
-  FileCheck,
-  Handshake,
-  MapPin,
-  Quote,
-  Star,
-  Building2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { SITE_NAME } from "@/lib/branding"
-import { useSettings } from "@/contexts/settings-context"
-import { buildPropertyPath } from "@/lib/property-slug"
-import { LandingAboutSection } from "@/modules/public/LandingAboutSection"
-import { buildPopularCitiesFromProperties } from "@/lib/property-location-options"
+  Wrench,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const features = [
+import AuthGateModal from "@/components/auth/AuthGateModal";
+import HeroSection from "@/components/layout/HeroSection";
+import PropertyCard, { type Property } from "@/components/property/PropertyCard";
+import { PropertyCardSkeleton } from "@/components/skeletons/property-card-skeleton";
+import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth-context";
+import { useSettings } from "@/contexts/settings-context";
+import { useProperties } from "@/hooks/use-properties";
+import { SITE_NAME } from "@/lib/branding";
+import { buildPopularCitiesFromProperties } from "@/lib/property-location-options";
+import { buildPropertyPath } from "@/lib/property-slug";
+import { LandingAboutSection } from "@/modules/public/LandingAboutSection";
+
+type ServiceItem = {
+  href: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  label: string;
+};
+
+const services: ServiceItem[] = [
   {
-    icon: Wallet,
-    title: "Fair pricing",
-    description:
-      "Connect directly with owners and avoid unnecessary middleman fees on your next move.",
+    href: "/packers-movers",
+    title: "Packers & Movers",
+    description: "Plan a local or intercity move with the right shifting crew.",
+    icon: Truck,
+    label: "Move",
   },
   {
-    icon: Shield,
-    title: "Verified listings",
-    description:
-      "Listings are reviewed so photos and details stay honest and up to date.",
+    href: "/painting-cleaning",
+    title: "Painting & Cleaning",
+    description: "Prepare a home for move-in, handover, or a fresh start.",
+    icon: PaintBucket,
+    label: "Refresh",
+  },
+  {
+    href: "/home-services",
+    title: "Home Services",
+    description: "Find help for plumbing, electrical work, carpentry, and repairs.",
+    icon: Wrench,
+    label: "Maintain",
+  },
+  {
+    href: "/event-management",
+    title: "Event Management",
+    description: "Get planning support for personal and corporate occasions.",
+    icon: PartyPopper,
+    label: "Celebrate",
+  },
+  {
+    href: "/it-services",
+    title: "IT Services",
+    description: "Request laptop, network, CCTV, and software assistance.",
+    icon: Monitor,
+    label: "Connect",
+  },
+  {
+    href: "/general-services",
+    title: "General Services",
+    description: "Book practical help for errands, assembly, and everyday tasks.",
+    icon: HandHelping,
+    label: "Get help",
+  },
+  {
+    href: "/loans",
+    title: "Loan Assistance",
+    description: "Explore support for home, mortgage, personal, and vehicle loans.",
+    icon: Wallet,
+    label: "Finance",
+  },
+  {
+    href: "/job-consultancy",
+    title: "Job Consultancy",
+    description: "Share your profile and connect with relevant career opportunities.",
+    icon: BriefcaseBusiness,
+    label: "Grow",
+  },
+];
+
+const platformSteps = [
+  {
+    icon: Search,
+    title: "Discover",
+    description: "Browse properties or choose the service that matches your need.",
   },
   {
     icon: Users,
-    title: "Direct owner contact",
-    description:
-      "Chat, call, or schedule visits directly with owners — no unnecessary intermediaries.",
+    title: "Choose",
+    description: "Review useful details and select an available vendor where offered.",
   },
-]
+  {
+    icon: ClipboardCheck,
+    title: "Request",
+    description: "Share the essentials once so the right team can follow up.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "Keep track",
+    description: "Return to your account to follow property and service activity.",
+  },
+];
 
-const howItWorks = [
-  {
-    step: 1,
-    icon: Search,
-    title: "Search",
-    desc: "Filter by location, budget, BHK & amenities.",
-  },
-  {
-    step: 2,
-    icon: FileCheck,
-    title: "Shortlist",
-    desc: "Narrow your search and compare listings side by side.",
-  },
-  {
-    step: 3,
-    icon: Handshake,
-    title: "Connect",
-    desc: "Contact owners directly. Schedule visits.",
-  },
-  {
-    step: 4,
-    icon: Wallet,
-    title: "Move In",
-    desc: "Transparent pricing. Sign and move in.",
-  },
-]
-
-const buildTestimonials = (siteName: string) => [
-  {
-    quote:
-      `Found my 3BHK in Whitefield in 3 days. ${siteName}, no hassle. Saved almost ₹50,000!`,
-    author: "Priya S.",
-    role: "Tenant, Bangalore",
-    rating: 5,
-  },
-  {
-    quote:
-      "Listed my flat and got a tenant within a week. The platform is simple and transparent.",
-    author: "Raj K.",
-    role: "Owner, Bangalore",
-    rating: 5,
-  },
-  {
-    quote:
-      "Finally a site that shows real listings. Verified photos and direct contact made everything easy.",
-    author: "Amit P.",
-    role: "Tenant, Mumbai",
-    rating: 5,
-  },
-]
+const EMPTY_PROPERTIES: Property[] = [];
 
 type IndexProps = {
-  /** SSR-resolved branding used as the source of truth on first paint. */
-  siteName?: string
-}
+  siteName?: string;
+};
 
-const Index = ({ siteName: ssrSiteName }: IndexProps = {}) => {
-  const { isAuthenticated, isAuthReady } = useAuth()
-  const { data, isLoading } = useProperties()
-  const { settings } = useSettings()
-  // Prefer the live admin value once the client query resolves, falling back to
-  // the SSR-injected value (no flash) and finally the compile-time default.
-  const siteName =
-    settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME
-  const testimonials = useMemo(() => buildTestimonials(siteName), [siteName])
-  const allProperties = data ?? []
-  const featuredProperties = allProperties.slice(0, 4)
+export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
+  const { isAuthenticated, isAuthReady } = useAuth();
+  const { data, isLoading } = useProperties();
+  const { settings } = useSettings();
+  const siteName = settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
+  const allProperties = data ?? EMPTY_PROPERTIES;
+  const featuredProperties = allProperties.slice(0, 4);
   const popularCities = useMemo(
-    () => buildPopularCitiesFromProperties(allProperties, 8),
-    [allProperties],
-  )
-  const [showAuthGate, setShowAuthGate] = useState(false)
-  const [pendingProperty, setPendingProperty] = useState<Property | null>(
-    null
-  )
+    () => buildPopularCitiesFromProperties(data ?? EMPTY_PROPERTIES, 8),
+    [data],
+  );
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [pendingProperty, setPendingProperty] = useState<Property | null>(null);
 
-  const handlePropertyCardClick = (e: React.MouseEvent, property: Property) => {
+  const handlePropertyCardClick = (event: React.MouseEvent, property: Property) => {
     if (isAuthReady && !isAuthenticated) {
-      e.preventDefault()
-      e.stopPropagation()
-      setPendingProperty(property)
-      setShowAuthGate(true)
+      event.preventDefault();
+      event.stopPropagation();
+      setPendingProperty(property);
+      setShowAuthGate(true);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
-      <Navbar />
-
+    <main className="min-h-screen overflow-x-hidden bg-background">
       <HeroSection />
-      {/* Features */}
-      <section className="surface-warm py-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-14 text-center">
-            <h2 className="mb-3 font-heading text-3xl font-bold text-foreground md:text-4xl">
-              Why Choose {siteName}?
-            </h2>
-            <p className="mx-auto max-w-lg wrap-break-word text-muted-foreground">
-              A simpler way to search and list — clear information, direct contact, less friction.
-            </p>
-          </div>
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-3">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="card-shadow space-y-4 rounded-2xl bg-card p-6 text-center"
-              >
-                <div className="hero-gradient mx-auto flex h-14 w-14 items-center justify-center rounded-xl">
-                  <feature.icon className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <h3 className="font-heading text-lg font-semibold text-foreground">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <LandingAboutSection />
-
-      {/* How it works */}
-      <section className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-14 text-center">
-            <h2 className="mb-3 font-heading text-3xl font-bold text-foreground md:text-4xl">
-              How It Works
-            </h2>
-            <p className="mx-auto max-w-lg text-muted-foreground">
-              Find or list a property in four simple steps — no hidden charges.
-            </p>
-          </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {howItWorks.map((item, i) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="text-center"
-              >
-                <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                  <item.icon className="h-7 w-7 text-primary" />
-                  <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {item.step}
-                  </span>
-                </div>
-                <h3 className="mb-2 font-heading font-semibold text-foreground">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stop searching. Start living. - Homplus-style split section */}
-      <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4  w-full max-w-[1200px]">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex min-h-[380px] flex-col overflow-hidden rounded-2xl border border-border shadow-xl md:min-h-[420px] md:flex-row"
-          >
-            {/* Left: dark panel */}
-            <div className="flex flex-col justify-between bg-foreground p-8 text-background md:w-1/2 md:p-10 lg:p-12">
-              <div>
-                <h2 className="mb-4 font-heading text-2xl leading-tight font-bold md:text-3xl lg:text-4xl">
-                  Stop searching. Start living.
-                </h2>
-                <p className="mb-2 text-lg text-background/90 md:text-xl">
-                  Get closer to your dream home today.
-                </p>
-                <p className="text-sm text-background/80 md:text-base">
-                  Your next chapter starts here; real homes, real deals, real
-                  easy.
-                </p>
-              </div>
-              <div className="mt-8 inline-flex w-fit items-center gap-3 rounded-xl bg-background/10 px-4 py-3">
-                <Building2 className="h-8 w-8 shrink-0 text-background/90" />
-                <div>
-                  <p className="font-heading text-2xl font-bold text-background md:text-3xl">
-                    ₹400 Cr+
-                  </p>
-                  <p className="text-sm text-background/80">In real deals</p>
-                </div>
-              </div>
-            </div>
-            {/* Right: image with overlay text */}
-            <div className="relative aspect-[4/3] min-h-[280px] md:aspect-auto md:min-h-full md:w-1/2">
-              <img
-                src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80"
-                alt="Modern architecture"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-foreground/20" />
-              <div className="absolute inset-0 flex items-center justify-between px-6 py-8 md:px-10">
-                <span className="font-heading text-xl font-bold text-white drop-shadow-lg md:text-2xl lg:text-3xl">
-                  Keep
-                </span>
-                <span className="font-heading text-xl font-bold text-white drop-shadow-lg md:text-2xl lg:text-3xl">
-                  It
-                </span>
-                <span className="font-heading text-xl font-bold text-white drop-shadow-lg md:text-2xl lg:text-3xl">
-                  Real.
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Featured Properties */}
-      <section className="py-20">
-        <div className="container mx-auto px-4  w-full max-w-[1200px]">
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">
-                Featured Properties
+      <section id="services" className="scroll-mt-24 py-20 sm:py-24">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+            <div>
+              <Badge variant="outline" className="text-primary">
+                Beyond property
+              </Badge>
+              <h2 className="mt-5 max-w-xl font-heading text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+                From move-in day to everyday life.
               </h2>
-              <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-                Hand-picked listings to explore on any screen size.
+            </div>
+            <p className="max-w-2xl text-base leading-7 text-muted-foreground lg:justify-self-end lg:text-lg">
+              Property is only one part of the journey. Choose a service, tell us what you
+              need, and connect with relevant support without starting your search again
+              somewhere else.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {services.map(({ href, title, description, icon: Icon, label }, index) => (
+              <motion.div
+                key={href}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: index * 0.04 }}
+              >
+                <Link href={href} className="group block h-full">
+                  <Card className="flex h-full min-h-[250px] flex-col overflow-hidden transition-transform duration-300 group-hover:-translate-y-1">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Icon className="size-6" aria-hidden />
+                        </span>
+                        <ArrowUpRight className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />
+                      </div>
+                      <CardDescription className="pt-5 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                        {label}
+                      </CardDescription>
+                      <CardTitle className="font-heading text-xl leading-tight">{title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1">
+                      <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <span className="text-sm font-semibold text-foreground">View service</span>
+                    </CardFooter>
+                  </Card>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-muted/25 py-20">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="overflow-hidden border-primary/20">
+              <CardHeader className="p-7 md:p-9">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Building2 className="size-6" aria-hidden />
+                </span>
+                <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                  Property
+                </CardDescription>
+                <CardTitle className="max-w-md font-heading text-3xl leading-tight">
+                  Search with context, not guesswork.
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-7 md:px-9">
+                <p className="max-w-lg leading-7 text-muted-foreground">
+                  Explore available homes by location, budget, property type, and the
+                  details that matter before you make contact.
+                </p>
+              </CardContent>
+              <CardFooter className="p-7 pt-2 md:p-9 md:pt-3">
+                <Button asChild>
+                  <Link href="/browse">
+                    Explore properties
+                    <ArrowRight data-icon="inline-end" aria-hidden />
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <CardHeader className="p-7 md:p-9">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-foreground text-background">
+                  <HandHelping className="size-6" aria-hidden />
+                </span>
+                <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                  Services
+                </CardDescription>
+                <CardTitle className="max-w-md font-heading text-3xl leading-tight">
+                  Turn a requirement into a clear request.
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-7 md:px-9">
+                <p className="max-w-lg leading-7 text-muted-foreground">
+                  Pick a service, provide the useful details, choose a vendor when
+                  available, and let the platform keep the request connected to your
+                  account.
+                </p>
+              </CardContent>
+              <CardFooter className="p-7 pt-2 md:p-9 md:pt-3">
+                <Button variant="outline" asChild>
+                  <Link href="/#services">
+                    Browse all services
+                    <ArrowRight data-icon="inline-end" aria-hidden />
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 sm:py-24">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="outline" className="text-primary">
+                Live property feed
+              </Badge>
+              <h2 className="mt-4 font-heading text-3xl font-bold text-foreground sm:text-4xl">
+                Featured properties
+              </h2>
+              <p className="mt-3 max-w-xl text-muted-foreground">
+                Start with a place that fits, then use the same platform for what comes next.
               </p>
             </div>
-            <Button variant="outline" asChild className="hidden w-full shrink-0 sm:flex sm:w-auto">
+            <Button variant="outline" asChild className="hidden shrink-0 sm:inline-flex">
               <Link href="/browse">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
+                View all listings
+                <ArrowRight data-icon="inline-end" aria-hidden />
               </Link>
             </Button>
           </div>
+
           {isLoading ? (
             <>
               <div className="hidden sm:block">
                 <PropertyGridSkeleton count={4} columns="featured" />
               </div>
-              <div className="scrollbar-hide  flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="min-w-[75vw] snap-start">
+              <div className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:hidden">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="min-w-[78vw] snap-start">
                     <PropertyCardSkeleton />
                   </div>
                 ))}
               </div>
             </>
           ) : featuredProperties.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-12">
-              No featured listings yet. Check back soon.
-            </p>
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="font-heading text-2xl">Listings are being prepared</CardTitle>
+                <CardDescription>
+                  There are no featured properties yet. You can still explore services or
+                  return soon for new listings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <Button variant="outline" asChild>
+                  <Link href="/#services">Explore services</Link>
+                </Button>
+              </CardContent>
+              <CardFooter />
+            </Card>
           ) : (
             <>
-              {/* Desktop grid */}
               <div className="hidden gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-                {featuredProperties.map((property, i) => (
+                {featuredProperties.map((property, index) => (
                   <div
                     key={property.id}
-                    onClickCapture={(e) =>
-                      handlePropertyCardClick(
-                        e as unknown as React.MouseEvent,
-                        property
-                      )
+                    onClickCapture={(event) =>
+                      handlePropertyCardClick(event as unknown as React.MouseEvent, property)
                     }
                     className="cursor-pointer"
                   >
-                    <PropertyCard property={property} index={i} />
+                    <PropertyCard property={property} index={index} />
                   </div>
                 ))}
               </div>
-              {/* Mobile horizontal scroll */}
-              <div className="scrollbar-hide  flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:hidden">
-                {featuredProperties.map((property, i) => (
+              <div className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:hidden">
+                {featuredProperties.map((property, index) => (
                   <div
                     key={property.id}
-                    className="min-w-[75vw] cursor-pointer snap-start"
-                    onClickCapture={(e) =>
-                      handlePropertyCardClick(
-                        e as unknown as React.MouseEvent,
-                        property
-                      )
+                    className="min-w-[78vw] cursor-pointer snap-start"
+                    onClickCapture={(event) =>
+                      handlePropertyCardClick(event as unknown as React.MouseEvent, property)
                     }
                   >
-                    <PropertyCard property={property} index={i} />
+                    <PropertyCard property={property} index={index} />
                   </div>
                 ))}
               </div>
             </>
           )}
-          <div className="mt-6 text-center sm:hidden">
-            <Button variant="outline" asChild>
+
+          <div className="mt-6 sm:hidden">
+            <Button variant="outline" asChild className="w-full">
               <Link href="/browse">
-                View all listings <ArrowRight className="ml-2 h-4 w-4" />
+                View all listings
+                <ArrowRight data-icon="inline-end" aria-hidden />
               </Link>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Popular cities */}
-      <section className="border-t border-border py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-10 text-center">
-            <h2 className="mb-2 font-heading text-2xl font-bold text-foreground md:text-3xl">
-              Popular Cities
+      <section className="border-y border-border bg-foreground py-20 text-background sm:py-24">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-background/60">
+                One simple flow
+              </p>
+              <h2 className="mt-5 max-w-md font-heading text-4xl font-bold tracking-tight sm:text-5xl">
+                Less searching around. More moving forward.
+              </h2>
+              <p className="mt-5 max-w-md leading-7 text-background/70">
+                Whether you are looking for a home or practical help, the next action should
+                always be clear.
+              </p>
+            </div>
+
+            <ol className="grid gap-px overflow-hidden rounded-2xl bg-background/15 sm:grid-cols-2">
+              {platformSteps.map(({ icon: Icon, title, description }, index) => (
+                <li key={title} className="bg-foreground p-6 sm:p-8">
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-xl bg-background/10 text-background">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <span className="font-heading text-sm text-background/40">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-7 font-heading text-xl font-semibold">{title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-background/65">{description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <LandingAboutSection />
+
+      <section className="py-20">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="mb-9 text-center">
+            <Badge variant="outline" className="text-primary">
+              Explore by city
+            </Badge>
+            <h2 className="mt-4 font-heading text-3xl font-bold text-foreground md:text-4xl">
+              See where listings are active
             </h2>
-            <p className="text-sm text-muted-foreground">
-              Cities ranked by how many listings we currently have on {siteName}
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Locations are ranked by the properties currently available on {siteName}.
             </p>
           </div>
+
           {isLoading ? (
             <div className="flex flex-wrap justify-center gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-10 w-36 animate-pulse rounded-xl border border-border bg-muted"
-                />
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-11 w-36 rounded-xl bg-muted" />
               ))}
             </div>
           ) : popularCities.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground">
-              No city breakdown yet — listings need a saved city on each property. Browse all properties to explore what&apos;s
-              live.
+              City information will appear when listings include a saved location.
             </p>
           ) : (
             <div className="flex flex-wrap justify-center gap-3">
@@ -389,12 +450,12 @@ const Index = ({ siteName: ssrSiteName }: IndexProps = {}) => {
                 <Link
                   key={city.name}
                   href={`/browse?loc=${encodeURIComponent(city.name)}`}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 transition-colors hover:border-primary hover:bg-primary/5"
+                  className="group flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 transition-colors hover:border-primary"
                 >
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <MapPin className="size-4 text-primary" aria-hidden />
                   <span className="font-medium text-foreground">{city.name}</span>
                   <span className="text-xs tabular-nums text-muted-foreground">
-                    {city.count} {city.count === 1 ? "listing" : "listings"}
+                    {city.count}
                   </span>
                 </Link>
               ))}
@@ -403,98 +464,65 @@ const Index = ({ siteName: ssrSiteName }: IndexProps = {}) => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-14 text-center">
-            <h2 className="mb-3 font-heading text-3xl font-bold text-foreground md:text-4xl">
-              What Our Users Say
-            </h2>
-            <p className="mx-auto max-w-lg text-muted-foreground">
-              Join people who found their next home or tenant through {siteName}.
-            </p>
-          </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={t.author}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-2xl border border-border bg-card p-6 shadow-sm"
-              >
-                <Quote className="mb-3 h-8 w-8 text-primary/30" />
-                <p className="mb-4 text-sm leading-relaxed text-foreground">
-                  &ldquo;{t.quote}&rdquo;
+      <section className="pb-20 sm:pb-24">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="relative overflow-hidden rounded-[2rem] bg-primary px-6 py-12 text-primary-foreground sm:px-10 md:px-14 md:py-16">
+            <div
+              aria-hidden
+              className="absolute -right-20 -top-20 size-64 rounded-full border border-primary-foreground/15"
+            />
+            <div
+              aria-hidden
+              className="absolute -bottom-28 right-24 size-72 rounded-full border border-primary-foreground/10"
+            />
+            <div className="relative grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
+                  Built for the whole ecosystem
                 </p>
-                <div className="mb-1 flex items-center gap-2">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="h-4 w-4 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-sm font-semibold text-foreground">
-                  {t.author}
+                <h2 className="mt-4 max-w-2xl font-heading text-4xl font-bold tracking-tight md:text-5xl">
+                  Looking for a place—or ready to help someone move forward?
+                </h2>
+                <p className="mt-5 max-w-xl leading-7 text-primary-foreground/80">
+                  Find a property, list one you own, or join as a service vendor and respond
+                  to relevant customer needs.
                 </p>
-                <p className="text-xs text-muted-foreground">{t.role}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA - Tenants */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-border bg-card p-8 md:flex-row md:p-12">
-            <div>
-              <h2 className="mb-2 font-heading text-2xl font-bold text-foreground md:text-3xl">
-                Looking for a Home?
-              </h2>
-              <p className="max-w-md text-muted-foreground">
-                Browse verified listings. Filter by budget, location &
-                amenities. Contact owners directly.
-              </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <Button size="lg" variant="secondary" asChild>
+                  <Link href="/owner">
+                    List a property
+                    <Home data-icon="inline-end" aria-hidden />
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  asChild
+                >
+                  <Link href="/register-vendor">
+                    Join as a vendor
+                    <MoveRight data-icon="inline-end" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
             </div>
-            <Button size="lg" asChild>
-              <Link href="/browse">
-                Browse listings <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
           </div>
         </div>
       </section>
-
-      {/* CTA - Owners */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="hero-gradient rounded-3xl p-10 text-center md:p-16">
-            <h2 className="mb-4 font-heading text-3xl font-bold text-primary-foreground md:text-4xl">
-              Are You a Property Owner?
-            </h2>
-            <p className="mx-auto mb-8 max-w-lg text-primary-foreground/85">
-              List your property and reach serious tenants or buyers — simple, transparent, built for {siteName} users.
-            </p>
-            <Button size="lg" variant="secondary" asChild>
-              <Link href="/owner">
-                List Your Property <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
 
       <AuthGateModal
         open={showAuthGate}
         onClose={() => {
-          setShowAuthGate(false)
-          setPendingProperty(null)
+          setShowAuthGate(false);
+          setPendingProperty(null);
         }}
-        endpoint={pendingProperty ? buildPropertyPath(pendingProperty.id, pendingProperty.title) : "/browse"}
+        endpoint={
+          pendingProperty
+            ? buildPropertyPath(pendingProperty.id, pendingProperty.title)
+            : "/browse"
+        }
       />
-    </div>
-  )
+    </main>
+  );
 }
-
-export default Index
