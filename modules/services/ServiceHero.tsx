@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, BadgeCheck, Clock, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -20,7 +21,11 @@ interface ServiceHeroProps {
   /** When set, CTA runs this instead of navigating (e.g. open auth intercept). */
   onCtaClick?: () => void;
   trust?: Array<{ icon: LucideIcon; label: string }>;
+  /** Lucide icon used as fallback when no image is provided. */
   Illustration: LucideIcon;
+  /** Homepage service photo — shown in the hero panel when set. */
+  image?: string;
+  imageAlt?: string;
 }
 
 export function ServiceHero({
@@ -32,6 +37,8 @@ export function ServiceHero({
   onCtaClick,
   trust = DEFAULT_TRUST,
   Illustration,
+  image,
+  imageAlt = "",
 }: ServiceHeroProps) {
   return (
     <section className="relative overflow-hidden pt-24 pb-16 md:pt-28 md:pb-24">
@@ -102,20 +109,41 @@ export function ServiceHero({
           transition={{ duration: 0.6, delay: 0.1 }}
           className="relative mx-auto aspect-square w-full max-w-md"
         >
-          <div className="hero-gradient absolute inset-0 rounded-[2rem] opacity-90" />
-          <div className="absolute inset-4 rounded-[1.6rem] border border-white/20 bg-white/5 backdrop-blur-sm" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Illustration
-              className="h-40 w-40 text-primary-foreground drop-shadow-lg md:h-52 md:w-52"
-              aria-hidden
-              strokeWidth={1.25}
-            />
-          </div>
+          {image ? (
+            <>
+              <div className="absolute inset-0 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-border">
+                <Image
+                  src={image}
+                  alt={imageAlt}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 90vw, 28rem"
+                  className="object-cover"
+                />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="hero-gradient absolute inset-0 rounded-[2rem] opacity-90" />
+              <div className="absolute inset-4 rounded-[1.6rem] border border-white/20 bg-white/5 backdrop-blur-sm" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Illustration
+                  className="h-40 w-40 text-primary-foreground drop-shadow-lg md:h-52 md:w-52"
+                  aria-hidden
+                  strokeWidth={1.25}
+                />
+              </div>
+            </>
+          )}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="absolute -bottom-4 left-6 rounded-xl bg-card px-4 py-3 shadow-xl ring-1 ring-border"
+            className="absolute -bottom-4 left-6 z-10 rounded-xl bg-card px-4 py-3 shadow-xl ring-1 ring-border"
           >
             <p className="text-xs font-medium text-muted-foreground">Avg. response</p>
             <p className="font-heading text-lg font-bold text-foreground">Within 30 min</p>
@@ -124,7 +152,7 @@ export function ServiceHero({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="absolute -top-4 right-6 rounded-xl bg-card px-4 py-3 shadow-xl ring-1 ring-border"
+            className="absolute -top-4 right-6 z-10 rounded-xl bg-card px-4 py-3 shadow-xl ring-1 ring-border"
           >
             <p className="text-xs font-medium text-muted-foreground">Customer rating</p>
             <p className="font-heading text-lg font-bold text-foreground">4.8 / 5</p>

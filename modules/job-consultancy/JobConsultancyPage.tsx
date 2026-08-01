@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitJobConsultancy } from "@/hooks/use-job-consultancy";
 import { ServiceHero } from "@/modules/services/ServiceHero";
+import { SERVICE_IMAGES } from "@/modules/services/service-images";
 import { HowItWorks, type HowItWorksStep } from "@/modules/services/HowItWorks";
 import { useRouter } from "next/navigation";
 import {
@@ -128,6 +129,8 @@ export default function JobConsultancyPage() {
         title="Your next career move starts here."
         subtitle="IT, Non IT & Customer Support — one simple inquiry form and our consultants will call you back with matching opportunities."
         Illustration={Briefcase}
+        image={SERVICE_IMAGES.jobConsultancy.src}
+        imageAlt={SERVICE_IMAGES.jobConsultancy.alt}
         trust={[...JOB_CONSULTANCY_PAGE_TRUST]}
         ctaLabel="Get started"
         onCtaClick={() => router.replace("#request-form", { scroll: true })}

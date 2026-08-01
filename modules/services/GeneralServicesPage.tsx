@@ -42,6 +42,7 @@ import {
   type GeneralServicesFormValues,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import VendorSelector from "./VendorSelector";
 import { useRouter } from "next/navigation";
@@ -158,6 +159,8 @@ export default function GeneralServicesPage() {
         title="Everyday help, handled professionally."
         subtitle="Pick a service, choose a verified vendor, and we'll connect you."
         Illustration={HandHelping}
+        image={SERVICE_IMAGES.generalServices.src}
+        imageAlt={SERVICE_IMAGES.generalServices.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 

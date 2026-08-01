@@ -47,6 +47,7 @@ import {
   type StopValue,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import VendorSelector from "./VendorSelector";
@@ -198,6 +199,8 @@ export default function PaintingCleaningPage() {
         title="A fresh coat. A spotless home. A quick fix."
         subtitle="Professional painters and deep cleaners — vetted, insured, and ready to refresh your space."
         Illustration={PaintBucket}
+        image={SERVICE_IMAGES.paintingCleaning.src}
+        imageAlt={SERVICE_IMAGES.paintingCleaning.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 

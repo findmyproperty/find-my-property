@@ -44,21 +44,23 @@ export function LandingAboutSection() {
           >
             <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
               <Image
-                src="/images/auth-bg.jpg"
-                alt="Modern building exterior representing property and professional services"
+                src="/images/about-journey.jpg"
+                alt="Modern home exterior representing the full property journey"
                 fill
                 className="object-cover"
                 sizes="(max-width: 1023px) 100vw, 42vw"
               />
+              {/* Theme-independent black gradient so caption stays readable in light + dark mode */}
               <div
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/10 to-transparent"
+                className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/5"
               />
-              <p className="absolute inset-x-0 bottom-0 p-7 font-heading text-2xl font-semibold leading-tight text-primary-foreground sm:p-9 sm:text-3xl">
+              <p className="absolute inset-x-0 bottom-0 p-7 font-heading text-2xl font-semibold leading-tight text-white drop-shadow-sm sm:p-9 sm:text-3xl">
                 A property platform designed for what life actually needs next.
               </p>
             </div>
-            <div className="absolute -bottom-5 right-5 rounded-2xl border border-border bg-card p-4 shadow-xl sm:-right-6 sm:bottom-8 sm:max-w-[230px]">
+            {/* Floats at top-right so the bottom caption stays fully visible */}
+            <div className="absolute right-3 top-3 z-10 w-[min(100%,15.5rem)] rounded-2xl border border-border bg-card p-4 shadow-xl sm:right-5 sm:top-5 sm:w-[14.5rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 Our focus
               </p>

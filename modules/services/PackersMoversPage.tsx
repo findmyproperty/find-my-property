@@ -49,6 +49,7 @@ import {
   type StopValue,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import StopList from "./StopList";
@@ -208,6 +209,8 @@ export default function PackersMoversPage() {
         title="Moving homes? Leave the heavy lifting to us."
         subtitle="Verified local and intercity movers, transparent pricing, and caring packing. Tell us where you're going — we'll handle the rest."
         Illustration={Truck}
+        image={SERVICE_IMAGES.packersMovers.src}
+        imageAlt={SERVICE_IMAGES.packersMovers.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 

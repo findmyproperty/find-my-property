@@ -44,6 +44,7 @@ import {
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import VendorSelector from "./VendorSelector";
 import {
   BUDGET_RANGE_OPTIONS,
@@ -209,6 +210,8 @@ export default function EventManagementPage() {
         title="Plan a celebration that feels effortless."
         subtitle="Birthday, wedding, baby shower or corporate event - share the brief and our planners coordinate decor, home or corporate catering, photos, music and guests."
         Illustration={PartyPopper}
+        image={SERVICE_IMAGES.eventManagement.src}
+        imageAlt={SERVICE_IMAGES.eventManagement.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 

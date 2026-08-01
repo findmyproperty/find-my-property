@@ -47,6 +47,7 @@ import {
   type StopValue,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import LocationSearchField from "./LocationSearchField";
 import VendorSelector from "./VendorSelector";
@@ -191,6 +192,8 @@ export default function HomeServicesPage() {
         title="Repairs done right. Pros you can trust."
         subtitle="Book vetted carpenters, plumbers, and electricians for quick fixes and home maintenance — supervised and guaranteed."
         Illustration={Wrench}
+        image={SERVICE_IMAGES.homeServices.src}
+        imageAlt={SERVICE_IMAGES.homeServices.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 

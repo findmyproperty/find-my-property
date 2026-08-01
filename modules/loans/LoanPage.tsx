@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useServiceAuthModal } from "@/contexts/service-auth-modal-context";
 import { useSubmitLoanRequest } from "@/hooks/use-loan-requests";
 import { ServiceHero } from "@/modules/services/ServiceHero";
+import { SERVICE_IMAGES } from "@/modules/services/service-images";
 import { HowItWorks, type HowItWorksStep } from "@/modules/services/HowItWorks";
 import { useRouter } from "next/navigation";
 import { loanApplicationSchema, type LoanApplicationFormValues } from "./schemas";
@@ -122,6 +123,8 @@ export default function LoanPage() {
         title="Finance your goals. Guidance you can trust."
         subtitle="Home loans, personal loans, vehicle finance, and mortgages — one simple inquiry form and a specialist will call you back."
         Illustration={Landmark}
+        image={SERVICE_IMAGES.loans.src}
+        imageAlt={SERVICE_IMAGES.loans.alt}
         trust={[...LOAN_PAGE_TRUST]}
         ctaLabel="Apply now"
         onCtaClick={() => router.replace("#request-form", { scroll: true })}

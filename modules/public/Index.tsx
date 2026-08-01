@@ -1,27 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
-  BriefcaseBusiness,
   Building2,
   CheckCircle2,
   ClipboardCheck,
   HandHelping,
   Home,
   MapPin,
-  Monitor,
   MoveRight,
-  PaintBucket,
-  PartyPopper,
   Search,
-  Truck,
   Users,
-  Wallet,
-  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,14 +40,16 @@ import { useProperties } from "@/hooks/use-properties";
 import { SITE_NAME } from "@/lib/branding";
 import { buildPopularCitiesFromProperties } from "@/lib/property-location-options";
 import { buildPropertyPath } from "@/lib/property-slug";
+import { cn } from "@/lib/utils";
 import { LandingAboutSection } from "@/modules/public/LandingAboutSection";
+import { SERVICE_IMAGES } from "@/modules/services/service-images";
 
 type ServiceItem = {
   href: string;
   title: string;
   description: string;
-  icon: LucideIcon;
-  label: string;
+  image: string;
+  imageAlt: string;
 };
 
 const services: ServiceItem[] = [
@@ -61,57 +57,57 @@ const services: ServiceItem[] = [
     href: "/packers-movers",
     title: "Packers & Movers",
     description: "Plan a local or intercity move with the right shifting crew.",
-    icon: Truck,
-    label: "Move",
+    image: SERVICE_IMAGES.packersMovers.src,
+    imageAlt: SERVICE_IMAGES.packersMovers.alt,
   },
   {
     href: "/painting-cleaning",
     title: "Painting & Cleaning",
     description: "Prepare a home for move-in, handover, or a fresh start.",
-    icon: PaintBucket,
-    label: "Refresh",
+    image: SERVICE_IMAGES.paintingCleaning.src,
+    imageAlt: SERVICE_IMAGES.paintingCleaning.alt,
   },
   {
     href: "/home-services",
     title: "Home Services",
     description: "Find help for plumbing, electrical work, carpentry, and repairs.",
-    icon: Wrench,
-    label: "Maintain",
+    image: SERVICE_IMAGES.homeServices.src,
+    imageAlt: SERVICE_IMAGES.homeServices.alt,
   },
   {
     href: "/event-management",
     title: "Event Management",
     description: "Get planning support for personal and corporate occasions.",
-    icon: PartyPopper,
-    label: "Celebrate",
+    image: SERVICE_IMAGES.eventManagement.src,
+    imageAlt: SERVICE_IMAGES.eventManagement.alt,
   },
   {
     href: "/it-services",
     title: "IT Services",
     description: "Request laptop, network, CCTV, and software assistance.",
-    icon: Monitor,
-    label: "Connect",
+    image: SERVICE_IMAGES.itServices.src,
+    imageAlt: SERVICE_IMAGES.itServices.alt,
   },
   {
     href: "/general-services",
     title: "General Services",
     description: "Book practical help for errands, assembly, and everyday tasks.",
-    icon: HandHelping,
-    label: "Get help",
+    image: SERVICE_IMAGES.generalServices.src,
+    imageAlt: SERVICE_IMAGES.generalServices.alt,
   },
   {
     href: "/loans",
     title: "Loan Assistance",
     description: "Explore support for home, mortgage, personal, and vehicle loans.",
-    icon: Wallet,
-    label: "Finance",
+    image: SERVICE_IMAGES.loans.src,
+    imageAlt: SERVICE_IMAGES.loans.alt,
   },
   {
     href: "/job-consultancy",
     title: "Job Consultancy",
     description: "Share your profile and connect with relevant career opportunities.",
-    icon: BriefcaseBusiness,
-    label: "Grow",
+    image: SERVICE_IMAGES.jobConsultancy.src,
+    imageAlt: SERVICE_IMAGES.jobConsultancy.alt,
   },
 ];
 
@@ -190,35 +186,75 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
           </div>
 
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {services.map(({ href, title, description, icon: Icon, label }, index) => (
+            {services.map(({ href, title, description, image, imageAlt }, index) => (
               <motion.div
                 key={href}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: index * 0.04 }}
+                transition={{ delay: index * 0.05, duration: 0.45 }}
               >
-                <Link href={href} className="group block h-full">
-                  <Card className="flex h-full min-h-[250px] flex-col overflow-hidden transition-transform duration-300 group-hover:-translate-y-1">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <Icon className="size-6" aria-hidden />
-                        </span>
-                        <ArrowUpRight className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />
+                <Link
+                  href={href}
+                  className={cn(
+                    "group relative block aspect-[4/5] overflow-hidden rounded-2xl",
+                    "outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring",
+                  )}
+                >
+                  <Image
+                    src={image}
+                    alt={imageAlt}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 group-focus-visible:scale-105"
+                    priority={index < 4}
+                  />
+
+                  {/* Soft gradient so the number and panel stay readable */}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/20"
+                  />
+
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-4 top-3 font-heading text-[4.5rem] font-light leading-none tracking-tight text-white/90 drop-shadow-sm sm:left-5 sm:top-4 sm:text-[5rem]"
+                  >
+                    {index + 1}
+                  </span>
+
+                  {/* Title always visible; description + arrow expand on hover/focus */}
+                  <div className="absolute bottom-0 left-0 right-[10%] sm:right-[12%]">
+                    <div className="bg-background px-5 py-4 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-[padding] duration-300 ease-out group-hover:px-5 group-hover:pb-5 group-hover:pt-5 group-focus-visible:pb-5 group-focus-visible:pt-5 sm:px-6 sm:py-5">
+                      <h3 className="font-heading text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
+                        {title}
+                      </h3>
+
+                      <div
+                        className={cn(
+                          "grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out",
+                          // Collapsed by default on hover-capable devices; always open on touch.
+                          "grid-rows-[0fr] opacity-0 [@media(hover:none)]:mt-3 [@media(hover:none)]:grid-rows-[1fr] [@media(hover:none)]:opacity-100",
+                          "group-hover:mt-3 group-hover:grid-rows-[1fr] group-hover:opacity-100",
+                          "group-focus-visible:mt-3 group-focus-visible:grid-rows-[1fr] group-focus-visible:opacity-100",
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="flex items-end justify-between gap-3 pt-1">
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {description}
+                            </p>
+                            <span
+                              className="mb-0.5 flex size-8 shrink-0 items-center justify-center text-foreground transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                              aria-hidden
+                            >
+                              <ArrowUpRight className="size-6 stroke-[1.5]" />
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <CardDescription className="pt-5 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                        {label}
-                      </CardDescription>
-                      <CardTitle className="font-heading text-xl leading-tight">{title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <p className="text-sm leading-6 text-muted-foreground">{description}</p>
-                    </CardContent>
-                    <CardFooter>
-                      <span className="text-sm font-semibold text-foreground">View service</span>
-                    </CardFooter>
-                  </Card>
+                    </div>
+                  </div>
                 </Link>
               </motion.div>
             ))}
@@ -228,26 +264,26 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
 
       <section className="border-y border-border bg-muted/25 py-20">
         <div className="container mx-auto max-w-[1200px] px-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="overflow-hidden border-primary/20">
-              <CardHeader className="p-7 md:p-9">
+          <div className="grid items-stretch gap-6 lg:grid-cols-2">
+            <Card className="flex h-full flex-col overflow-hidden border-primary/20">
+              <CardHeader className="space-y-0 p-7 md:p-9">
                 <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Building2 className="size-6" aria-hidden />
                 </span>
                 <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   Property
                 </CardDescription>
-                <CardTitle className="max-w-md font-heading text-3xl leading-tight">
+                <CardTitle className="mt-2 min-h-[4.5rem] font-heading text-3xl leading-tight">
                   Search with context, not guesswork.
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-7 md:px-9">
-                <p className="max-w-lg leading-7 text-muted-foreground">
+              <CardContent className="flex flex-1 flex-col px-7 md:px-9">
+                <p className="flex-1 leading-7 text-muted-foreground">
                   Explore available homes by location, budget, property type, and the
                   details that matter before you make contact.
                 </p>
               </CardContent>
-              <CardFooter className="p-7 pt-2 md:p-9 md:pt-3">
+              <CardFooter className="mt-auto p-7 pt-6 md:p-9 md:pt-6">
                 <Button asChild>
                   <Link href="/browse">
                     Explore properties
@@ -257,27 +293,27 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
               </CardFooter>
             </Card>
 
-            <Card className="overflow-hidden">
-              <CardHeader className="p-7 md:p-9">
-                <span className="flex size-12 items-center justify-center rounded-xl bg-foreground text-background">
+            <Card className="flex h-full flex-col overflow-hidden border-primary/20">
+              <CardHeader className="space-y-0 p-7 md:p-9">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <HandHelping className="size-6" aria-hidden />
                 </span>
                 <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   Services
                 </CardDescription>
-                <CardTitle className="max-w-md font-heading text-3xl leading-tight">
+                <CardTitle className="mt-2 min-h-[4.5rem] font-heading text-3xl leading-tight">
                   Turn a requirement into a clear request.
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-7 md:px-9">
-                <p className="max-w-lg leading-7 text-muted-foreground">
+              <CardContent className="flex flex-1 flex-col px-7 md:px-9">
+                <p className="flex-1 leading-7 text-muted-foreground">
                   Pick a service, provide the useful details, choose a vendor when
                   available, and let the platform keep the request connected to your
                   account.
                 </p>
               </CardContent>
-              <CardFooter className="p-7 pt-2 md:p-9 md:pt-3">
-                <Button variant="outline" asChild>
+              <CardFooter className="mt-auto p-7 pt-6 md:p-9 md:pt-6">
+                <Button asChild>
                   <Link href="/#services">
                     Browse all services
                     <ArrowRight data-icon="inline-end" aria-hidden />

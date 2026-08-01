@@ -42,6 +42,7 @@ import {
   type ItServicesFormValues,
 } from "./schemas";
 import { ServiceHero } from "./ServiceHero";
+import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
 import VendorSelector from "./VendorSelector";
 import { useRouter } from "next/navigation";
@@ -158,6 +159,8 @@ export default function ItServicesPage() {
         title="Tech support that actually shows up."
         subtitle="Pick a service like web design or server tech, choose a verified vendor, and we'll connect you."
         Illustration={Monitor}
+        image={SERVICE_IMAGES.itServices.src}
+        imageAlt={SERVICE_IMAGES.itServices.alt}
         onCtaClick={() => router.replace("#request-form", { scroll: true })}
       />
 
