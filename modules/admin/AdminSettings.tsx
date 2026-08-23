@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Globe,
@@ -22,6 +22,7 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "@/hooks/use-admin-settings";
-import { api, type Settings } from "@/lib/api";
+import { api, type Settings, type SystemLog } from "@/lib/api";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -89,7 +92,7 @@ const AdminSettings = () => {
     reset,
     watch,
     formState: { isDirty },
-  } = useForm<SettingsFormValues>({ defaultValues: FORM_DEFAULTS });
+  } = useForm<SettingsFormValues>({ defaultValues: FORM_DEFAULTS, values: settings });
 
   const {
     fields: faqFields,
@@ -103,20 +106,20 @@ const AdminSettings = () => {
 
   // Once server data lands, reset the form so RHF's baseline matches the
   // persisted values — this is what makes isDirty accurate.
-  useEffect(() => {
-    if (settings) {
-      reset({
-        siteName: settings.siteName ?? "",
-        supportEmail: settings.supportEmail ?? "",
-        supportPhone: settings.supportPhone ?? "",
-        vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
-        primaryLogoUrl: settings.primaryLogoUrl ?? null,
-        faviconUrl: settings.faviconUrl ?? null,
-        landingReactionIds: settings.landingReactionIds ?? [],
-        faqs: settings.faqs ?? [],
-      });
-    }
-  }, [settings, reset]);
+  // useEffect(() => {
+  //   if (settings) {
+  //     reset({
+  //       siteName: settings.siteName ?? "",
+  //       supportEmail: settings.supportEmail ?? "",
+  //       supportPhone: settings.supportPhone ?? "",
+  //       vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
+  //       primaryLogoUrl: settings.primaryLogoUrl ?? null,
+  //       faviconUrl: settings.faviconUrl ?? null,
+  //       landingReactionIds: settings.landingReactionIds ?? [],
+  //       faqs: settings.faqs ?? [],
+  //     });
+  //   }
+  // }, [settings]);
 
   const landingReactionIds = watch("landingReactionIds") ?? [];
 
@@ -223,6 +226,9 @@ const AdminSettings = () => {
           </TabsTrigger>
           <TabsTrigger value="faqs" className="shrink-0 gap-2">
             <HelpCircle className="h-4 w-4" /> FAQs
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="shrink-0 gap-2">
+            <ClipboardCheck className="h-4 w-4" /> System Logs
           </TabsTrigger>
         </TabsList>
 
@@ -658,6 +664,10 @@ const AdminSettings = () => {
             </div>
           </SectionCard>
         </TabsContent>
+
+        <TabsContent value="logs" className="space-y-6">
+          <SystemLogsTab />
+        </TabsContent>
       </Tabs>
     </form>
   );
@@ -748,6 +758,206 @@ function ServiceTypeBadge({
     <Badge variant={meta?.variant ?? "outline"} className="whitespace-nowrap text-xs">
       {meta?.label ?? label}
     </Badge>
+  );
+}
+
+function SystemLogsTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [limit] = useState(50);
+  const [offset, setOffset] = useState(0);
+
+  const { data: logs = [], isLoading, error, refetch, isRefetching } = useQuery<SystemLog[]>({
+    queryKey: ["admin-system-logs", limit, offset],
+    queryFn: () => api.getSystemLogs({ limit, offset }),
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: () => api.clearSystemLogs(),
+    onSuccess: () => {
+      toast({ title: "Logs cleared", description: "All system logs have been wiped." });
+      queryClient.invalidateQueries({ queryKey: ["admin-system-logs"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to clear logs",
+        description: err.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleNextPage = () => {
+    if (logs.length === limit) {
+      setOffset((prev: number) => prev + limit);
+    }
+  };
+
+  const handlePrevPage = () => {
+    setOffset((prev: number) => Math.max(0, prev - limit));
+  };
+
+  const getLevelBadge = (level: string) => {
+    switch (level) {
+      case "error":
+        return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">ERROR</Badge>;
+      case "warn":
+        return <Badge className="bg-amber-500 text-white hover:bg-amber-600">WARN</Badge>;
+      case "info":
+        return <Badge className="bg-emerald-500 text-white hover:bg-emerald-600">INFO</Badge>;
+      default:
+        return <Badge variant="secondary">DEBUG</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 className="font-heading text-lg font-semibold">System Logs</h3>
+          <p className="text-sm text-muted-foreground">
+            Monitor real-time application events, database actions, and errors.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isLoading || isRefetching}
+          >
+            {isRefetching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Refresh
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              if (confirm("Are you sure you want to clear all system logs? This action cannot be undone.")) {
+                clearMutation.mutate();
+              }
+            }}
+            disabled={clearMutation.isPending}
+          >
+            Clear logs
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center text-sm text-destructive">
+          Failed to load system logs. Please make sure the backend is reachable.
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No system logs recorded yet.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-40">Timestamp</TableHead>
+                  <TableHead className="w-24">Level</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead className="w-32">Source</TableHead>
+                  <TableHead className="w-28 text-right">Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log: SystemLog) => {
+                  const dateStr = new Date(log.timestamp).toLocaleString();
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+                        {dateStr}
+                      </TableCell>
+                      <TableCell>{getLevelBadge(log.level)}</TableCell>
+                      <TableCell className="font-medium max-w-md truncate" title={log.message}>
+                        {log.message}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground truncate max-w-[120px]" title={log.source || undefined}>
+                        {log.source || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(log.context != null || !!log.stack || !!log.url) ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="link" size="sm" className="px-0">
+                                View details
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-96 p-4 space-y-3" align="end">
+                              <h4 className="font-heading font-semibold text-sm">Log Details</h4>
+                              {!!log.url && (
+                                <p className="text-xs font-mono">
+                                  <span className="font-semibold text-muted-foreground">URL:</span> {log.method} {log.url}
+                                </p>
+                              )}
+                              {log.context != null && (
+                                <div className="space-y-1">
+                                  <span className="text-xs font-semibold text-muted-foreground">Context:</span>
+                                  <pre className="text-[10px] font-mono bg-muted p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                    {JSON.stringify(log.context, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                              {!!log.stack && (
+                                <div className="space-y-1">
+                                  <span className="text-xs font-semibold text-muted-foreground">Stack Trace:</span>
+                                  <pre className="text-[10px] font-mono bg-muted p-2 rounded max-h-40 overflow-y-auto whitespace-pre-wrap text-destructive">
+                                    {log.stack}
+                                  </pre>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <span className="text-xs text-muted-foreground">
+              Showing logs {offset + 1} - {offset + logs.length}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={offset === 0}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={logs.length < limit}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

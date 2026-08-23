@@ -10,7 +10,11 @@ import { z } from "zod";
 const phoneLike = z
   .string()
   .trim()
-  .regex(/^[+]?[0-9 ()\-]{6,30}$/, "Enter a valid phone number");
+  .transform((val) => (val === "" ? null : val))
+  .nullish()
+  .refine((val) => val === null || val === undefined || /^[+]?[0-9 ()\-]{6,30}$/.test(val), {
+    message: "Enter a valid phone number",
+  });
 
 export const settingsSchema = z.object({
   siteName: z.string().min(1, "Site name is required").max(255),
@@ -26,7 +30,10 @@ export const settingsSchema = z.object({
   twoFactorAuthEnforced: z.boolean(),
   vendorCommissionPercent: z.coerce.number().min(0).max(100).optional(),
   landingReactionCount: z.coerce.number().int().min(0).max(12),
-  landingReactionIds: z.array(z.number().int()).default([]),
+  landingReactionIds: z
+    .array(z.number().int())
+    .nullish()
+    .transform((val) => val ?? []),
   faqs: z
     .array(
       z.object({
