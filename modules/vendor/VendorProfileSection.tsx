@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Image from "next/image"
 import {
   AlertCircle,
   CheckCircle2,
@@ -187,6 +188,143 @@ function DocUpload({
   )
 }
 
+function MultiFileWidget({
+  label,
+  urls,
+  onChange,
+  accept,
+  folder,
+  maxFiles = 10,
+}: {
+  label: string
+  urls: string[]
+  onChange: (urls: string[]) => void
+  accept: string[]
+  folder: string
+  maxFiles?: number
+}) {
+  const { toast } = useToast()
+  const [isUploading, setIsUploading] = useState(false)
+  const cloudinaryPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+
+  const openWidget = (open: () => void) => {
+    if (isUploading) return
+    if (!cloudinaryPreset) {
+      toast({
+        title: "Uploads unavailable",
+        description: "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
+        variant: "destructive",
+      })
+      return
+    }
+    setIsUploading(true)
+    open()
+  }
+
+  const handleSuccess = (info: CloudinaryUploadWidgetInfo | undefined) => {
+    setIsUploading(false)
+    const uploadedUrl = info?.secure_url
+    if (!uploadedUrl) return
+    onChange([...urls, uploadedUrl])
+  }
+
+  const removeFile = (indexToRemove: number) => {
+    onChange(urls.filter((_, i) => i !== indexToRemove))
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
+      <div className="flex items-center justify-between">
+        <Label className="font-semibold text-sm text-foreground">{label}</Label>
+        <span className="text-xs text-muted-foreground">{urls.length} of {maxFiles} files</span>
+      </div>
+
+      {urls.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {urls.map((url, index) => {
+            const isPdf = url.toLowerCase().endsWith(".pdf")
+            const fileName = url.split("/").pop()?.split("?")[0] || `File ${index + 1}`
+            return (
+              <div key={url} className="group relative aspect-[4/3] rounded-lg border border-border bg-card overflow-hidden flex flex-col items-center justify-center p-2">
+                {isPdf ? (
+                  <div className="flex flex-col items-center gap-1.5 text-center min-w-0 w-full">
+                    <FileCheck2 className="size-8 text-primary shrink-0" />
+                    <span className="text-[11px] font-medium text-muted-foreground truncate w-full px-1">
+                      {fileName}
+                    </span>
+                  </div>
+                ) : (
+                  <Image
+                    src={url}
+                    alt={`${label} ${index + 1}`}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                    sizes="(max-width: 640px) 50vw, 25vw"
+                  />
+                )}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="absolute right-2 top-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removeFile(index)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {urls.length < maxFiles && (
+        <CldUploadWidget
+          uploadPreset={cloudinaryPreset}
+          options={{
+            multiple: true,
+            maxFiles: maxFiles - urls.length,
+            maxFileSize: 10 * MB,
+            clientAllowedFormats: accept,
+            resourceType: "auto",
+            folder: folder,
+          }}
+          onSuccess={(result) => {
+            if (result.event !== "success") return
+            const info = result.info
+            if (info && typeof info !== "string") {
+              handleSuccess(info as CloudinaryUploadWidgetInfo)
+            } else {
+              setIsUploading(false)
+            }
+          }}
+          onError={() => setIsUploading(false)}
+          onClose={() => setIsUploading(false)}
+        >
+          {({ open }) => (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 border-dashed border-primary/40 hover:border-primary"
+              disabled={isUploading}
+              onClick={() => openWidget(open)}
+            >
+              {isUploading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              Upload {label.toLowerCase()}
+            </Button>
+          )}
+        </CldUploadWidget>
+      )}
+    </div>
+  )
+}
+
+
 function StickySaveBar({
   label,
   isPending,
@@ -291,6 +429,13 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
     () => profile?.serviceLocations ?? [],
   )
 
+  const [publicPhotoUrls, setPublicPhotoUrls] = useState<string[]>(
+    () => profile?.publicPhotoUrls ?? [],
+  )
+  const [certificateUrls, setCertificateUrls] = useState<string[]>(
+    () => profile?.certificateUrls ?? [],
+  )
+
   const publicLink =
     profile?.verificationStatus === "verified" && profile.userId
       ? `/vendors/${profile.slug?.trim() || profile.userId}`
@@ -322,6 +467,8 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
         experience,
         workingHours,
         serviceLocations,
+        publicPhotoUrls,
+        certificateUrls,
       },
       { onSuccess: () => toast({ title: "Business profile saved" }) },
     )
@@ -502,6 +649,36 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
           </p>
         )}
       </div>
+
+      <div className="h-px bg-border my-4" />
+
+      <div className="space-y-4">
+        <div>
+          <h4 className="font-heading text-sm font-semibold">Portfolio & Showcase</h4>
+          <p className="text-xs text-muted-foreground">
+            Upload files to showcase your work directly on your public partner page.
+          </p>
+        </div>
+
+        <MultiFileWidget
+          label="Work Photos"
+          urls={publicPhotoUrls}
+          onChange={setPublicPhotoUrls}
+          accept={["jpg", "jpeg", "png", "webp"]}
+          folder="vendor-photos"
+          maxFiles={10}
+        />
+
+        <MultiFileWidget
+          label="Work Documents & PDFs"
+          urls={certificateUrls}
+          onChange={setCertificateUrls}
+          accept={["jpg", "jpeg", "png", "webp", "pdf"]}
+          folder="vendor-certs"
+          maxFiles={5}
+        />
+      </div>
+
 
       <StickySaveBar
         label="Save business profile"

@@ -24,6 +24,7 @@ export type {
   GeneralServicesDetails,
   EventManagementDetails,
   ServiceRequestDTO,
+  CustomerReactionDTO,
   ServiceRequestFeedbackInput,
   ServiceRequestTimelineItem,
   PackersMoversInput,

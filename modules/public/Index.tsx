@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -15,17 +16,25 @@ import {
   MapPin,
   MoveRight,
   Search,
+  Star,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import AuthGateModal from "@/components/auth/AuthGateModal";
 import HeroSection from "@/components/layout/HeroSection";
+import { UserAvatar } from "@/components/user-avatar";
 import PropertyCard, { type Property } from "@/components/property/PropertyCard";
 import { PropertyCardSkeleton } from "@/components/skeletons/property-card-skeleton";
 import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Card,
   CardContent,
@@ -37,6 +46,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useSettings } from "@/contexts/settings-context";
 import { useProperties } from "@/hooks/use-properties";
+import { api, type CustomerReactionDTO } from "@/lib/api";
 import { SITE_NAME } from "@/lib/branding";
 import { buildPopularCitiesFromProperties } from "@/lib/property-location-options";
 import { buildPropertyPath } from "@/lib/property-slug";
@@ -134,7 +144,10 @@ const platformSteps = [
   },
 ];
 
+
+
 const EMPTY_PROPERTIES: Property[] = [];
+const EMPTY_REACTIONS: CustomerReactionDTO[] = [];
 
 type IndexProps = {
   siteName?: string;
@@ -143,8 +156,48 @@ type IndexProps = {
 export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
   const { isAuthenticated, isAuthReady } = useAuth();
   const { data, isLoading } = useProperties();
+  const { data: customerReactions = EMPTY_REACTIONS } = useQuery({
+    queryKey: ["customer-reactions"],
+    queryFn: api.getCustomerReactions,
+    staleTime: 5 * 60 * 1000,
+  });
+  const averageReaction = customerReactions.length
+    ? customerReactions.reduce((sum, reaction) => sum + reaction.rating, 0) /
+      customerReactions.length
+    : 0;
   const { settings } = useSettings();
   const siteName = settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
+
+  const defaultFaqItems = [
+    {
+      question: `Why should I trust ${siteName}?`,
+      answer:
+        `Trust is our foundation. We carefully evaluate vendors before they join our platform and continue to monitor their performance. Our objective is to help customers connect with reliable professionals while providing support if issues arise.`,
+    },
+    {
+      question: "How do I know the vendor is genuine?",
+      answer:
+        `We require vendors to complete a verification process before they are approved. Depending on the service category, this may include identity verification, business information, relevant registrations, experience, and other supporting documents.`,
+    },
+    {
+      question: "What if the vendor takes my money and disappears?",
+      answer:
+        `We encourage customers to report such incidents immediately. We will investigate the complaint and take action against vendors who violate our policies, including suspension or removal from the platform. We also assist in communication wherever possible.`,
+    },
+    {
+      question: `Is ${siteName} responsible for the vendor's work?`,
+      answer:
+        `We connect customers with verified vendors. The service agreement is between the customer and the vendor. However, we monitor quality, review complaints, and take appropriate action against vendors who fail to meet our standards.`,
+    },
+    {
+      question: `Why should I use ${siteName} instead of Google?`,
+      answer:
+        `Google provides search results. We focus on connecting customers with vendors who have been reviewed and monitored within our ecosystem, making the search process more structured and reliable.`,
+    },
+  ];
+
+  const faqItems = settings?.faqs && settings.faqs.length > 0 ? settings.faqs : defaultFaqItems;
+
   const allProperties = data ?? EMPTY_PROPERTIES;
   const featuredProperties = allProperties.slice(0, 4);
   const popularCities = useMemo(
@@ -168,7 +221,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
       <HeroSection />
 
       <section id="services" className="scroll-mt-24 py-20 sm:py-24">
-        <div className="container mx-auto max-w-[1200px] px-4">
+        <div className="container mx-auto max-w-300 px-4">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
               <Badge variant="outline" className="text-primary">
@@ -197,7 +250,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
                 <Link
                   href={href}
                   className={cn(
-                    "group relative block aspect-[4/5] overflow-hidden rounded-2xl",
+                    "group relative block aspect-4/5 overflow-hidden rounded-2xl",
                     "outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring",
                   )}
                 >
@@ -210,23 +263,16 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
                     priority={index < 4}
                   />
 
-                  {/* Soft gradient so the number and panel stay readable */}
+                  {/* Soft gradient so the text panel stays readable */}
                   <div
                     aria-hidden
-                    className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/20"
+                    className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-black/20"
                   />
 
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute left-4 top-3 font-heading text-[4.5rem] font-light leading-none tracking-tight text-white/90 drop-shadow-sm sm:left-5 sm:top-4 sm:text-[5rem]"
-                  >
-                    {index + 1}
-                  </span>
-
                   {/* Title always visible; description + arrow expand on hover/focus */}
-                  <div className="absolute bottom-0 left-0 right-[10%] sm:right-[12%]">
-                    <div className="bg-background px-5 py-4 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-[padding] duration-300 ease-out group-hover:px-5 group-hover:pb-5 group-hover:pt-5 group-focus-visible:pb-5 group-focus-visible:pt-5 sm:px-6 sm:py-5">
-                      <h3 className="font-heading text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
+                  <div className="absolute inset-x-4 bottom-4 sm:inset-x-5 sm:bottom-5">
+                    <div className="rounded-[1.35rem] bg-background px-4 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.14)] transition-[padding] duration-300 ease-out group-hover:px-4 group-hover:pb-5 group-hover:pt-5 group-focus-visible:pb-5 group-focus-visible:pt-5 sm:px-5 sm:py-5">
+                      <h3 className="font-heading text-base font-semibold leading-snug tracking-tight text-foreground sm:text-[1.2rem]">
                         {title}
                       </h3>
 
@@ -263,7 +309,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
       </section>
 
       <section className="border-y border-border bg-muted/25 py-20">
-        <div className="container mx-auto max-w-[1200px] px-4">
+        <div className="container mx-auto max-w-300 px-4">
           <div className="grid items-stretch gap-6 lg:grid-cols-2">
             <Card className="flex h-full flex-col overflow-hidden border-primary/20">
               <CardHeader className="space-y-0 p-7 md:p-9">
@@ -273,7 +319,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
                 <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   Property
                 </CardDescription>
-                <CardTitle className="mt-2 min-h-[4.5rem] font-heading text-3xl leading-tight">
+                <CardTitle className="mt-2 min-h-18 font-heading text-3xl leading-tight">
                   Search with context, not guesswork.
                 </CardTitle>
               </CardHeader>
@@ -301,7 +347,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
                 <CardDescription className="pt-6 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   Services
                 </CardDescription>
-                <CardTitle className="mt-2 min-h-[4.5rem] font-heading text-3xl leading-tight">
+                <CardTitle className="mt-2 min-h-18 font-heading text-3xl leading-tight">
                   Turn a requirement into a clear request.
                 </CardTitle>
               </CardHeader>
@@ -326,7 +372,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
       </section>
 
       <section className="py-20 sm:py-24">
-        <div className="container mx-auto max-w-[1200px] px-4">
+        <div className="container mx-auto max-w-300 px-4">
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Badge variant="outline" className="text-primary">
@@ -419,7 +465,7 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
       </section>
 
       <section className="border-y border-border bg-foreground py-20 text-background sm:py-24">
-        <div className="container mx-auto max-w-[1200px] px-4">
+        <div className="container mx-auto max-w-300 px-4">
           <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr]">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-background/60">
@@ -457,15 +503,17 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
       <LandingAboutSection />
 
       <section className="py-20">
-        <div className="container mx-auto max-w-[1200px] px-4">
-          <div className="mb-9 text-center">
-            <Badge variant="outline" className="text-primary">
-              Explore by city
-            </Badge>
-            <h2 className="mt-4 font-heading text-3xl font-bold text-foreground md:text-4xl">
-              See where listings are active
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+        <div className="container mx-auto max-w-300 px-4">
+          <div className="flex flex-col gap-6 border-b border-border pb-8 mb-10 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="outline" className="text-primary">
+                Explore by city
+              </Badge>
+              <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                See where listings are active
+              </h2>
+            </div>
+            <p className="max-w-xs text-sm text-muted-foreground sm:pb-1">
               Locations are ranked by the properties currently available on {siteName}.
             </p>
           </div>
@@ -500,8 +548,112 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
         </div>
       </section>
 
-      <section className="pb-20 sm:pb-24">
-        <div className="container mx-auto max-w-[1200px] px-4">
+      <section className="border-y border-border bg-muted/25 py-20 sm:py-24">
+        <div className="container mx-auto max-w-300 px-4">
+          <div className="flex flex-col gap-6 border-b border-border pb-8 mb-10 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="outline" className="text-primary">
+                Good to know
+              </Badge>
+              <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                Common questions, answered clearly.
+              </h2>
+            </div>
+            <p className="max-w-xs text-sm text-muted-foreground sm:pb-1">
+              A quick guide to finding a property, requesting support, and keeping your next step easy to follow.
+            </p>
+          </div>
+
+          <div className="mx-auto max-w-3xl">
+            <Accordion type="single" collapsible className="w-full rounded-2xl border border-border bg-background px-6">
+              {faqItems.map(({ question, answer }, index) => (
+                <AccordionItem key={question} value={`faq-${index}`}>
+                  <AccordionTrigger className="gap-6 text-left font-heading text-base font-semibold hover:no-underline sm:text-lg">
+                    {question}
+                  </AccordionTrigger>
+                  <AccordionContent className="max-w-2xl leading-7 text-muted-foreground">
+                    {answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
+
+      {customerReactions.length > 0 ? (
+      <section className="py-20 sm:py-24">
+        <div className="container mx-auto max-w-300 px-4">
+          <div className="flex flex-col gap-8 border-b border-border pb-10 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="outline" className="text-primary">
+                Customer reactions
+              </Badge>
+              <h2 className="mt-4 max-w-xl font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                A smoother way to move forward.
+              </h2>
+            </div>
+            <div className="flex items-center gap-3 sm:pb-1">
+              <div
+                className="flex items-center gap-1 text-primary"
+                aria-label={`${averageReaction.toFixed(1)} out of 5 stars`}
+              >
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star
+                    key={index}
+                    className={cn("size-5", index < Math.round(averageReaction) && "fill-current")}
+                    aria-hidden
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {averageReaction.toFixed(1)} average from {customerReactions.length} reaction
+                {customerReactions.length === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-4 pt-8 md:grid-cols-3">
+            {customerReactions.map(({ id, feedback, name, service, rating }) => (
+              <article
+                key={id}
+                className="flex min-h-56 flex-col justify-between rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/40 sm:p-7"
+              >
+                <div>
+                  <span className="font-heading text-4xl leading-none text-primary/50" aria-hidden>
+                    &ldquo;
+                  </span>
+                  <blockquote className="mt-3 text-base leading-7 text-foreground">
+                    {feedback || "The service made the next step easier."}
+                  </blockquote>
+                </div>
+                <footer className="mt-8 flex items-end justify-between gap-4 border-t border-border pt-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar name={name} className="size-10 shrink-0" />
+                    <div>
+                      <p className="font-heading text-sm font-semibold text-foreground">{name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{service}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5 text-primary" aria-label="5 out of 5 stars">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <Star
+                        key={index}
+                        className={cn("size-3.5", index < rating && "fill-current")}
+                        aria-hidden
+                      />
+                    ))}
+                  </div>
+                </footer>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+      ) : null}
+
+      <section className="pt-20 pb-20 sm:pt-24 sm:pb-24">
+        <div className="container mx-auto max-w-300 px-4">
           <div className="relative overflow-hidden rounded-[2rem] bg-primary px-6 py-12 text-primary-foreground sm:px-10 md:px-14 md:py-16">
             <div
               aria-hidden
@@ -544,6 +696,22 @@ export default function Index({ siteName: ssrSiteName }: IndexProps = {}) {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="border-b border-border bg-muted/30 py-20 sm:py-24">
+        <div className="container mx-auto max-w-300 px-4 text-center">
+          <Badge variant="outline" className="text-primary px-3.5 py-1">
+            Looking for the best service?
+          </Badge>
+          <h2 className="mx-auto mt-6  font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl leading-tight">
+            &ldquo;Business owners don&apos;t need more advertisements.<br className="hidden sm:inline" />
+            They need <span className="text-primary">more revenue</span>.&rdquo;
+          </h2>
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+            {siteName} is built to help verified businesses grow through trusted opportunities,
+            transparent systems, and long-term partnerships.
+          </p>
         </div>
       </section>
 

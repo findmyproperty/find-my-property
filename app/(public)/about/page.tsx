@@ -8,8 +8,8 @@ import {
   HandHelping,
   Network,
   Scale,
-  SearchCheck,
   Users,
+  Compass,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,10 +28,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await getBranding();
   return {
     title: "About Us",
-    description: `Learn how ${siteName} connects property discovery with practical home, lifestyle, finance, and professional services on one platform.`,
+    description: `Learn how ${siteName} connects customers with verified service providers across financial and professional services through a transparent process.`,
     openGraph: {
       title: `About ${siteName}`,
-      description: `Property discovery and trusted everyday services, brought into one connected customer journey.`,
+      description: `${siteName} – Yashas Business Development & Consultancy is a trusted business development and consultancy platform.`,
     },
     alternates: {
       canonical: "/about",
@@ -39,32 +39,40 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const values = [
-  {
-    icon: SearchCheck,
-    title: "Clarity before action",
-    description:
-      "We organise listings and service requests around useful details so people can make better-informed choices.",
-  },
-  {
-    icon: BadgeCheck,
-    title: "Trust through process",
-    description:
-      "Verification, structured information, and account-based activity help reduce noise and confusion.",
-  },
-  {
-    icon: Scale,
-    title: "A fair platform",
-    description:
-      "Customers, owners, agents, and vendors should understand what the platform does and where their responsibility begins.",
-  },
-];
-
 export default async function AboutPage() {
   const { siteName } = await getBranding();
 
+  const missionItems = [
+    {
+      icon: BadgeCheck,
+      title: "Verify before we connect",
+      description: `Every partner on ${siteName} goes through a transparent verification process before being recommended to a customer.`,
+    },
+    {
+      icon: Scale,
+      title: "Simplify complex decisions",
+      description: "Make loans, real estate, and professional services easier to navigate with clear guidance at every step.",
+    },
+    {
+      icon: HandHelping,
+      title: "Support end-to-end",
+      description: "Stay with the customer from first inquiry to service completion, not just the handoff.",
+    },
+    {
+      icon: Network,
+      title: "Grow our partners",
+      description: "Help verified businesses scale through quality leads and long-term customer relationships.",
+    },
+    {
+      icon: Users,
+      title: "Build lasting trust",
+      description: "Operate with the transparency and accountability that turns one-time users into repeat customers and advocates.",
+    },
+  ];
+
   return (
     <main className="pb-20 pt-24">
+      {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border">
         <div
           aria-hidden
@@ -78,25 +86,29 @@ export default async function AboutPage() {
             </Link>
           </Button>
 
-          <div className="mt-14 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+          <div className="mt-14 grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <Badge variant="outline" className="text-primary">
+              <Badge variant="outline" className="text-primary mb-4">
                 About {siteName}
               </Badge>
-              <h1 className="mt-6 max-w-4xl font-heading text-5xl font-bold leading-[1.03] tracking-[-0.04em] text-foreground sm:text-6xl lg:text-7xl">
-                Property is the beginning.
-                <span className="mt-2 block text-primary">Life around it is the journey.</span>
+              <h1 className="max-w-4xl font-heading text-4xl font-bold leading-[1.05] tracking-[-0.04em] text-foreground sm:text-6xl lg:text-7xl">
+                {siteName} – Yashas Business
+                <span className="mt-2 block text-primary">Development & Consultancy</span>
               </h1>
+              <p className="mt-4 font-heading text-lg font-medium text-muted-foreground/80 tracking-wide">
+                One Platform. Multiple Solutions. Infinite Opportunities.
+              </p>
             </div>
             <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-              {siteName} is evolving from a real estate destination into a connected
-              platform for property, home, lifestyle, finance, and professional needs.
-              Our aim is simple: make the next useful step easier to find.
+              {siteName} is a trusted business development and consultancy platform committed
+              to connecting customers with verified service providers through a transparent and
+              professional process. We believe in building trust and quality leads.
             </p>
           </div>
         </div>
       </section>
 
+      {/* Overview Cards */}
       <section className="py-20 sm:py-24">
         <div className="container mx-auto max-w-300 px-4">
           <div className="grid gap-6 lg:grid-cols-2">
@@ -106,23 +118,23 @@ export default async function AboutPage() {
                   <Building2 className="size-6" aria-hidden />
                 </span>
                 <CardDescription className="pt-7 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                  Real estate foundation
+                  Comprehensive Offerings
                 </CardDescription>
                 <CardTitle className="font-heading text-3xl leading-tight">
-                  Helping people find, list, and understand property opportunities.
+                  We offer A-Z services for personal and business needs.
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-7 md:px-10">
                 <p className="leading-7 text-muted-foreground">
-                  The platform supports buyers, tenants, owners, agents, and administrators
-                  with property discovery, listing details, direct enquiries, and account
-                  tools that keep activity organised.
+                  Spanning personal loans, home loans, business loans, real estate, and a growing
+                  network of professional services, and beyond. We connect genuine customers with
+                  trusted businesses while helping partners grow.
                 </p>
               </CardContent>
               <CardFooter className="p-7 pt-3 md:p-10 md:pt-4">
                 <Button variant="outline" asChild>
-                  <Link href="/browse">
-                    Browse properties
+                  <Link href="/#services">
+                    Browse services
                     <ArrowRight data-icon="inline-end" aria-hidden />
                   </Link>
                 </Button>
@@ -132,26 +144,26 @@ export default async function AboutPage() {
             <Card className="overflow-hidden">
               <CardHeader className="p-7 md:p-10">
                 <span className="flex size-12 items-center justify-center rounded-xl bg-foreground text-background">
-                  <HandHelping className="size-6" aria-hidden />
+                  <Compass className="size-6" aria-hidden />
                 </span>
                 <CardDescription className="pt-7 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                  Expanding service network
+                  Our core focus
                 </CardDescription>
                 <CardTitle className="font-heading text-3xl leading-tight">
-                  Connecting customers with practical support beyond the transaction.
+                  Building trust, creating opportunities, and supporting customers.
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-7 md:px-10">
                 <p className="leading-7 text-muted-foreground">
-                  Moving, cleaning, repairs, event support, IT assistance, loans, general
-                  help, and job consultancy now sit alongside property—because those needs
-                  often form one continuous journey.
+                  Our focus is on delivering reliable customer support from inquiry to service
+                  completion, ensuring verification and long-term customer relationships so you
+                  can proceed with full confidence.
                 </p>
               </CardContent>
               <CardFooter className="p-7 pt-3 md:p-10 md:pt-4">
                 <Button asChild>
-                  <Link href="/#services">
-                    Explore services
+                  <Link href="/register-vendor">
+                    Join as partner
                     <ArrowRight data-icon="inline-end" aria-hidden />
                   </Link>
                 </Button>
@@ -161,89 +173,50 @@ export default async function AboutPage() {
         </div>
       </section>
 
+      {/* Vision & Direction Section */}
       <section className="border-y border-border bg-muted/25 py-20 sm:py-24">
-        <div className="container mx-auto grid max-w-[1200px] gap-12 px-4 lg:grid-cols-[0.75fr_1.25fr]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Our direction
-            </p>
-            <h2 className="mt-5 font-heading text-4xl font-bold tracking-tight text-foreground">
-              One platform, many important moments.
+        <div className="container mx-auto max-w-300 px-4">
+          <div className="mx-auto max-w-3xl text-center">
+            <Badge variant="outline" className="text-primary mb-4">
+              Our Vision
+            </Badge>
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl leading-tight">
+              To become India&apos;s most trusted business development and consultancy platform.
             </h2>
-            <p className="mt-5 leading-7 text-muted-foreground">
-              We are not trying to make every service look the same. We are creating a
-              consistent way to discover the right category, share a clear requirement,
-              and continue the conversation with the relevant people.
+            <p className="mt-6 text-base leading-7 text-muted-foreground sm:text-lg">
+              Where every customer confidently connects with verified, credible service providers
+              across financial and professional services.
             </p>
           </div>
+        </div>
+      </section>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {values.map(({ icon: Icon, title, description }) => (
-              <Card key={title}>
+      {/* Mission Section */}
+      <section className="py-20 sm:py-24">
+        <div className="container mx-auto max-w-[1200px] px-4">
+          <div className="mb-12 text-center">
+            <Badge variant="outline" className="text-primary mb-3">
+              Our Mission
+            </Badge>
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              The principles that guide our work
+            </h2>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 justify-center">
+            {missionItems.map(({ icon: Icon, title, description }) => (
+              <Card key={title} className="flex flex-col justify-between">
                 <CardHeader>
                   <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Icon className="size-5" aria-hidden />
                   </span>
                   <CardTitle className="pt-5 font-heading text-xl leading-tight">{title}</CardTitle>
-                  <CardDescription className="leading-6">{description}</CardDescription>
+                  <CardDescription className="leading-6 mt-2">{description}</CardDescription>
                 </CardHeader>
                 <CardContent />
                 <CardFooter />
               </Card>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 sm:py-24">
-        <div className="container mx-auto max-w-[1200px] px-4">
-          <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                Who the platform serves
-              </p>
-              <h2 className="mt-5 max-w-2xl font-heading text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-                Better outcomes need the right people on both sides.
-              </h2>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-                Customers need clarity and choice. Owners and agents need serious
-                enquiries. Vendors need relevant opportunities. {siteName} is designed to
-                support those roles without losing sight of accountability.
-              </p>
-            </div>
-            <div className="grid gap-3">
-              {[
-                { icon: Users, text: "Customers searching for property or services" },
-                { icon: Building2, text: "Owners and agents presenting property opportunities" },
-                { icon: Network, text: "Service vendors responding to relevant customer needs" },
-              ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="size-5" aria-hidden />
-                  </span>
-                  <p className="font-medium text-foreground">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container mx-auto max-w-[1200px] px-4">
-        <div className="rounded-[2rem] bg-primary p-8 text-primary-foreground sm:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
-            Move forward with us
-          </p>
-          <div className="mt-4 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <h2 className="max-w-3xl font-heading text-4xl font-bold tracking-tight md:text-5xl">
-              Start with a property. Continue with everything you need around it.
-            </h2>
-            <Button size="lg" variant="secondary" asChild className="shrink-0">
-              <Link href="/">
-                Explore {siteName}
-                <ArrowRight data-icon="inline-end" aria-hidden />
-              </Link>
-            </Button>
           </div>
         </div>
       </section>

@@ -48,7 +48,7 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs wrap-break-word">
-              Find property and request practical services for moving, home, work, finance, and everyday life.
+              A trusted business development and consultancy platform connecting customers with verified service providers across loans, real estate, and professional services.
             </p>
           </div>
 

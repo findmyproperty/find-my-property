@@ -25,6 +25,18 @@ export const settingsSchema = z.object({
   googleMapsKey: z.string().nullish(),
   twoFactorAuthEnforced: z.boolean(),
   vendorCommissionPercent: z.coerce.number().min(0).max(100).optional(),
+  landingReactionCount: z.coerce.number().int().min(0).max(12),
+  landingReactionIds: z.array(z.number().int()).default([]),
+  faqs: z
+    .array(
+      z.object({
+        id: z.string(),
+        question: z.string().min(1, "Question is required"),
+        answer: z.string().min(1, "Answer is required"),
+      })
+    )
+    .nullish()
+    .transform((val) => val ?? []),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

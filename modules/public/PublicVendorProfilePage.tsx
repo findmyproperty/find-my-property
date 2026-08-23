@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Briefcase, Clock, Loader2, MapPin, Star, UserRound } from "lucide-react";
+import { Briefcase, Clock, Loader2, MapPin, Star, UserRound, FileText, FileCheck2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import type { PublicVendorProfile } from "@/schema/vendor";
@@ -170,20 +170,30 @@ export default function PublicVendorProfilePage({ idOrSlug }: Props) {
 
         {profile.certificateUrls?.length ? (
           <div>
-            <h2 className="font-semibold">Certifications</h2>
-            <ul className="mt-2 space-y-1">
-              {profile.certificateUrls.map((url) => (
-                <li key={url}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline"
-                  >
-                    View certificate
-                  </a>
-                </li>
-              ))}
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-primary" />
+              Work Documents & Portfolio
+            </h2>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {profile.certificateUrls.map((url, i) => {
+                const fileName = url.split("/").pop()?.split("?")[0] || `Document ${i + 1}`
+                return (
+                  <li key={url}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 rounded-lg border border-border bg-card p-3 text-sm text-foreground hover:border-primary hover:text-primary transition-all"
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate flex-1 font-medium">
+                        {fileName}
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75" />
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ) : null}

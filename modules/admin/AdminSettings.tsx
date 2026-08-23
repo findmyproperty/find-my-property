@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Globe,
@@ -11,78 +13,146 @@ import {
   Loader2,
   RotateCcw,
   Check,
+  Star,
+  ExternalLink,
+  Building2,
+  User2,
+  HelpCircle,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAdminSettings } from "@/hooks/use-admin-settings";
-import type { Settings } from "@/lib/api";
+import { api, type Settings } from "@/lib/api";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-/** Defaults for a brand-new draft. Keeps the form predictable before the
- * server response lands (avoids uncontrolled → controlled warnings). Fields
- * the UI no longer edits (theme, marketplace toggles, API keys, 2FA) stay on
- * the server — they're simply omitted from the draft so PATCH round-trips
- * don't clobber persisted values. */
-const EMPTY_DRAFT: Partial<Settings> = {
+/** Fields tracked by the form. Read-only server fields (id, updatedAt, theme,
+ * API keys, 2FA toggles) are intentionally excluded so PATCH never clobbers
+ * them. */
+type SettingsFormValues = Pick<
+  Settings,
+  | "siteName"
+  | "supportEmail"
+  | "supportPhone"
+  | "vendorCommissionPercent"
+  | "primaryLogoUrl"
+  | "faviconUrl"
+  | "landingReactionIds"
+  | "faqs"
+>;
+
+const FORM_DEFAULTS: SettingsFormValues = {
   siteName: "",
   supportEmail: "",
   supportPhone: "",
+  vendorCommissionPercent: 10,
   primaryLogoUrl: null,
   faviconUrl: null,
+  landingReactionIds: [],
+  faqs: [],
 };
-
-/** Shallow equality over the keys we track in the draft. Cheaper than a deep
- * diff and sufficient since every settings field is a primitive. */
-function isDirty(draft: Partial<Settings>, server: Settings | undefined): boolean {
-  if (!server) return false;
-  return (Object.keys(draft) as Array<keyof Settings>).some((k) => {
-    const a = draft[k] ?? null;
-    const b = (server[k] as unknown) ?? null;
-    return a !== b;
-  });
-}
 
 const AdminSettings = () => {
   const { data: settings, isLoading, updateSettings, isUpdating } =
     useAdminSettings();
-  const [draft, setDraft] = useState<Partial<Settings>>(EMPTY_DRAFT);
+  const { data: reactions = [], isLoading: reactionsLoading } = useQuery({
+    queryKey: ["admin-customer-reactions"],
+    queryFn: api.adminListCustomerReactions,
+  });
 
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { isDirty },
+  } = useForm<SettingsFormValues>({ defaultValues: FORM_DEFAULTS });
+
+  const {
+    fields: faqFields,
+    append: appendFaq,
+    remove: removeFaq,
+    move: moveFaq,
+  } = useFieldArray({
+    control,
+    name: "faqs",
+  });
+
+  // Once server data lands, reset the form so RHF's baseline matches the
+  // persisted values — this is what makes isDirty accurate.
   useEffect(() => {
-    if (settings) setDraft(settings);
-  }, [settings]);
+    if (settings) {
+      reset({
+        siteName: settings.siteName ?? "",
+        supportEmail: settings.supportEmail ?? "",
+        supportPhone: settings.supportPhone ?? "",
+        vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
+        primaryLogoUrl: settings.primaryLogoUrl ?? null,
+        faviconUrl: settings.faviconUrl ?? null,
+        landingReactionIds: settings.landingReactionIds ?? [],
+        faqs: settings.faqs ?? [],
+      });
+    }
+  }, [settings, reset]);
 
-  const dirty = useMemo(() => isDirty(draft, settings), [draft, settings]);
+  const landingReactionIds = watch("landingReactionIds") ?? [];
 
-  const setField = <K extends keyof Settings>(key: K, value: Settings[K]) =>
-    setDraft((prev) => ({ ...prev, [key]: value }));
-
-  const handleSave = async () => {
-    // The GET /settings response includes server-managed fields (`id`,
-    // `updatedAt`) that the PATCH DTO rejects via `forbidNonWhitelisted`.
-    // Strip them — and any future read-only fields — before sending, then
-    // normalize empty strings on optional text fields to null so "clear"
-    // semantics round-trip cleanly through save/reload.
-    const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      id: _id,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      updatedAt: _updatedAt,
-      ...writable
-    } = draft as Partial<Settings> & { id?: unknown; updatedAt?: unknown };
-
+  const onSubmit = handleSubmit(async (values) => {
+    // settingsUpdateSchema is settingsSchema.partial() — every field is optional
+    // but still validated when present. Empty strings on required fields (siteName,
+    // supportEmail) would fail min(1)/email() checks, so strip them to undefined
+    // so Zod treats them as "not sent" rather than "invalid".
     const payload: Partial<Settings> = {
-      ...writable,
-      supportPhone: writable.supportPhone?.trim() || null,
-      primaryLogoUrl: writable.primaryLogoUrl || null,
-      faviconUrl: writable.faviconUrl || null,
+      siteName:                values.siteName?.trim()         || undefined,
+      supportEmail:            values.supportEmail?.trim()     || undefined,
+      supportPhone:            values.supportPhone?.trim()     || null,
+      vendorCommissionPercent: values.vendorCommissionPercent,
+      primaryLogoUrl:          values.primaryLogoUrl           || null,
+      faviconUrl:              values.faviconUrl               || null,
+      landingReactionIds:      values.landingReactionIds,
+      faqs:                    values.faqs,
     };
     await updateSettings(payload);
-  };
+    // Reset the RHF baseline to the saved values so isDirty → false.
+    reset(values);
+  });
 
-  const handleReset = () => {
-    if (settings) setDraft(settings);
+  const handleDiscard = () => {
+    if (settings) {
+      reset({
+        siteName: settings.siteName ?? "",
+        supportEmail: settings.supportEmail ?? "",
+        supportPhone: settings.supportPhone ?? "",
+        vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
+        primaryLogoUrl: settings.primaryLogoUrl ?? null,
+        faviconUrl: settings.faviconUrl ?? null,
+        landingReactionIds: settings.landingReactionIds ?? [],
+        faqs: settings.faqs ?? [],
+      });
+    }
   };
 
   if (isLoading) {
@@ -95,7 +165,10 @@ const AdminSettings = () => {
   }
 
   return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
+    <form
+      onSubmit={onSubmit}
+      className="min-w-0 space-y-6 overflow-x-hidden"
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
@@ -106,7 +179,7 @@ const AdminSettings = () => {
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-          {dirty ? (
+          {isDirty ? (
             <motion.span
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
@@ -116,17 +189,18 @@ const AdminSettings = () => {
             </motion.span>
           ) : null}
           <Button
+            type="button"
             variant="outline"
-            onClick={handleReset}
-            disabled={!dirty || isUpdating}
+            onClick={handleDiscard}
+            disabled={!isDirty || isUpdating}
             className="w-full gap-2 sm:w-auto"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Discard
           </Button>
           <Button
-            onClick={handleSave}
-            disabled={!dirty || isUpdating}
+            type="submit"
+            disabled={!isDirty || isUpdating}
             className="w-full gap-2 sm:w-auto"
           >
             {isUpdating ? (
@@ -147,6 +221,9 @@ const AdminSettings = () => {
           <TabsTrigger value="branding" className="shrink-0 gap-2">
             <Palette className="h-4 w-4" /> Branding
           </TabsTrigger>
+          <TabsTrigger value="faqs" className="shrink-0 gap-2">
+            <HelpCircle className="h-4 w-4" /> FAQs
+          </TabsTrigger>
         </TabsList>
 
         {/* -------------------- General -------------------- */}
@@ -160,10 +237,12 @@ const AdminSettings = () => {
               <Field label="Site name" htmlFor="site-name" required>
                 <Input
                   id="site-name"
-                  value={draft.siteName ?? ""}
-                  onChange={(e) => setField("siteName", e.target.value)}
                   placeholder="Find My Property"
                   maxLength={255}
+                  {...register("siteName", {
+                    required: "Site name is required",
+                    minLength: { value: 1, message: "Site name is required" },
+                  })}
                 />
               </Field>
 
@@ -176,10 +255,15 @@ const AdminSettings = () => {
                 <Input
                   id="support-email"
                   type="email"
-                  value={draft.supportEmail ?? ""}
-                  onChange={(e) => setField("supportEmail", e.target.value)}
                   placeholder="support@yourbrand.com"
                   autoComplete="email"
+                  {...register("supportEmail", {
+                    required: "Support email is required",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Enter a valid email address",
+                    },
+                  })}
                 />
               </Field>
 
@@ -193,10 +277,9 @@ const AdminSettings = () => {
                   id="support-phone"
                   type="tel"
                   inputMode="tel"
-                  value={draft.supportPhone ?? ""}
-                  onChange={(e) => setField("supportPhone", e.target.value)}
                   placeholder="+91 98765 43210"
                   autoComplete="tel"
+                  {...register("supportPhone")}
                 />
               </Field>
 
@@ -211,15 +294,221 @@ const AdminSettings = () => {
                   min={0}
                   max={100}
                   step={0.5}
-                  value={draft.vendorCommissionPercent ?? settings?.vendorCommissionPercent ?? 10}
-                  onChange={(e) =>
-                    setField("vendorCommissionPercent", Number(e.target.value))
-                  }
+                  {...register("vendorCommissionPercent", { valueAsNumber: true })}
                 />
               </Field>
+
             </div>
           </SectionCard>
+
+          <SectionCard
+            icon={<Star className="h-4 w-4 text-primary" />}
+            title="Customer reactions"
+            subtitle="Select completed service reviews to feature on the landing page. Chosen reviews appear ordered 5 → 1 star."
+          >
+            {/* Action bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground">
+                  {landingReactionIds.length} selected
+                </span>
+                {landingReactionIds.length > 0 && (
+                  <Badge variant="secondary">
+                    showing on landing page
+                  </Badge>
+                )}
+              </div>
+              <Button
+                type="submit"
+                disabled={!isDirty || isUpdating}
+                className="shrink-0 gap-2"
+              >
+                {isUpdating ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <Check data-icon="inline-start" />
+                )}
+                Save selection
+              </Button>
+            </div>
+
+            {/* Table */}
+            {reactionsLoading ? (
+              <div className="overflow-hidden rounded-xl border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">Show</TableHead>
+                      <TableHead className="w-16">ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead className="w-24">Rating</TableHead>
+                      <TableHead>Feedback</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="size-4 rounded" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : reactions.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center">
+                <Star className="size-8 text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">No customer ratings yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Completed service requests with ratings will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">Show</TableHead>
+                      <TableHead className="w-16">ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead className="w-24">Rating</TableHead>
+                      <TableHead>Feedback</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reactions.map((reaction) => {
+                      const selected = landingReactionIds.includes(reaction.id);
+                      return (
+                        <TableRow
+                          key={reaction.id}
+                          data-state={selected ? "selected" : undefined}
+                          className="group"
+                        >
+                          {/* Checkbox — controlled via RHF Controller */}
+                          <TableCell>
+                            <Controller
+                              control={control}
+                              name="landingReactionIds"
+                              render={({ field }) => (
+                                <Checkbox
+                                  checked={field.value.includes(reaction.id)}
+                                  aria-label={`Show ${reaction.fullName ?? reaction.name}'s reaction on landing page`}
+                                  onCheckedChange={(checked) => {
+                                    const next = checked
+                                      ? [...new Set([...field.value, reaction.id])]
+                                      : field.value.filter((id) => id !== reaction.id);
+                                    field.onChange(next);
+                                  }}
+                                />
+                              )}
+                            />
+                          </TableCell>
+
+                          {/* Service Request ID */}
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            #{reaction.id}
+                          </TableCell>
+
+                          {/* Service type badge */}
+                          <TableCell>
+                            <ServiceTypeBadge type={reaction.serviceType} label={reaction.service} />
+                          </TableCell>
+
+                          {/* Vendor */}
+                          <TableCell>
+                            {reaction.vendorId ? (
+                              <a
+                                href={`/vendor/${reaction.vendorId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
+                              >
+                                <Building2 className="size-3.5 shrink-0 text-muted-foreground group-hover/link:text-primary" />
+                                <span className="truncate max-w-[140px]">
+                                  {reaction.vendorName ?? "Unnamed vendor"}
+                                </span>
+                                <ExternalLink className="size-3 shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <Building2 className="size-3.5 shrink-0" />
+                                Unassigned
+                              </span>
+                            )}
+                          </TableCell>
+
+                          {/* Customer full name */}
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+                              <User2 className="size-3.5 shrink-0 text-muted-foreground" />
+                              {reaction.fullName ?? reaction.name}
+                            </span>
+                          </TableCell>
+
+                          {/* Star rating */}
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1 tabular-nums">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`size-3.5 ${
+                                    i < reaction.rating
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "fill-muted text-muted"
+                                  }`}
+                                  aria-hidden
+                                />
+                              ))}
+                              <span className="ml-1 text-xs text-muted-foreground">
+                                {reaction.rating}/5
+                              </span>
+                            </span>
+                          </TableCell>
+
+                          {/* Feedback with tooltip for long text */}
+                          <TableCell className="max-w-xs">
+                            {reaction.feedback ? (
+                              reaction.feedback.length > 80 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block truncate text-sm text-muted-foreground cursor-default">
+                                      {reaction.feedback}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-xs">
+                                    {reaction.feedback}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  {reaction.feedback}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs italic text-muted-foreground/60">
+                                No written feedback
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </SectionCard>
         </TabsContent>
+
 
         {/* -------------------- Branding -------------------- */}
         <TabsContent value="branding" className="space-y-6">
@@ -229,30 +518,148 @@ const AdminSettings = () => {
             subtitle="Upload your brand marks via Cloudinary. Save changes to apply across the site."
           >
             <div className="grid min-w-0 gap-6 md:grid-cols-2">
-              <ImageUploadField
-                label="Primary logo"
-                description="SVG or PNG, recommended ≤ 1 MB."
-                value={draft.primaryLogoUrl}
-                onChange={(url) => setField("primaryLogoUrl", url)}
-                accept="image/svg+xml,image/png,image/jpeg,image/webp"
-                aspect="wide"
-                maxSizeMb={5}
+              <Controller
+                control={control}
+                name="primaryLogoUrl"
+                render={({ field }) => (
+                  <ImageUploadField
+                    label="Primary logo"
+                    description="SVG or PNG, recommended ≤ 1 MB."
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                    aspect="wide"
+                    maxSizeMb={5}
+                  />
+                )}
               />
-              <ImageUploadField
-                label="Favicon"
-                description="Square 32×32 or 64×64, ICO / PNG / SVG."
-                value={draft.faviconUrl}
-                onChange={(url) => setField("faviconUrl", url)}
-                accept="image/x-icon,image/png,image/svg+xml"
-                aspect="square"
-                maxSizeMb={1}
+              <Controller
+                control={control}
+                name="faviconUrl"
+                render={({ field }) => (
+                  <ImageUploadField
+                    label="Favicon"
+                    description="Square 32×32 or 64×64, ICO / PNG / SVG."
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept="image/x-icon,image/png,image/svg+xml"
+                    aspect="square"
+                    maxSizeMb={1}
+                  />
+                )}
               />
             </div>
           </SectionCard>
 
         </TabsContent>
+
+        {/* -------------------- FAQs -------------------- */}
+        <TabsContent value="faqs" className="space-y-6">
+          <SectionCard
+            icon={<HelpCircle className="h-4 w-4 text-primary" />}
+            title="Frequently Asked Questions"
+            subtitle="Add, edit, reorder, or delete custom FAQs displayed on the landing page."
+          >
+            <div className="flex flex-col gap-4">
+              {faqFields.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center">
+                  <HelpCircle className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm font-medium text-muted-foreground">No custom FAQs defined</p>
+                  <p className="text-xs text-muted-foreground">
+                    The public landing page will display the default handbook questions.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {faqFields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="flex items-start gap-4 rounded-xl border border-border bg-muted/20 p-4"
+                    >
+                      {/* Reordering Controls */}
+                      <div className="flex flex-col gap-1 shrink-0 pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          disabled={index === 0}
+                          onClick={() => moveFaq(index, index - 1)}
+                        >
+                          <ArrowUp className="size-4" />
+                          <span className="sr-only">Move up</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          disabled={index === faqFields.length - 1}
+                          onClick={() => moveFaq(index, index + 1)}
+                        >
+                          <ArrowDown className="size-4" />
+                          <span className="sr-only">Move down</span>
+                        </Button>
+                      </div>
+
+                      {/* Question & Answer Inputs */}
+                      <div className="grid flex-1 gap-3">
+                        <div>
+                          <Label htmlFor={`faq-q-${index}`} className="text-xs font-semibold text-muted-foreground">
+                            Question #{index + 1}
+                          </Label>
+                          <Input
+                            id={`faq-q-${index}`}
+                            placeholder="Enter FAQ Question"
+                            className="mt-1"
+                            {...register(`faqs.${index}.question` as const, { required: "Question is required" })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`faq-a-${index}`} className="text-xs font-semibold text-muted-foreground">
+                            Answer #{index + 1}
+                          </Label>
+                          <Textarea
+                            id={`faq-a-${index}`}
+                            placeholder="Enter FAQ Answer"
+                            rows={3}
+                            className="mt-1 resize-y"
+                            {...register(`faqs.${index}.answer` as const, { required: "Answer is required" })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Delete Action */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10 shrink-0 mt-2"
+                        onClick={() => removeFaq(index)}
+                      >
+                        <Trash2 className="size-4" />
+                        <span className="sr-only">Delete FAQ</span>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add FAQ trigger */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 border-dashed border-primary/40 hover:border-primary"
+                onClick={() => appendFaq({ id: `faq-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, question: "", answer: "" })}
+              >
+                <Plus className="size-4" />
+                Add FAQ Item
+              </Button>
+            </div>
+          </SectionCard>
+        </TabsContent>
       </Tabs>
-    </div>
+    </form>
   );
 };
 
@@ -317,6 +724,30 @@ function Field({
       {children}
       {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
+  );
+}
+
+const SERVICE_TYPE_META: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+  packers_movers:    { label: "Packers & Movers",    variant: "default"    },
+  painting_cleaning: { label: "Painting & Cleaning", variant: "secondary"  },
+  home_services:     { label: "Home Services",        variant: "secondary"  },
+  event_management:  { label: "Event Management",     variant: "outline"    },
+  it:                { label: "IT Services",           variant: "outline"    },
+  general:           { label: "General Services",     variant: "outline"    },
+};
+
+function ServiceTypeBadge({
+  type,
+  label,
+}: {
+  type?: string;
+  label: string;
+}) {
+  const meta = type ? SERVICE_TYPE_META[type] : undefined;
+  return (
+    <Badge variant={meta?.variant ?? "outline"} className="whitespace-nowrap text-xs">
+      {meta?.label ?? label}
+    </Badge>
   );
 }
 

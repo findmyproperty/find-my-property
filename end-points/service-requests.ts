@@ -181,6 +181,25 @@ export interface ServiceRequestFeedbackInput {
   feedback?: string;
 }
 
+export interface CustomerReactionDTO {
+  id: number;
+  /** First name only — returned by both public and admin endpoints. */
+  name: string;
+  /** Full customer name — only present in admin responses. */
+  fullName?: string;
+  /** Human-readable service label. */
+  service: string;
+  /** Raw service type enum value e.g. "packers_movers" — admin only. */
+  serviceType?: string;
+  /** vendor_profiles.id — admin only, null if unassigned. */
+  vendorId?: number | null;
+  /** Vendor business name — admin only, null if unassigned. */
+  vendorName?: string | null;
+  rating: number;
+  feedback: string | null;
+  reviewedAt: string;
+}
+
 interface StoredServiceRequestFeedback {
   rating: number;
   feedback: string | null;
@@ -345,6 +364,13 @@ function buildQuery(q: AdminListServiceRequestsQuery): string {
 }
 
 export const serviceRequests = {
+  async getCustomerReactions(): Promise<CustomerReactionDTO[]> {
+    const rows = await request<CustomerReactionDTO[]>('/service-requests/reactions', {
+      method: 'GET',
+    });
+    return Array.isArray(rows) ? rows : [];
+  },
+
   async submitPackersMovers(input: PackersMoversInput): Promise<ServiceRequestDTO> {
     return request<ServiceRequestDTO>("/service-requests/packers-movers", {
       method: "POST",
@@ -470,6 +496,14 @@ export const serviceRequests = {
       `/admin/service-requests${buildQuery(query)}`,
       { method: "GET", token: getStoredToken() },
     );
+  },
+
+  async adminListCustomerReactions(): Promise<CustomerReactionDTO[]> {
+    const rows = await request<CustomerReactionDTO[]>('/admin/service-requests/reactions', {
+      method: 'GET',
+      token: getStoredToken(),
+    });
+    return Array.isArray(rows) ? rows : [];
   },
 
   async adminGetServiceRequest(id: number): Promise<ServiceRequestDTO> {
