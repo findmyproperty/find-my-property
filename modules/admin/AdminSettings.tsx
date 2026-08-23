@@ -433,7 +433,7 @@ const AdminSettings = () => {
                                 className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
                               >
                                 <Building2 className="size-3.5 shrink-0 text-muted-foreground group-hover/link:text-primary" />
-                                <span className="truncate max-w-[140px]">
+                                <span className="truncate max-w-35">
                                   {reaction.vendorName ?? "Unnamed vendor"}
                                 </span>
                                 <ExternalLink className="size-3 shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity" />
