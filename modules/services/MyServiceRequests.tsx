@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isValid, parseISO, startOfDay } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -38,12 +38,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
 import { useAuth } from "@/contexts/auth-context";
 import { useMyServiceRequests } from "@/hooks/use-service-requests";
 import { useSupportTelContact } from "@/hooks/use-support-tel-contact";
 import { useToast } from "@/hooks/use-toast";
+import {
+  paginateItems,
+  useAdminListControls,
+} from "@/hooks/use-admin-list-controls";
+import { SERVICE_REQUEST_STATUS_OPTIONS } from "@/lib/admin/status-config";
 import { cn } from "@/lib/utils";
 import {
   api,
@@ -62,6 +78,8 @@ import {
 
 const FEEDBACK_SKIP_KEY = "fmp:v1:service-feedback-skipped";
 const RATING_VALUES = [1, 2, 3, 4, 5] as const;
+const PAGE_SIZE = 8;
+const ALL_FILTER = "all";
 
 function formatDuration(min: number): string {
   if (!Number.isFinite(min) || min <= 0) return "-";
@@ -295,6 +313,54 @@ function shouldAskForFeedback(
   return !wasFeedbackSkipped(userId, request.id);
 }
 
+function requestSearchText(request: ServiceRequestDTO): string {
+  const meta = SERVICE_META[request.serviceType];
+  return [
+    String(request.id),
+    meta?.label,
+    request.serviceType,
+    request.status,
+    STATUS_META[request.status]?.label,
+    request.city,
+    request.phone,
+    request.addressLine,
+    request.preferredDate,
+    ...detailSummary(request),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function parseRequestDay(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const iso = parseISO(value.length <= 10 ? `${value}T00:00:00` : value);
+  if (isValid(iso)) return startOfDay(iso);
+  const fallback = new Date(value);
+  return isValid(fallback) ? startOfDay(fallback) : null;
+}
+
+function matchesDateRange(
+  request: ServiceRequestDTO,
+  from: string,
+  to: string,
+): boolean {
+  if (!from && !to) return true;
+  const day =
+    parseRequestDay(request.preferredDate) ??
+    parseRequestDay(request.createdAt);
+  if (!day) return false;
+  if (from) {
+    const fromDay = parseRequestDay(from);
+    if (fromDay && day < fromDay) return false;
+  }
+  if (to) {
+    const toDay = parseRequestDay(to);
+    if (toDay && day > toDay) return false;
+  }
+  return true;
+}
+
 function normalizeTimelineItems(
   items: ServiceRequestTimelineItem[] | null | undefined,
 ): TimelineViewItem[] {
@@ -392,12 +458,87 @@ export default function MyServiceRequests() {
   const [feedbackStartId, setFeedbackStartId] = useState<number | null>(null);
   const [autoPrompted, setAutoPrompted] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState(ALL_FILTER);
+  const [serviceFilter, setServiceFilter] = useState(ALL_FILTER);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const {
+    page,
+    setPage,
+    search,
+    setSearch,
+    debouncedSearch,
+    filterSheetOpen,
+    setFilterSheetOpen,
+  } = useAdminListControls<"createdAt">({
+    defaultSort: { key: "createdAt", dir: "desc" },
+    pageSize: PAGE_SIZE,
+    resetPageDeps: [statusFilter, serviceFilter, dateFrom, dateTo],
+  });
+
+  const allRequests = data ?? [];
+
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<string, number>> = {};
+    for (const request of allRequests) {
+      counts[request.status] = (counts[request.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [allRequests]);
+
+  const filteredRequests = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return allRequests.filter((request) => {
+      if (statusFilter !== ALL_FILTER && request.status !== statusFilter) {
+        return false;
+      }
+      if (
+        serviceFilter !== ALL_FILTER &&
+        request.serviceType !== serviceFilter
+      ) {
+        return false;
+      }
+      if (!matchesDateRange(request, dateFrom, dateTo)) return false;
+      if (q && !requestSearchText(request).includes(q)) return false;
+      return true;
+    });
+  }, [
+    allRequests,
+    statusFilter,
+    serviceFilter,
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+  ]);
+
+  const paged = useMemo(
+    () => paginateItems(filteredRequests, page, PAGE_SIZE),
+    [filteredRequests, page],
+  );
+
+  const hasActiveFilters =
+    statusFilter !== ALL_FILTER ||
+    serviceFilter !== ALL_FILTER ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo) ||
+    Boolean(search.trim());
+
+  const clearFilters = () => {
+    setStatusFilter(ALL_FILTER);
+    setServiceFilter(ALL_FILTER);
+    setDateFrom("");
+    setDateTo("");
+    setSearch("");
+    setPage(1);
+  };
+
   const pendingFeedbackRequests = useMemo(() => {
-    if (!data?.length) return [];
-    return data.filter((request) =>
+    if (!allRequests.length) return [];
+    return allRequests.filter((request) =>
       shouldAskForFeedback(request, user?.id, skippedRequestIds),
     );
-  }, [data, skippedRequestIds, user?.id]);
+  }, [allRequests, skippedRequestIds, user?.id]);
 
   useEffect(() => {
     if (pendingFeedbackRequests.length === 0) {
@@ -570,15 +711,135 @@ export default function MyServiceRequests() {
       ) : null}
 
       {!isLoading && !isError && data && data.length > 0 ? (
-        <div className="grid gap-3">
-          {data.map((request, i) => (
-            <ServiceRequestCard
-              key={request.id}
-              request={request}
-              index={i}
-              onRate={() => handleRateClick(request)}
-            />
-          ))}
+        <div className="space-y-4">
+          <AdminToolbar
+            statusFilter={{
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: SERVICE_REQUEST_STATUS_OPTIONS,
+              counts: statusCounts,
+              totalCount: allRequests.length,
+              label: "Status",
+            }}
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: "Search by ID, service, city, phone…",
+            }}
+            filterSheet={{
+              open: filterSheetOpen,
+              onOpenChange: setFilterSheetOpen,
+              title: "Filter requests",
+              description: "Narrow by service type and date range.",
+              hasActiveFilters:
+                serviceFilter !== ALL_FILTER ||
+                Boolean(dateFrom) ||
+                Boolean(dateTo),
+              onClear: () => {
+                setServiceFilter(ALL_FILTER);
+                setDateFrom("");
+                setDateTo("");
+              },
+              children: (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="my-req-service">Service type</Label>
+                    <Select
+                      value={serviceFilter}
+                      onValueChange={setServiceFilter}
+                    >
+                      <SelectTrigger id="my-req-service">
+                        <SelectValue placeholder="All services" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER}>All services</SelectItem>
+                        {(
+                          Object.entries(SERVICE_META) as Array<
+                            [ServiceType, (typeof SERVICE_META)[ServiceType]]
+                          >
+                        ).map(([value, meta]) => (
+                          <SelectItem key={value} value={value}>
+                            {meta.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>From date</Label>
+                      <DatePicker
+                        value={dateFrom}
+                        onValueChange={setDateFrom}
+                        placeholder="Start date"
+                        maxDate={dateTo ? parseRequestDay(dateTo) ?? undefined : undefined}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>To date</Label>
+                      <DatePicker
+                        value={dateTo}
+                        onValueChange={setDateTo}
+                        placeholder="End date"
+                        minDate={dateFrom ? parseRequestDay(dateFrom) ?? undefined : undefined}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Date filter uses preferred service date when available,
+                    otherwise the request created date.
+                  </p>
+                </div>
+              ),
+            }}
+          />
+
+          {filteredRequests.length === 0 ? (
+            <div className="rounded-lg border border-dashed py-16 text-center text-muted-foreground">
+              <p className="font-medium text-foreground">
+                No requests match your filters
+              </p>
+              <p className="mt-1 text-sm">
+                Try another status, clear the date range, or search with a different term.
+              </p>
+              {hasActiveFilters ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={clearFilters}
+                >
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Showing {paged.items.length} of {paged.total} request
+                {paged.total === 1 ? "" : "s"}
+                {hasActiveFilters ? " (filtered)" : ""}
+              </p>
+              <div className="grid gap-3">
+                {paged.items.map((request, i) => (
+                  <ServiceRequestCard
+                    key={request.id}
+                    request={request}
+                    index={i}
+                    onRate={() => handleRateClick(request)}
+                  />
+                ))}
+              </div>
+              <AdminPagination
+                page={paged.page}
+                totalPages={paged.totalPages}
+                total={paged.total}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+              />
+            </>
+          )}
         </div>
       ) : null}
 

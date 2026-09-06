@@ -50,6 +50,10 @@ interface AuthContextType {
     code: string,
     name?: string,
     role?: UserRole,
+    vendorSignup?: {
+      businessName?: string;
+      categoryIds?: number[];
+    },
   ) => Promise<AuthResult>;
   refreshUser: () => Promise<void>;
   updateProfile: (payload: {
@@ -149,9 +153,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     code: string,
     name?: string,
     role?: UserRole,
+    vendorSignup?: {
+      businessName?: string;
+      categoryIds?: number[];
+    },
   ): Promise<AuthResult> => {
     try {
-      const result = await api.verifyPhoneOtp({ phone, code, name, role });
+      const result = await api.verifyPhoneOtp({
+        phone,
+        code,
+        name,
+        role,
+        businessName: vendorSignup?.businessName,
+        categoryIds: vendorSignup?.categoryIds,
+      });
       persistSession(result.user, result.accessToken);
       return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
     } catch (error) {

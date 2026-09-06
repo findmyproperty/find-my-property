@@ -23,7 +23,6 @@ import {
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
-import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
@@ -80,6 +79,10 @@ export default function RegisterVendorPanel() {
       toast({ title: "Name and business name required", variant: "destructive" });
       return;
     }
+    if (selectedCategoryIds.length === 0) {
+      toast({ title: "Select at least one category", variant: "destructive" });
+      return;
+    }
     const formattedPhone = normalizePhone(phone);
     if (!formattedPhone) {
       toast({ title: "Valid phone required", variant: "destructive" });
@@ -98,20 +101,25 @@ export default function RegisterVendorPanel() {
 
   const handleVerify = async () => {
     const formattedPhone = normalizePhone(phone);
+    if (selectedCategoryIds.length === 0) {
+      toast({ title: "Select at least one category", variant: "destructive" });
+      return;
+    }
     setVerifying(true);
-    const result = await loginWithPhone(formattedPhone, otp.trim(), name.trim(), "vendor");
+    const result = await loginWithPhone(
+      formattedPhone,
+      otp.trim(),
+      name.trim(),
+      "vendor",
+      {
+        businessName: businessName.trim(),
+        categoryIds: selectedCategoryIds,
+      },
+    );
     setVerifying(false);
     if (!result.success) {
       toast({ title: "Verification failed", description: result.error, variant: "destructive" });
       return;
-    }
-    try {
-      await api.vendors.updateProfile({
-        businessName: businessName.trim(),
-        categoryIds: selectedCategoryIds,
-      });
-    } catch {
-      /* may run after onboarding if token not ready */
     }
     const from = parseSafeReturnPath(searchParams.get("from") ?? "");
     if (result.requiresOnboarding) {

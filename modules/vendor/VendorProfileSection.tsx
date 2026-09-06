@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import {
   AlertCircle,
@@ -435,6 +435,21 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
   const [certificateUrls, setCertificateUrls] = useState<string[]>(
     () => profile?.certificateUrls ?? [],
   )
+
+  // Keep form in sync when profile loads/refetches (e.g. after signup).
+  useEffect(() => {
+    if (!profile) return
+    setBusinessName(profile.businessName ?? "")
+    setSelectedCategoryIds(
+      profile.categories ? profile.categories.map((c: any) => c.id) : [],
+    )
+    setAbout(profile.about ?? "")
+    setExperience(profile.experience ?? "")
+    setWorkingHours(profile.workingHours ?? "")
+    setServiceLocations(profile.serviceLocations ?? [])
+    setPublicPhotoUrls(profile.publicPhotoUrls ?? [])
+    setCertificateUrls(profile.certificateUrls ?? [])
+  }, [profile])
 
   const publicLink =
     profile?.verificationStatus === "verified" && profile.userId

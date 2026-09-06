@@ -97,6 +97,8 @@ export const auth = {
     code: string;
     name?: string;
     role?: UserRole;
+    businessName?: string;
+    categoryIds?: number[];
   }) {
     const response = await request<AuthApiResponse>("/auth/phone-otp/verify", {
       method: "POST",
