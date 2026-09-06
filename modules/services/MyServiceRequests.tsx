@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { format, formatDistanceToNow } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   CalendarDays,
   CheckCircle2,
@@ -39,24 +41,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  useMyServiceRequests,
-  useSubmitServiceRequestFeedback,
-} from "@/hooks/use-service-requests";
+import { useMyServiceRequests } from "@/hooks/use-service-requests";
 import { useSupportTelContact } from "@/hooks/use-support-tel-contact";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type {
-  EventManagementDetails,
-  PackersMoversDetails,
-  PaintingCleaningDetails,
-  HomeServicesDetails,
-  ItServicesDetails,
-  GeneralServicesDetails,
-  ServiceRequestDTO,
-  ServiceRequestFeedbackInput,
-  ServiceRequestStatus,
-  ServiceRequestTimelineItem,
-  ServiceType,
+import {
+  api,
+  type EventManagementDetails,
+  type PackersMoversDetails,
+  type PaintingCleaningDetails,
+  type HomeServicesDetails,
+  type ItServicesDetails,
+  type GeneralServicesDetails,
+  type ServiceRequestDTO,
+  type ServiceRequestFeedbackInput,
+  type ServiceRequestStatus,
+  type ServiceRequestTimelineItem,
+  type ServiceType,
 } from "@/lib/api";
 
 const FEEDBACK_SKIP_KEY = "fmp:v1:service-feedback-skipped";
@@ -379,49 +380,108 @@ function buildServiceTimeline(request: ServiceRequestDTO): TimelineViewItem[] {
 
 export default function MyServiceRequests() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useMyServiceRequests();
-  const feedbackMutation = useSubmitServiceRequestFeedback();
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [skippedRequestIds, setSkippedRequestIds] = useState<Set<number>>(
     () => new Set(),
   );
-  const [manualFeedbackRequest, setManualFeedbackRequest] =
-    useState<ServiceRequestDTO | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackQueue, setFeedbackQueue] = useState<ServiceRequestDTO[]>([]);
+  const [feedbackStartId, setFeedbackStartId] = useState<number | null>(null);
+  const [autoPrompted, setAutoPrompted] = useState(false);
 
-  const feedbackCandidate = useMemo(() => {
-    if (!data?.length) return null;
-    return (
-      data.find((request) =>
-        shouldAskForFeedback(request, user?.id, skippedRequestIds),
-      ) ?? null
+  const pendingFeedbackRequests = useMemo(() => {
+    if (!data?.length) return [];
+    return data.filter((request) =>
+      shouldAskForFeedback(request, user?.id, skippedRequestIds),
     );
   }, [data, skippedRequestIds, user?.id]);
 
-  const activeFeedbackRequest = manualFeedbackRequest ?? feedbackCandidate;
+  useEffect(() => {
+    if (pendingFeedbackRequests.length === 0) {
+      setAutoPrompted(false);
+      return;
+    }
+    if (autoPrompted || feedbackOpen) return;
+    setFeedbackQueue(pendingFeedbackRequests);
+    setFeedbackStartId(pendingFeedbackRequests[0]?.id ?? null);
+    setFeedbackOpen(true);
+    setAutoPrompted(true);
+  }, [pendingFeedbackRequests, autoPrompted, feedbackOpen]);
 
-  const closeFeedbackPrompt = () => {
-    if (!activeFeedbackRequest) return;
-    rememberFeedbackSkip(user?.id, activeFeedbackRequest.id);
+  const markRequestHandled = (requestId: number) => {
+    rememberFeedbackSkip(user?.id, requestId);
     setSkippedRequestIds((current) => {
       const next = new Set(current);
-      next.add(activeFeedbackRequest.id);
+      next.add(requestId);
       return next;
     });
-    setManualFeedbackRequest(null);
   };
 
-  const submitFeedback = async (input: ServiceRequestFeedbackInput) => {
-    if (!activeFeedbackRequest) return;
-    await feedbackMutation.mutateAsync({
-      id: activeFeedbackRequest.id,
-      input,
-    });
-    rememberFeedbackSkip(user?.id, activeFeedbackRequest.id);
-    setSkippedRequestIds((current) => {
-      const next = new Set(current);
-      next.add(activeFeedbackRequest.id);
-      return next;
-    });
-    setManualFeedbackRequest(null);
+  const openFeedbackWizard = (
+    requests: ServiceRequestDTO[],
+    startId?: number,
+  ) => {
+    if (requests.length === 0) return;
+    setFeedbackQueue(requests);
+    setFeedbackStartId(startId ?? requests[0].id);
+    setFeedbackOpen(true);
+  };
+
+  const handleRateClick = (request: ServiceRequestDTO) => {
+    const pendingIds = new Set(pendingFeedbackRequests.map((item) => item.id));
+    const queue = pendingIds.has(request.id)
+      ? pendingFeedbackRequests
+      : [
+          request,
+          ...pendingFeedbackRequests.filter((item) => item.id !== request.id),
+        ];
+    openFeedbackWizard(queue, request.id);
+  };
+
+  const handleSkipRequest = (requestId: number) => {
+    markRequestHandled(requestId);
+  };
+
+  const handleSkipRemaining = (requestIds: number[]) => {
+    for (const id of requestIds) markRequestHandled(id);
+    setFeedbackOpen(false);
+    setFeedbackQueue([]);
+  };
+
+  const handleSubmitRatings = async (
+    entries: Array<{ id: number; input: ServiceRequestFeedbackInput }>,
+  ) => {
+    setIsSubmittingFeedback(true);
+    try {
+      for (const entry of entries) {
+        await api.submitServiceRequestFeedback(entry.id, entry.input);
+        markRequestHandled(entry.id);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["service-requests", "mine"],
+      });
+      toast({
+        title: "Thanks for your feedback",
+        description:
+          entries.length === 1
+            ? "Your rating has been added to this service request."
+            : `${entries.length} ratings saved.`,
+      });
+      setFeedbackOpen(false);
+      setFeedbackQueue([]);
+    } catch (error) {
+      toast({
+        title: "Could not save feedback",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
   };
 
   return (
@@ -516,19 +576,20 @@ export default function MyServiceRequests() {
               key={request.id}
               request={request}
               index={i}
-              onRate={() => setManualFeedbackRequest(request)}
+              onRate={() => handleRateClick(request)}
             />
           ))}
         </div>
       ) : null}
 
       <ServiceFeedbackDialog
-        key={activeFeedbackRequest?.id ?? "feedback-closed"}
-        request={activeFeedbackRequest}
-        open={Boolean(activeFeedbackRequest)}
-        isPending={feedbackMutation.isPending}
-        onSkip={closeFeedbackPrompt}
-        onSubmit={submitFeedback}
+        requests={feedbackQueue}
+        open={feedbackOpen && feedbackQueue.length > 0}
+        startRequestId={feedbackStartId}
+        isPending={isSubmittingFeedback}
+        onSkipCurrent={handleSkipRequest}
+        onDismissRemaining={handleSkipRemaining}
+        onSubmitAll={handleSubmitRatings}
       />
     </div>
   );
@@ -644,110 +705,305 @@ function PlatformContactButton() {
   );
 }
 
+type FeedbackDraft = {
+  rating: number;
+  feedback: string;
+};
+
 function ServiceFeedbackDialog({
-  request,
+  requests,
   open,
+  startRequestId,
   isPending,
-  onSkip,
-  onSubmit,
+  onSkipCurrent,
+  onDismissRemaining,
+  onSubmitAll,
 }: {
-  request: ServiceRequestDTO | null;
+  requests: ServiceRequestDTO[];
   open: boolean;
+  startRequestId: number | null;
   isPending: boolean;
-  onSkip: () => void;
-  onSubmit: (input: ServiceRequestFeedbackInput) => Promise<void>;
+  onSkipCurrent: (requestId: number) => void;
+  onDismissRemaining: (requestIds: number[]) => void;
+  onSubmitAll: (
+    entries: Array<{ id: number; input: ServiceRequestFeedbackInput }>,
+  ) => void | Promise<void>;
 }) {
-  const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState("");
+  const [queue, setQueue] = useState<ServiceRequestDTO[]>([]);
+  const [index, setIndex] = useState(0);
+  const [drafts, setDrafts] = useState<Record<number, FeedbackDraft>>({});
 
-  if (!request) return null;
+  useEffect(() => {
+    if (!open) return;
+    setQueue(requests);
+    const startIdx = startRequestId
+      ? Math.max(
+          0,
+          requests.findIndex((request) => request.id === startRequestId),
+        )
+      : 0;
+    setIndex(startIdx >= 0 ? startIdx : 0);
+    setDrafts((current) => {
+      const next: Record<number, FeedbackDraft> = {};
+      for (const request of requests) {
+        next[request.id] = current[request.id] ?? { rating: 0, feedback: "" };
+      }
+      return next;
+    });
+  }, [open, requests, startRequestId]);
 
-  const serviceLabel = SERVICE_META[request.serviceType].label;
+  if (!open || queue.length === 0) return null;
+
+  const safeIndex = Math.min(index, queue.length - 1);
+  const current = queue[safeIndex];
+  if (!current) return null;
+
+  const draft = drafts[current.id] ?? { rating: 0, feedback: "" };
+  const isLast = safeIndex >= queue.length - 1;
+  const isFirst = safeIndex <= 0;
+  const serviceMeta = SERVICE_META[current.serviceType];
+  const summary = detailSummary(current);
+  const ServiceIcon = serviceMeta.icon;
+
+  const updateDraft = (patch: Partial<FeedbackDraft>) => {
+    setDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [current.id]: {
+        ...(currentDrafts[current.id] ?? { rating: 0, feedback: "" }),
+        ...patch,
+      },
+    }));
+  };
+
+  const skipCurrent = () => {
+    if (isPending) return;
+    const remaining = queue.filter((request) => request.id !== current.id);
+    onSkipCurrent(current.id);
+    if (remaining.length === 0) {
+      onDismissRemaining([]);
+      return;
+    }
+    setQueue(remaining);
+    setIndex((prev) => Math.min(prev, remaining.length - 1));
+  };
+
+  const goNext = () => {
+    if (draft.rating === 0 || isPending || isLast) return;
+    setIndex((prev) => Math.min(prev + 1, queue.length - 1));
+  };
+
+  const goBack = () => {
+    if (isPending || isFirst) return;
+    setIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const submitAll = async () => {
+    if (draft.rating === 0 || isPending) return;
+    const latestDrafts = {
+      ...drafts,
+      [current.id]: draft,
+    };
+    const entries = queue.flatMap((request) => {
+      const item = latestDrafts[request.id];
+      if (!item || item.rating < 1) return [];
+      return [
+        {
+          id: request.id,
+          input: {
+            rating: item.rating,
+            feedback: item.feedback.trim() || undefined,
+          },
+        },
+      ];
+    });
+    if (entries.length === 0) return;
+    void onSubmitAll(entries);
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen && !isPending) onSkip();
+        if (!nextOpen && !isPending) {
+          onDismissRemaining(queue.map((request) => request.id));
+        }
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (rating === 0 || isPending) return;
-            void onSubmit({
-              rating,
-              feedback: feedback.trim() || undefined,
-            });
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Rate your completed service</DialogTitle>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <div className="relative border-b border-border px-6 pb-4 pt-6 pr-24">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-12 top-4 z-10"
+            disabled={isPending}
+            onClick={skipCurrent}
+          >
+            Skip
+          </Button>
+          <DialogHeader className="space-y-1.5 text-left">
+            <DialogTitle className="font-heading">
+              Rate your completed services
+            </DialogTitle>
             <DialogDescription>
-              {serviceLabel} request #{request.id}. Feedback is optional.
+              {queue.length === 1
+                ? "Share how this service went."
+                : `Review ${queue.length} completed requests · ${safeIndex + 1} of ${queue.length}`}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-foreground">Rating</p>
-            <ToggleGroup
-              type="single"
-              value={rating ? String(rating) : ""}
-              onValueChange={(value) => setRating(value ? Number(value) : 0)}
-              className="justify-start"
-              aria-label="Service rating"
-            >
-              {RATING_VALUES.map((value) => (
-                <ToggleGroupItem
-                  key={value}
-                  value={String(value)}
-                  aria-label={`Rate ${value} out of 5`}
+          {queue.length > 1 ? (
+            <div className="mt-3 flex gap-1.5">
+              {queue.map((request, step) => (
+                <span
+                  key={request.id}
                   className={cn(
-                    "size-10 p-0",
-                    value <= rating && "text-primary",
+                    "h-1 flex-1 rounded-full transition-colors",
+                    step <= safeIndex ? "bg-primary" : "bg-muted",
                   )}
-                >
-                  <Star
-                    className={cn("size-5", value <= rating && "fill-current")}
-                    aria-hidden
-                  />
-                </ToggleGroupItem>
+                  aria-hidden
+                />
               ))}
-            </ToggleGroup>
-          </div>
+            </div>
+          ) : null}
+        </div>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">
-              Feedback
-            </span>
-            <Textarea
-              value={feedback}
-              onChange={(event) => setFeedback(event.target.value)}
-              maxLength={1000}
-              placeholder="Share what went well, or what we should improve."
-              rows={4}
-            />
-          </label>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-col gap-5 px-6 py-5"
+          >
+            <div className="rounded-xl border border-border bg-muted/25 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <ServiceIcon className="size-5 text-primary" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-heading text-sm font-semibold text-foreground">
+                      {serviceMeta.label}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      #{current.id}
+                    </span>
+                  </div>
+                  {summary.length > 0 ? (
+                    <p className="mt-1 text-sm capitalize text-muted-foreground">
+                      {summary.join(" · ")}
+                    </p>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                    {current.city ? (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="size-3.5" aria-hidden />
+                        {current.city}
+                      </span>
+                    ) : null}
+                    {current.preferredDate ? (
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="size-3.5" aria-hidden />
+                        {format(new Date(current.preferredDate), "MMM d, yyyy")}
+                      </span>
+                    ) : null}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3.5" aria-hidden />
+                      Completed {formatRelativeTimestamp(current.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-foreground">Your rating</p>
+              <ToggleGroup
+                type="single"
+                value={draft.rating ? String(draft.rating) : ""}
+                onValueChange={(value) =>
+                  updateDraft({ rating: value ? Number(value) : 0 })
+                }
+                className="justify-start"
+                aria-label="Service rating"
+              >
+                {RATING_VALUES.map((value) => (
+                  <ToggleGroupItem
+                    key={value}
+                    value={String(value)}
+                    aria-label={`Rate ${value} out of 5`}
+                    className={cn(
+                      "size-10 p-0",
+                      value <= draft.rating && "text-primary",
+                    )}
+                  >
+                    <Star
+                      className={cn(
+                        "size-5",
+                        value <= draft.rating && "fill-current",
+                      )}
+                      aria-hidden
+                    />
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-foreground">
+                Feedback{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </span>
+              <Textarea
+                value={draft.feedback}
+                onChange={(event) =>
+                  updateDraft({ feedback: event.target.value })
+                }
+                maxLength={1000}
+                placeholder="What went well, or what we should improve?"
+                rows={3}
+              />
+            </label>
+          </motion.div>
+        </AnimatePresence>
+
+        <DialogFooter className="gap-2 border-t border-border px-6 py-4 sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFirst || isPending}
+            onClick={goBack}
+          >
+            <ArrowLeft data-icon="inline-start" />
+            Back
+          </Button>
+          {isLast ? (
             <Button
               type="button"
-              variant="ghost"
-              disabled={isPending}
-              onClick={onSkip}
+              disabled={draft.rating === 0 || isPending}
+              onClick={() => void submitAll()}
             >
-              Skip
-            </Button>
-            <Button type="submit" disabled={rating === 0 || isPending}>
               {isPending ? (
                 <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : null}
-              Submit rating
+              ) : (
+                <CheckCircle2 data-icon="inline-start" />
+              )}
+              Submit
             </Button>
-          </DialogFooter>
-        </form>
+          ) : (
+            <Button
+              type="button"
+              disabled={draft.rating === 0 || isPending}
+              onClick={goNext}
+            >
+              Next
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -798,7 +1054,7 @@ function CustomerReview({
           How was this completed service?
         </p>
         <p className="text-xs text-muted-foreground">
-          Add a rating now, or skip the popup and come back later.
+          Add a rating now, or open the review flow later from this card.
         </p>
       </div>
       <Button size="sm" variant="outline" onClick={onRate}>

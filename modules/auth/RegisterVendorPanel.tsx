@@ -217,7 +217,8 @@ export default function RegisterVendorPanel() {
                           return (
                             <CommandItem
                               key={opt.value}
-                              value={opt.value}
+                              value={`${opt.label} ${opt.value}`}
+                              keywords={[opt.label, opt.value]}
                               onSelect={() => {
                                 if (isSelected) {
                                   removeCategory(idNum);
@@ -241,9 +242,6 @@ export default function RegisterVendorPanel() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-muted-foreground">
-                Select multiple categories from admin-created list.
-              </p>
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>

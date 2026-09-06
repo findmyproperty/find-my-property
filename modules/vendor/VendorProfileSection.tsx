@@ -554,7 +554,8 @@ export function VendorBusinessForm({ profile }: { profile: VendorProfile | null 
                       return (
                         <CommandItem
                           key={opt.value}
-                          value={opt.value}
+                          value={`${opt.label} ${opt.value}`}
+                          keywords={[opt.label, opt.value]}
                           onSelect={() => {
                             if (isSelected) {
                               removeCategory(idNum);
