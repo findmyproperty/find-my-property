@@ -18,6 +18,8 @@ export const categorySchema = z.object({
   slug: z.string().min(1),
   description: z.string().nullable().optional(),
   isActive: z.boolean().default(true),
+  /** Vendor commission % applied when leads are created for this category. */
+  commissionPercent: z.coerce.number().min(0).max(100).default(0),
   /** Optional mapping to one of the service pages. Null/undefined = general (e.g. property types). */
   service: z.enum([
     SERVICE_TYPE.PACKERS_MOVERS,
@@ -39,6 +41,7 @@ export const categoryCreateSchema = categorySchema
   .extend({
     name: z.string().min(1, "Name is required"),
     slug: z.string().min(1, "Slug is required"),
+    commissionPercent: z.coerce.number().min(0).max(100).default(0),
     service: z.enum([
       SERVICE_TYPE.PACKERS_MOVERS,
       SERVICE_TYPE.PAINTING_CLEANING,

@@ -52,14 +52,13 @@ import {
 } from "@/components/ui/table";
 
 /** Fields tracked by the form. Read-only server fields (id, updatedAt, theme,
- * API keys, 2FA toggles) are intentionally excluded so PATCH never clobbers
- * them. */
+ * API keys, 2FA toggles) and vendorCommissionPercent (now per-category) are
+ * intentionally excluded so PATCH never clobbers them. */
 type SettingsFormValues = Pick<
   Settings,
   | "siteName"
   | "supportEmail"
   | "supportPhone"
-  | "vendorCommissionPercent"
   | "primaryLogoUrl"
   | "faviconUrl"
   | "landingReactionIds"
@@ -70,12 +69,23 @@ const FORM_DEFAULTS: SettingsFormValues = {
   siteName: "",
   supportEmail: "",
   supportPhone: "",
-  vendorCommissionPercent: 10,
   primaryLogoUrl: null,
   faviconUrl: null,
   landingReactionIds: [],
   faqs: [],
 };
+
+function toFormValues(settings: Settings): SettingsFormValues {
+  return {
+    siteName: settings.siteName ?? "",
+    supportEmail: settings.supportEmail ?? "",
+    supportPhone: settings.supportPhone ?? "",
+    primaryLogoUrl: settings.primaryLogoUrl ?? null,
+    faviconUrl: settings.faviconUrl ?? null,
+    landingReactionIds: settings.landingReactionIds ?? [],
+    faqs: settings.faqs ?? [],
+  };
+}
 
 const AdminSettings = () => {
   const { data: settings, isLoading, updateSettings, isUpdating } =
@@ -92,7 +102,10 @@ const AdminSettings = () => {
     reset,
     watch,
     formState: { isDirty },
-  } = useForm<SettingsFormValues>({ defaultValues: FORM_DEFAULTS, values: settings });
+  } = useForm<SettingsFormValues>({
+    defaultValues: FORM_DEFAULTS,
+    values: settings ? toFormValues(settings) : undefined,
+  });
 
   const {
     fields: faqFields,
@@ -104,23 +117,6 @@ const AdminSettings = () => {
     name: "faqs",
   });
 
-  // Once server data lands, reset the form so RHF's baseline matches the
-  // persisted values — this is what makes isDirty accurate.
-  // useEffect(() => {
-  //   if (settings) {
-  //     reset({
-  //       siteName: settings.siteName ?? "",
-  //       supportEmail: settings.supportEmail ?? "",
-  //       supportPhone: settings.supportPhone ?? "",
-  //       vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
-  //       primaryLogoUrl: settings.primaryLogoUrl ?? null,
-  //       faviconUrl: settings.faviconUrl ?? null,
-  //       landingReactionIds: settings.landingReactionIds ?? [],
-  //       faqs: settings.faqs ?? [],
-  //     });
-  //   }
-  // }, [settings]);
-
   const landingReactionIds = watch("landingReactionIds") ?? [];
 
   const onSubmit = handleSubmit(async (values) => {
@@ -128,15 +124,15 @@ const AdminSettings = () => {
     // but still validated when present. Empty strings on required fields (siteName,
     // supportEmail) would fail min(1)/email() checks, so strip them to undefined
     // so Zod treats them as "not sent" rather than "invalid".
+    // vendorCommissionPercent is intentionally omitted — commission lives on categories.
     const payload: Partial<Settings> = {
-      siteName:                values.siteName?.trim()         || undefined,
-      supportEmail:            values.supportEmail?.trim()     || undefined,
-      supportPhone:            values.supportPhone?.trim()     || null,
-      vendorCommissionPercent: values.vendorCommissionPercent,
-      primaryLogoUrl:          values.primaryLogoUrl           || null,
-      faviconUrl:              values.faviconUrl               || null,
-      landingReactionIds:      values.landingReactionIds,
-      faqs:                    values.faqs,
+      siteName:           values.siteName?.trim()     || undefined,
+      supportEmail:       values.supportEmail?.trim() || undefined,
+      supportPhone:       values.supportPhone?.trim() || null,
+      primaryLogoUrl:     values.primaryLogoUrl       || null,
+      faviconUrl:         values.faviconUrl           || null,
+      landingReactionIds: values.landingReactionIds,
+      faqs:               values.faqs,
     };
     await updateSettings(payload);
     // Reset the RHF baseline to the saved values so isDirty → false.
@@ -144,18 +140,7 @@ const AdminSettings = () => {
   });
 
   const handleDiscard = () => {
-    if (settings) {
-      reset({
-        siteName: settings.siteName ?? "",
-        supportEmail: settings.supportEmail ?? "",
-        supportPhone: settings.supportPhone ?? "",
-        vendorCommissionPercent: settings.vendorCommissionPercent ?? 10,
-        primaryLogoUrl: settings.primaryLogoUrl ?? null,
-        faviconUrl: settings.faviconUrl ?? null,
-        landingReactionIds: settings.landingReactionIds ?? [],
-        faqs: settings.faqs ?? [],
-      });
-    }
+    if (settings) reset(toFormValues(settings));
   };
 
   if (isLoading) {
@@ -288,22 +273,6 @@ const AdminSettings = () => {
                   {...register("supportPhone")}
                 />
               </Field>
-
-              <Field
-                label="Vendor commission %"
-                htmlFor="vendor-commission"
-                hint="Deducted from job amount when a vendor lead is completed."
-              >
-                <Input
-                  id="vendor-commission"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  {...register("vendorCommissionPercent", { valueAsNumber: true })}
-                />
-              </Field>
-
             </div>
           </SectionCard>
 

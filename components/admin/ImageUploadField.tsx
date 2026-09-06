@@ -209,7 +209,7 @@ export function ImageUploadField({
               ) : null}
             </div>
 
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+            <div className="flex min-w-0">
               <Button
                 type="button"
                 variant="outline"
@@ -221,17 +221,6 @@ export function ImageUploadField({
                 <Upload className="mr-2 h-3.5 w-3.5" />
                 {value ? "Replace" : "Upload"}
               </Button>
-              {value ? (
-                <a
-                  href={value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={value}
-                  className="min-w-0 break-all text-xs leading-relaxed text-muted-foreground hover:text-foreground sm:pt-1.5"
-                >
-                  {value}
-                </a>
-              ) : null}
             </div>
           </>
         )}

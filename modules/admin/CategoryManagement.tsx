@@ -67,17 +67,25 @@ type CategoryForm = {
   slug: string;
   description: string;
   service: string; // '' or one of SERVICE_OPTIONS values; '' means none
+  commissionPercent: number;
 };
 
 type CategorySortKey = "name" | "slug" | "createdAt";
 
-const emptyForm = (): CategoryForm => ({ name: "", slug: "", description: "", service: "" });
+const emptyForm = (): CategoryForm => ({
+  name: "",
+  slug: "",
+  description: "",
+  service: "",
+  commissionPercent: 0,
+});
 
 const categoryToForm = (cat: Category): CategoryForm => ({
   name: cat.name ?? "",
   slug: cat.slug ?? "",
   description: cat.description ?? "",
   service: cat.service ?? "",
+  commissionPercent: Number(cat.commissionPercent) || 0,
 });
 
 function categorySearchText(cat: Category): string {
@@ -212,6 +220,7 @@ const CategoryManagement = () => {
       slug: newCat.slug.trim() || slugify(newCat.name),
       description: newCat.description.trim() || null,
       isActive: true,
+      commissionPercent: Number(newCat.commissionPercent) || 0,
       service: null,
     };
     if (!payload.name) return;
@@ -249,6 +258,7 @@ const CategoryManagement = () => {
           name: editForm.name.trim(),
           slug: editForm.slug.trim() || slugify(editForm.name),
           description: editForm.description.trim() || null,
+          commissionPercent: Number(editForm.commissionPercent) || 0,
           service: (editForm.service || null) as any,
         },
       });
@@ -303,6 +313,15 @@ const CategoryManagement = () => {
           if (!svc) return <span className="text-muted-foreground">—</span>;
           const found = SERVICE_OPTIONS.find((s) => s.value === svc);
           return found ? found.label : svc;
+        },
+      },
+      {
+        id: "commission",
+        header: "Commission %",
+        meta: { className: "w-[110px] text-right tabular-nums" },
+        cell: ({ row }) => {
+          const pct = Number(row.original.commissionPercent);
+          return Number.isFinite(pct) ? pct : 0;
         },
       },
       {
@@ -420,6 +439,27 @@ const CategoryManagement = () => {
               rows={2}
             />
           </div>
+          <div className="grid gap-2">
+            <Label htmlFor="cat-commission">Commission %</Label>
+            <Input
+              id="cat-commission"
+              type="number"
+              min={0}
+              max={100}
+              step={0.5}
+              value={newCat.commissionPercent}
+              onChange={(e) =>
+                setNewCat({
+                  ...newCat,
+                  commissionPercent: Number(e.target.value),
+                })
+              }
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Deducted from job amount when a lead for this category is completed.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -532,6 +572,9 @@ const CategoryManagement = () => {
                         className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-sm"
                       >
                         {cat.name}
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          ({Number(cat.commissionPercent) || 0}%)
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleUnassign(cat.id)}
@@ -610,6 +653,26 @@ const CategoryManagement = () => {
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 rows={2}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-commission">Commission %</Label>
+              <Input
+                id="edit-commission"
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={editForm.commissionPercent}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    commissionPercent: Number(e.target.value),
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Applied to new leads for this category (existing leads keep their snapshot).
+              </p>
             </div>
           </div>
           <DialogFooter>
