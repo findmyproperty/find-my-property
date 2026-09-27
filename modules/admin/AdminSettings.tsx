@@ -23,6 +23,7 @@ import {
   ArrowUp,
   ArrowDown,
   ClipboardCheck,
+  Search,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,8 @@ type SettingsFormValues = Pick<
   | "primaryLogoUrl"
   | "faviconUrl"
   | "landingReactionIds"
+  | "heroBannerPropertyCount"
+  | "heroBannerPropertyIds"
   | "faqs"
 >;
 
@@ -72,6 +75,8 @@ const FORM_DEFAULTS: SettingsFormValues = {
   primaryLogoUrl: null,
   faviconUrl: null,
   landingReactionIds: [],
+  heroBannerPropertyCount: 5,
+  heroBannerPropertyIds: [],
   faqs: [],
 };
 
@@ -83,6 +88,8 @@ function toFormValues(settings: Settings): SettingsFormValues {
     primaryLogoUrl: settings.primaryLogoUrl ?? null,
     faviconUrl: settings.faviconUrl ?? null,
     landingReactionIds: settings.landingReactionIds ?? [],
+    heroBannerPropertyCount: settings.heroBannerPropertyCount ?? 5,
+    heroBannerPropertyIds: settings.heroBannerPropertyIds ?? [],
     faqs: settings.faqs ?? [],
   };
 }
@@ -94,6 +101,12 @@ const AdminSettings = () => {
     queryKey: ["admin-customer-reactions"],
     queryFn: api.adminListCustomerReactions,
   });
+  const { data: properties = [], isLoading: propertiesLoading } = useQuery({
+    queryKey: ["admin-properties-list"],
+    queryFn: api.getProperties,
+  });
+
+  const [heroSearch, setHeroSearch] = useState("");
 
   const {
     register,
@@ -101,6 +114,7 @@ const AdminSettings = () => {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isDirty },
   } = useForm<SettingsFormValues>({
     defaultValues: FORM_DEFAULTS,
@@ -118,6 +132,8 @@ const AdminSettings = () => {
   });
 
   const landingReactionIds = watch("landingReactionIds") ?? [];
+  const heroBannerPropertyIds = watch("heroBannerPropertyIds") ?? [];
+  const heroBannerPropertyCount = watch("heroBannerPropertyCount") ?? 5;
 
   const onSubmit = handleSubmit(async (values) => {
     // settingsUpdateSchema is settingsSchema.partial() — every field is optional
@@ -126,13 +142,15 @@ const AdminSettings = () => {
     // so Zod treats them as "not sent" rather than "invalid".
     // vendorCommissionPercent is intentionally omitted — commission lives on categories.
     const payload: Partial<Settings> = {
-      siteName:           values.siteName?.trim()     || undefined,
-      supportEmail:       values.supportEmail?.trim() || undefined,
-      supportPhone:       values.supportPhone?.trim() || null,
-      primaryLogoUrl:     values.primaryLogoUrl       || null,
-      faviconUrl:         values.faviconUrl           || null,
-      landingReactionIds: values.landingReactionIds,
-      faqs:               values.faqs,
+      siteName:                values.siteName?.trim()     || undefined,
+      supportEmail:            values.supportEmail?.trim() || undefined,
+      supportPhone:            values.supportPhone?.trim() || null,
+      primaryLogoUrl:          values.primaryLogoUrl       || null,
+      faviconUrl:              values.faviconUrl           || null,
+      landingReactionIds:      values.landingReactionIds,
+      heroBannerPropertyCount: values.heroBannerPropertyCount,
+      heroBannerPropertyIds:   values.heroBannerPropertyIds,
+      faqs:                    values.faqs,
     };
     await updateSettings(payload);
     // Reset the RHF baseline to the saved values so isDirty → false.
@@ -208,6 +226,9 @@ const AdminSettings = () => {
           </TabsTrigger>
           <TabsTrigger value="branding" className="shrink-0 gap-2">
             <Palette className="h-4 w-4" /> Branding
+          </TabsTrigger>
+          <TabsTrigger value="hero" className="shrink-0 gap-2">
+            <Building2 className="h-4 w-4" /> Hero Banner
           </TabsTrigger>
           <TabsTrigger value="faqs" className="shrink-0 gap-2">
             <HelpCircle className="h-4 w-4" /> FAQs
@@ -526,6 +547,202 @@ const AdminSettings = () => {
             </div>
           </SectionCard>
 
+        </TabsContent>
+
+        {/* -------------------- Hero Banner -------------------- */}
+        <TabsContent value="hero" className="space-y-6">
+          <SectionCard
+            icon={<Building2 className="h-4 w-4 text-primary" />}
+            title="Hero Banner Carousel"
+            subtitle="Configure how many properties to rotate in the full-screen Modon hero carousel and handpick specific properties to feature."
+          >
+            <div className="space-y-6">
+              {/* Slide Count Control */}
+              <div className="rounded-2xl border border-border/80 bg-muted/20 p-5 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <Label htmlFor="hero-banner-count" className="font-heading text-base font-semibold text-foreground">
+                      Hero Banner Properties Count
+                    </Label>
+                    <p className="mt-1 text-xs text-muted-foreground max-w-md">
+                      Number of property slides (1 to 12) rotating automatically in the full-screen hero banner.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="hero-banner-count"
+                      type="number"
+                      min={1}
+                      max={12}
+                      className="w-24 text-center font-mono font-bold text-base"
+                      {...register("heroBannerPropertyCount", {
+                        valueAsNumber: true,
+                        min: { value: 1, message: "Minimum 1 property" },
+                        max: { value: 12, message: "Maximum 12 properties" },
+                      })}
+                    />
+                    <div className="flex gap-1.5">
+                      {[3, 5, 8, 10].map((preset) => (
+                        <Button
+                          key={preset}
+                          type="button"
+                          variant={heroBannerPropertyCount === preset ? "default" : "outline"}
+                          size="sm"
+                          className="h-9 px-3 text-xs"
+                          onClick={() => setValue("heroBannerPropertyCount", preset, { shouldDirty: true })}
+                        >
+                          {preset}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pin Specific Properties Section */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h4 className="font-heading text-sm font-semibold text-foreground">
+                      Pin Specific Properties for Hero Carousel
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Select exact properties to display in the hero banner. If none are selected, verified properties are shown automatically.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-medium text-foreground">
+                      {heroBannerPropertyIds.length} pinned
+                    </span>
+                    {heroBannerPropertyIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => setValue("heroBannerPropertyIds", [], { shouldDirty: true })}
+                      >
+                        Clear selection
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search properties by title, locality, city..."
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                {/* Property Table */}
+                <div className="rounded-xl border border-border/80 overflow-hidden bg-card">
+                  {propertiesLoading ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-primary" />
+                      <span>Loading property inventory...</span>
+                    </div>
+                  ) : properties.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">
+                      No active properties found in catalog.
+                    </div>
+                  ) : (
+                    <div className="max-h-[420px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12">Pin</TableHead>
+                            <TableHead className="w-16">Image</TableHead>
+                            <TableHead>Property</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Price</TableHead>
+                            <TableHead>Type</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {properties
+                            .filter((p) => {
+                              if (!heroSearch.trim()) return true;
+                              const q = heroSearch.toLowerCase();
+                              return (
+                                p.title.toLowerCase().includes(q) ||
+                                (p.locality && p.locality.toLowerCase().includes(q)) ||
+                                (p.city && p.city.toLowerCase().includes(q))
+                              );
+                            })
+                            .map((property) => {
+                              const isSelected = heroBannerPropertyIds.includes(Number(property.id));
+                              const imageSrc = property.image || property.images?.[0] || "/images/hero-bg.jpg";
+                              return (
+                                <TableRow
+                                  key={property.id}
+                                  data-state={isSelected ? "selected" : undefined}
+                                  className="group"
+                                >
+                                  <TableCell>
+                                    <Controller
+                                      control={control}
+                                      name="heroBannerPropertyIds"
+                                      render={({ field }) => (
+                                        <Checkbox
+                                          checked={field.value.includes(Number(property.id))}
+                                          aria-label={`Pin ${property.title} to hero banner`}
+                                          onCheckedChange={(checked) => {
+                                            const next = checked
+                                              ? [...new Set([...field.value, Number(property.id)])]
+                                              : field.value.filter((id) => id !== Number(property.id));
+                                            field.onChange(next);
+                                          }}
+                                        />
+                                      )}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="relative size-11 overflow-hidden rounded-lg bg-muted">
+                                      <img
+                                        src={imageSrc}
+                                        alt={property.title}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="max-w-[240px]">
+                                      <span className="block truncate font-medium text-foreground text-sm">
+                                        {property.title}
+                                      </span>
+                                      <span className="block truncate text-xs text-muted-foreground font-mono">
+                                        ID: #{property.id}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">
+                                    {property.locality ? `${property.locality}, ` : ""}{property.city || "India"}
+                                  </TableCell>
+                                  <TableCell className="text-xs font-semibold tabular-nums text-foreground">
+                                    {property.price ? `${property.currency || "₹"}${property.price}` : "On Request"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-[10px] uppercase">
+                                      {property.listingType || property.type || "Sale"}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
         </TabsContent>
 
         {/* -------------------- FAQs -------------------- */}

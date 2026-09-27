@@ -47,8 +47,11 @@ const Footer = () => {
                 {siteName}
               </span>
             </Link>
+            <p className="text-xs font-medium uppercase tracking-wider text-primary">
+              Yashas Business Development &amp; Consultancy
+            </p>
             <p className="text-sm text-muted-foreground max-w-xs wrap-break-word">
-              A trusted business development and consultancy platform connecting customers with verified service providers across loans, real estate, and professional services.
+              Connecting customers with verified real estate listings and vetted service professionals across relocation, finance, and enterprise development.
             </p>
           </div>
 

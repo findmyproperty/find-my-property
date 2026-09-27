@@ -16,4 +16,5 @@ import { TAGS } from "@/config/tags";
  */
 export async function revalidateBranding() {
   updateTag(TAGS.settings);
+  updateTag(TAGS.properties);
 }

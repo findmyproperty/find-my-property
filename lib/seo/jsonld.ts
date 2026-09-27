@@ -84,3 +84,49 @@ export function buildRealEstateListingJsonLd(row?: Property, pathname?: string) 
     },
   };
 }
+
+export function buildFaqJsonLd(faqs: { question: string; answer: string }[]) {
+  if (!faqs || faqs.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: answer,
+      },
+    })),
+  };
+}
+
+export function buildServiceJsonLd({
+  name,
+  description,
+  pathname,
+}: {
+  name: string;
+  description: string;
+  pathname: string;
+}) {
+  const url = absoluteUrl(pathname);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name,
+    description,
+    url,
+    provider: {
+      "@type": "Organization",
+      name: "The YBDC",
+      url: getSiteUrl(),
+    },
+    areaServed: {
+      "@type": "Country",
+      name: "India",
+    },
+  };
+}
+
+

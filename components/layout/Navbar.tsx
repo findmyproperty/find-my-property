@@ -66,7 +66,7 @@ export type ProfileMenuItem = {
   icon: LucideIcon;
 };
 
-const serviceMenuItems: ServiceMenuItem[] = [
+const homeServices = [
   {
     href: "/packers-movers",
     label: "Packers & Movers",
@@ -85,6 +85,21 @@ const serviceMenuItems: ServiceMenuItem[] = [
     description: "Carpenters, plumbers, electricians, and repairs.",
     icon: Wrench,
   },
+];
+
+const businessServices = [
+  {
+    href: "/loans",
+    label: "Loan Assistance",
+    description: "Home, mortgage, personal, and commercial loan support.",
+    icon: Wallet,
+  },
+  {
+    href: "/it-services",
+    label: "IT Services",
+    description: "Laptop repair, networking, CCTV, and business tech.",
+    icon: Monitor,
+  },
   {
     href: "/event-management",
     label: "Event Management",
@@ -92,30 +107,20 @@ const serviceMenuItems: ServiceMenuItem[] = [
     icon: PartyPopper,
   },
   {
-    href: "/it-services",
-    label: "IT Services",
-    description: "Laptop repair, networking, CCTV, and software support.",
-    icon: Monitor,
+    href: "/job-consultancy",
+    label: "Job Consultancy",
+    description: "Career opportunities and verified talent acquisition.",
+    icon: Users,
   },
   {
     href: "/general-services",
     label: "General Services",
-    description: "Handyman help, errands, and everyday assistance.",
+    description: "Errands, assembly, maintenance, and everyday help.",
     icon: HandHelping,
   },
-  {
-    href: "/loans",
-    label: "Loans",
-    description: "Home, mortgage, personal, and vehicle loan assistance.",
-    icon: Wallet,
-  },
-  {
-    href: "/job-consultancy",
-    label: "Job Consultancy",
-    description: "Career support and hiring leads for property teams.",
-    icon: Users,
-  },
 ];
+
+const serviceMenuItems: ServiceMenuItem[] = [...homeServices, ...businessServices];
 
 export function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem[] {
   const items: ProfileMenuItem[] = [
@@ -187,23 +192,31 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto flex h-20 min-w-0 items-center justify-between px-4 md:h-24">
         <div className="flex min-w-0 flex-1 items-center gap-6 md:gap-10">
-          <Link href="/" className="flex shrink-0 items-center" onClick={closeMobileMenu}>
+          <Link href="/" className="flex shrink-0 items-center gap-3" onClick={closeMobileMenu}>
             {logoUrl ? (
-              <span className="relative inline-flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-20 md:w-32">
+              <span className="relative inline-flex h-12 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-14 md:w-28">
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes="(min-width: 768px) 128px, 96px"
+                  sizes="(min-width: 768px) 112px, 80px"
                   unoptimized
                   className="object-contain"
                 />
               </span>
             ) : (
-              <div className="hero-gradient flex size-12 shrink-0 items-center justify-center rounded-xl md:size-14">
-                <Building2 className="size-6 text-primary-foreground md:size-7" />
+              <div className="hero-gradient flex size-10 shrink-0 items-center justify-center rounded-xl md:size-11">
+                <Building2 className="size-5 text-primary-foreground md:size-6" />
               </div>
             )}
+            <div className="hidden sm:flex flex-col">
+              <span className="font-heading font-bold text-foreground text-sm tracking-tight leading-tight">
+                {siteName}
+              </span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                Real Estate &amp; Advisory
+              </span>
+            </div>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <NavigationMenu>
@@ -213,32 +226,68 @@ const Navbar = () => {
                     Services
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="grid w-[640px] grid-cols-2 gap-2 p-4">
-                      {serviceMenuItems.map(({ href, label, description, icon: Icon }) => (
-                        <NavigationMenuLink key={href} asChild>
-                          <Link
-                            href={href}
-                            className="flex rounded-md p-3 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
-                          >
-                            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                              <Icon className="size-4" aria-hidden />
-                            </span>
-                            <span className="ml-3 min-w-0">
-                              <span className="block font-medium leading-none text-foreground">
-                                {label}
-                              </span>
-                              <span className="mt-1.5 line-clamp-2 block text-sm leading-snug text-muted-foreground">
-                                {description}
-                              </span>
-                            </span>
-                          </Link>
-                        </NavigationMenuLink>
-                      ))}
+                    <div className="grid w-[680px] grid-cols-2 gap-4 p-5">
+                      <div>
+                        <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Home &amp; Move-In
+                        </p>
+                        <div className="space-y-1">
+                          {homeServices.map(({ href, label, description, icon: Icon }) => (
+                            <NavigationMenuLink key={href} asChild>
+                              <Link
+                                href={href}
+                                className="flex items-start rounded-lg p-2.5 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
+                              >
+                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                  <Icon className="size-4" aria-hidden />
+                                </span>
+                                <span className="ml-3 min-w-0">
+                                  <span className="block text-sm font-medium leading-none text-foreground">
+                                    {label}
+                                  </span>
+                                  <span className="mt-1 line-clamp-1 block text-xs text-muted-foreground">
+                                    {description}
+                                  </span>
+                                </span>
+                              </Link>
+                            </NavigationMenuLink>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-l border-border pl-4">
+                        <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Consultancy &amp; Professional
+                        </p>
+                        <div className="space-y-1">
+                          {businessServices.map(({ href, label, description, icon: Icon }) => (
+                            <NavigationMenuLink key={href} asChild>
+                              <Link
+                                href={href}
+                                className="flex items-start rounded-lg p-2.5 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
+                              >
+                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                  <Icon className="size-4" aria-hidden />
+                                </span>
+                                <span className="ml-3 min-w-0">
+                                  <span className="block text-sm font-medium leading-none text-foreground">
+                                    {label}
+                                  </span>
+                                  <span className="mt-1 line-clamp-1 block text-xs text-muted-foreground">
+                                    {description}
+                                  </span>
+                                </span>
+                              </Link>
+                            </NavigationMenuLink>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
+
             <Link href="/about" className="text-muted-foreground transition-colors hover:text-foreground">
               About
             </Link>
@@ -249,6 +298,16 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3 min-w-0 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="size-9 rounded-full text-foreground hover:bg-muted"
+          >
+            <Link href="/browse" aria-label="Search properties">
+              <Search className="size-4" />
+            </Link>
+          </Button>
           <ThemeToggle />
           {isAuthenticated ? (
             <>
@@ -336,6 +395,25 @@ const Navbar = () => {
           <div className="flex min-h-full flex-col gap-5 pt-6">
             <div className="flex items-center pr-8">
               <span className="text-sm font-semibold text-foreground">Menu</span>
+            </div>
+
+            <div className="flex flex-col gap-2 border-b border-border pb-4">
+              <Link
+                href="/browse"
+                className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary"
+                onClick={closeMobileMenu}
+              >
+                <Search className="size-4" aria-hidden />
+                Browse Properties
+              </Link>
+              <Link
+                href="/owner"
+                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                onClick={closeMobileMenu}
+              >
+                <Building2 className="size-4 text-primary" aria-hidden />
+                List a Property
+              </Link>
             </div>
 
             <div className="flex flex-col gap-3 border-b border-border pb-5">

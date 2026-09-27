@@ -3,7 +3,8 @@
  * admin-editable `settings.site_name` row in the backend; this constant only
  * fills in when the API is unreachable or before SSR data has resolved.
  */
-export const DEFAULT_SITE_NAME = "Find My Property";
+export const DEFAULT_SITE_NAME = "The YBDC";
+export const BRAND_EXPANSION = "Yashas Business Development & Consultancy";
 
 /** Backwards-compatible alias — many call sites still import `SITE_NAME`. */
 export const SITE_NAME = DEFAULT_SITE_NAME;

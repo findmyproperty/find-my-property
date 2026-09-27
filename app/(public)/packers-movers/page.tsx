@@ -1,7 +1,8 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import PackersMoversPage from "@/modules/services/PackersMoversPage";
 import { getBranding } from "@/lib/branding/server";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildServiceJsonLd } from "@/lib/seo/jsonld";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await getBranding();
@@ -20,7 +21,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function Page() {
+  const serviceSchema = buildServiceJsonLd({
+    name: "Packers & Movers Services",
+    description:
+      "Verified shifting crews, transparent pricing, safe packing, and on-time intercity and local relocation.",
+    pathname: "/packers-movers",
+  });
+
   return (
+    <>
+      <JsonLd data={serviceSchema} />
       <PackersMoversPage />
+    </>
   );
 }

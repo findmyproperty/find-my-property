@@ -34,6 +34,11 @@ export const settingsSchema = z.object({
     .array(z.number().int())
     .nullish()
     .transform((val) => val ?? []),
+  heroBannerPropertyCount: z.coerce.number().int().min(1).max(12).default(5),
+  heroBannerPropertyIds: z
+    .array(z.number().int())
+    .nullish()
+    .transform((val) => val ?? []),
   faqs: z
     .array(
       z.object({
