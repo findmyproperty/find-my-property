@@ -10,8 +10,13 @@ export async function getCachedProperties(): Promise<Property[]> {
   cacheTag(TAGS.properties);
   cacheLife("days");
 
-  const rows = await request<BackendProperty[]>("/properties");
-  return rows.map((property) => mapBackendProperty(property));
+  try {
+    const rows = await request<BackendProperty[]>("/properties");
+    return rows.map((property) => mapBackendProperty(property));
+  } catch (error) {
+    console.error("Failed to fetch cached properties:", error);
+    return [];
+  }
 }
 
 
@@ -21,8 +26,12 @@ export async function getCachedPropertyById(id: string): Promise<Property | unde
   cacheTag(TAGS.property(id));
   cacheLife("days");
 
-  const property = await request<BackendProperty>(`/properties/${id}`);
-  return mapBackendProperty(property);
+  try {
+    const property = await request<BackendProperty>(`/properties/${id}`);
+    return mapBackendProperty(property);
+  } catch {
+    return undefined;
+  }
 }
 
 /**

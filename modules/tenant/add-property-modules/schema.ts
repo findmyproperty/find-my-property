@@ -33,7 +33,14 @@ export const propertyFormSchema = z.object({
 
   bedrooms: z.string().min(1, "Please select number of bedrooms."),
   bathrooms: z.string().min(1, "Please select number of bathrooms."),
-  area: z.string().min(1, "Area is required."),
+  area: z
+    .string()
+    .min(1, "Area is required.")
+    .refine((val) => {
+      const clean = val.replace(/[^0-9.]/g, "");
+      const num = parseFloat(clean);
+      return Number.isFinite(num) && num > 0;
+    }, "Please enter a valid positive area (e.g. 1450)."),
   yearBuilt: z.coerce.number().min(1900, "Year must be 1900 or later.").max(new Date().getFullYear() + 5, "Year cannot be too far in the future."),
   price: z.coerce.number().min(1, "Price must be greater than 0."),
 

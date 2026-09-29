@@ -90,7 +90,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
         country: data.country?.trim() || "India",
         bedrooms: Number(data.bedrooms),
         bathrooms: Number(data.bathrooms),
-        area: Number((Number(data.area) / 10.7639).toFixed(2)),
+        area: Number((parseFloat(String(data.area).replace(/[^0-9.]/g, "") || "0") / 10.7639).toFixed(2)),
         yearBuilt: data.yearBuilt,
         furnishing: data.furnishing,
         amenities: data.amenities,
