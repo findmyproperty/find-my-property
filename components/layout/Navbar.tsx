@@ -163,17 +163,27 @@ export function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem
   return items;
 }
 
+function NavRouteWatcher({ onPathChange }: { onPathChange: (path: string) => void }) {
+  const pathname = usePathname();
+  useEffect(() => {
+    onPathChange(pathname);
+  }, [pathname, onPathChange]);
+  return null;
+}
+
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
+  const [currentPath, setCurrentPath] = useState("");
   const { user, isAuthenticated, logout } = useAuth();
   const { settings } = useSettings();
 
-  const isHomePage = pathname === "/";
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentPath(window.location.pathname);
+    }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 30);
     };
@@ -182,6 +192,7 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isHomePage = currentPath === "/";
   const isHeroTransparent = isHomePage && !isScrolled;
 
   // Admin-configured branding with sensible fallbacks so the navbar never
@@ -213,6 +224,9 @@ const Navbar = () => {
           : "bg-white/85 dark:bg-card/85 backdrop-blur-xl border-b border-border/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]"
       )}
     >
+      <Suspense fallback={null}>
+        <NavRouteWatcher onPathChange={setCurrentPath} />
+      </Suspense>
       <div
         className={cn(
           "container mx-auto flex min-w-0 items-center justify-between px-4 transition-all duration-300",
