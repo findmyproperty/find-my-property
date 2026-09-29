@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import {
   Menu,
   X,
@@ -165,8 +166,23 @@ export function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const { settings } = useSettings();
+
+  const isHomePage = pathname === "/";
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 30);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const isHeroTransparent = isHomePage && !isScrolled;
 
   // Admin-configured branding with sensible fallbacks so the navbar never
   // renders blank while the settings query is in-flight or offline.
@@ -189,40 +205,76 @@ const Navbar = () => {
   const closeMobileMenu = useCallback(() => setMobileOpen(false), []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
-      <div className="container mx-auto flex h-20 min-w-0 items-center justify-between px-4 md:h-24">
+    <nav
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+        isHeroTransparent
+          ? "bg-gradient-to-b from-black/85 via-black/40 to-transparent border-b border-white/10 backdrop-blur-[2px]"
+          : "bg-white/85 dark:bg-card/85 backdrop-blur-xl border-b border-border/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]"
+      )}
+    >
+      <div
+        className={cn(
+          "container mx-auto flex min-w-0 items-center justify-between px-4 transition-all duration-300",
+          isHeroTransparent ? "h-20 md:h-22" : "h-16 md:h-18"
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-6 md:gap-10">
-          <Link href="/" className="flex shrink-0 items-center gap-3" onClick={closeMobileMenu}>
+          <Link href="/" className="flex shrink-0 items-center gap-3 group" onClick={closeMobileMenu}>
             {logoUrl ? (
-              <span className="relative inline-flex h-12 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-14 md:w-28">
+              <span
+                className={cn(
+                  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl transition-all duration-300",
+                  isHeroTransparent
+                    ? "h-11 w-20 md:h-12 md:w-24 bg-white/10 p-1 border border-white/20 shadow-sm backdrop-blur-md group-hover:bg-white/15"
+                    : "h-10 w-20 md:h-11 md:w-24 bg-black/[0.03] dark:bg-white/5 p-1 border border-black/10 dark:border-white/10 shadow-xs group-hover:border-primary/40"
+                )}
+              >
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes="(min-width: 768px) 112px, 80px"
+                  sizes="(min-width: 768px) 96px, 80px"
                   unoptimized
                   className="object-contain"
                 />
               </span>
             ) : (
-              <div className="hero-gradient flex size-10 shrink-0 items-center justify-center rounded-xl md:size-11">
+              <div className="hero-gradient flex size-10 shrink-0 items-center justify-center rounded-xl md:size-11 shadow-sm">
                 <Building2 className="size-5 text-primary-foreground md:size-6" />
               </div>
             )}
             <div className="hidden sm:flex flex-col">
-              <span className="font-heading font-bold text-foreground text-sm tracking-tight leading-tight">
+              <span
+                className={cn(
+                  "font-heading font-bold text-sm tracking-tight leading-tight transition-colors duration-200",
+                  isHeroTransparent ? "text-white" : "text-foreground"
+                )}
+              >
                 {siteName}
               </span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+              <span
+                className={cn(
+                  "text-[10px] uppercase tracking-wider font-medium transition-colors duration-200",
+                  isHeroTransparent ? "text-white/60" : "text-muted-foreground"
+                )}
+              >
                 Real Estate &amp; Advisory
               </span>
             </div>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm">
             <NavigationMenu>
               <NavigationMenuList className="gap-0">
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="h-auto bg-transparent px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent focus:text-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
+                  <NavigationMenuTrigger
+                    className={cn(
+                      "h-auto px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                      isHeroTransparent
+                        ? "bg-transparent text-white/85 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
+                        : "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 data-[state=open]:bg-slate-100 data-[state=open]:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    )}
+                  >
                     Services
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -288,45 +340,95 @@ const Navbar = () => {
               </NavigationMenuList>
             </NavigationMenu>
 
-            <Link href="/about" className="text-muted-foreground transition-colors hover:text-foreground">
+            <Link
+              href="/about"
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                isHeroTransparent
+                  ? "text-white/85 hover:bg-white/10 hover:text-white"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+              )}
+            >
               About
             </Link>
-            <Link href="/contact" className="text-muted-foreground transition-colors hover:text-foreground">
+            <Link
+              href="/contact"
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                isHeroTransparent
+                  ? "text-white/85 hover:bg-white/10 hover:text-white"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+              )}
+            >
               Contact
             </Link>
           </nav>
         </div>
 
-        <div className="hidden md:flex items-center gap-3 min-w-0 shrink-0">
+        <div className="hidden md:flex items-center gap-2.5 min-w-0 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             asChild
-            className="size-9 rounded-full text-foreground hover:bg-muted"
+            className={cn(
+              "size-9 rounded-full transition-all duration-200",
+              isHeroTransparent
+                ? "text-white hover:bg-white/15 hover:text-white border border-white/15 bg-white/5"
+                : "text-foreground hover:bg-muted border border-border/60"
+            )}
           >
             <Link href="/browse" aria-label="Search properties">
               <Search className="size-4" />
             </Link>
           </Button>
-          <ThemeToggle />
+          <ThemeToggle
+            className={cn(
+              "transition-all duration-200",
+              isHeroTransparent &&
+                "!bg-white/10 !border-white/20 !text-white hover:!bg-white/20 hover:!text-white"
+            )}
+          />
           {isAuthenticated ? (
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={getDashboardLink()} className="flex items-center gap-2 min-w-0">
-                  <LayoutDashboard className="h-4 w-4" aria-hidden />
-                  Dashboard
+              <Button
+                variant={isHeroTransparent ? "outline" : "default"}
+                size="sm"
+                asChild
+                className={cn(
+                  "rounded-full px-4 h-9 text-xs font-medium transition-all shadow-xs",
+                  isHeroTransparent
+                    ? "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white hover:border-white/40 backdrop-blur-sm"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+              >
+                <Link href={getDashboardLink()} className="flex items-center gap-1.5 min-w-0">
+                  <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                  <span>Dashboard</span>
                 </Link>
               </Button>
               <DropdownMenu modal={false}>
-                <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus:outline-none">
+                <DropdownMenuTrigger
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all focus:outline-none",
+                    isHeroTransparent
+                      ? "text-white hover:bg-white/15 border border-white/15 bg-white/5"
+                      : "text-foreground hover:bg-muted border border-border/60"
+                  )}
+                >
                   <UserAvatar
                     name={user?.name ?? "User"}
                     avatarUrl={user?.avatarUrl}
-                    className="h-7 w-7"
+                    className="h-6 w-6 ring-1 ring-white/20"
                     fallbackClassName="text-[10px]"
                   />
-                  <span className="max-w-[120px] truncate">Profile</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  <span className="max-w-[100px] truncate">{user?.name ? user.name.split(" ")[0] : "Profile"}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-colors",
+                      isHeroTransparent ? "text-white/70" : "text-muted-foreground"
+                    )}
+                    aria-hidden
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="font-normal">
@@ -363,16 +465,31 @@ const Navbar = () => {
             <Suspense
               fallback={
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "rounded-full",
+                      isHeroTransparent ? "border-white/25 text-white bg-white/10" : ""
+                    )}
+                    asChild
+                  >
                     <Link href="/login">Log In</Link>
                   </Button>
-                  <Button size="sm" asChild>
+                  <Button
+                    size="sm"
+                    className={cn(
+                      "rounded-full",
+                      isHeroTransparent ? "bg-amber-400 text-slate-950 font-semibold" : ""
+                    )}
+                    asChild
+                  >
                     <Link href="/register">Sign Up</Link>
                   </Button>
                 </div>
               }
             >
-              <NavLoginRegisterLinks />
+              <NavLoginRegisterLinks isHeroTransparent={isHeroTransparent} />
             </Suspense>
           )}
         </div>
@@ -380,7 +497,10 @@ const Navbar = () => {
         <button
           type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden p-2 rounded-lg text-foreground hover:bg-muted"
+          className={cn(
+            "md:hidden p-2 rounded-lg transition-colors",
+            isHeroTransparent ? "text-white hover:bg-white/15" : "text-foreground hover:bg-muted"
+          )}
         >
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
