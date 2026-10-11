@@ -1,9 +1,9 @@
 ---
 name: Property form gap analysis
-overview: Revised gap analysis. Implementation waits until the combined NoBroker/YDBC document is attached. Existing rows keep a null listingCategory. Later phases add an additive category contract, a stepped create shell with a dirty-aware edit bar, then per-category workflows, list layouts, and detail layouts. Dark UI stays.
+overview: Revised gap analysis. Implementation waits until the combined NoBroker/YDBC document is attached. Existing rows keep a null property sector. Create step 1 is Residential, Commercial, or Land/Plot, then a listing type from the locked matrix. Next reveals the other fields. Dark UI stays.
 todos:
   - id: phase-2-contract
-    content: Additive nullable listingCategory and details only, after a schema-diff gate. No backfill. Preserve current payloads, area storage, approval, and status.
+    content: Additive nullable propertySector, postingType, and details only, after a schema-diff gate. No backfill. Preserve current payloads, area storage, approval, and status.
     status: pending
   - id: phase-3-form-shell
     content: Shared dark form shell with create Previous/Next, final submit, section validation, edit hydration, and a sticky Update bar tied to confirmed saves.
@@ -76,11 +76,30 @@ Admin `categories.name` stays a subtype label. It is not the posting category. W
 
 ## Target shape
 
-- `listingCategory` enum: `residential_rent | residential_resale | pg | flatmates | commercial_rent | commercial_sale | plot`
+Create starts with two choices, in this order. Nothing else is on that step.
+
+1. Sector: **Residential**, **Commercial**, or **Land/Plot**
+2. Listing type: options depend on the sector. Changing the sector clears a listing type that is not valid for the new sector
+3. **Next** validates those two choices and then shows the other fields. Previous returns to this step without dropping values entered later
+
+Confirmed listing types for the second choice:
+
+- Residential: Rent, Resale, PG/Hostel, Flatmates
+- Commercial: Rent, Sale
+- Land/Plot: Resale
+
+No other listing type is shown. `Lease` is not in this picker. The seven workflows are these pairs, not seven buttons on the first screen.
+
+Stored fields:
+
+- `propertySector`: `residential | commercial | plot`, nullable, no default
+- `postingType`: `rent | resale | sale | pg | flatmates`, nullable, no default. The API rejects pairs outside the matrix above
+- The existing `listingType` column stays `Rent | Sale | Lease` through Phase 2 so current rows and browse filters do not change. Do not add PG, Flatmates, or Resale to that enum in Phase 2. `listingType` is `NOT NULL` today, so PG and Flatmates cannot be saved by overloading it. Extending or relaxing that column waits for the Phase 4 schema gate, when those forms exist
+- `details` JSON, nullable, for fields that belong only to one sector + listing type pair
 - Shared columns stay: title, description, price, currency, address fields, lat/lng, images, thumbnail, video, status, reason, approvedAt, createdBy, assignedAgentId
-- Category-only facts go in nullable `details` JSON, validated by a discriminated DTO once the document names those facts
-- `listingType` stays `Rent | Sale | Lease` on the wire so current browse and admin filters keep working. New writes may derive it from `listingCategory`. Do not remove `Lease` in Phase 2
 - Do not add a column per checkbox
+
+Legacy rows keep `propertySector` null and their current `listingType`, including `Lease`.
 
 ## Phase 2 — Additive contract, no behavior change
 
@@ -108,66 +127,88 @@ Gate before any entity edit:
 
 Additive and nullable only:
 
-- `listingCategory` varchar/enum, nullable, no default
+- `propertySector` varchar, nullable, no default (`residential`, `commercial`, `plot`)
+- `postingType` varchar, nullable, no default (`rent`, `resale`, `sale`, `pg`, `flatmates`)
 - `details` JSON, nullable
 
 No change to area storage, bedroom nullability, furnishing enum, status enum, or listing type enum.
 
 ### No backfill
 
-Confirmed decision: do not stamp `listingCategory` on existing rows. After the additive columns exist, every current property stays `listingCategory = NULL` and `details = NULL`. No update script runs against `status`, `approvedAt`, `price`, `area`, images, or `listingType`.
+Confirmed decision: do not stamp `propertySector` or `postingType` on existing rows. After the additive columns exist, every current property stays `propertySector = NULL`, `postingType = NULL`, and `details = NULL`. No update script runs against `status`, `approvedAt`, `price`, `area`, images, or `listingType`.
 
-Current clients omit `listingCategory`. Create and update must still succeed and must store `NULL` when the field is omitted. Do not derive a category from `listingType` or `propertyType`. When the field is sent, validate it against the enum. `forbidNonWhitelisted` stays; new fields are optional so old payloads are not rejected.
+Current clients omit the new fields. Create and update must still succeed and must store `NULL` when they are omitted. Do not derive them from `listingType` or `propertyType`. When either is sent, both must be sent and the pair must be in the locked matrix. `forbidNonWhitelisted` stays; new fields are optional so old payloads are not rejected.
 
 Non-admin update must still force `Pending` and clear `approvedAt`. Admin approve/reject behavior stays.
 
 ### Phase 2 tests
 
-- Current create payload without `listingCategory` still creates, stores `listingCategory` and `details` as null, and does not change area. Tenant/agent result is `Pending`. Admin result is `Approved` when status is omitted
-- PATCH of title on an approved non-admin listing still becomes `Pending` and does not change `price`, `area`, or `listingCategory`
-- Loading rows saved before Phase 2 returns `listingCategory: null` and the same `status` and `area` as before
-- Sending `listingCategory: "plot"` is accepted and stored, and does not alter `status`
-- Unknown `listingCategory` is rejected
+- Current create payload without `propertySector` still creates, stores `propertySector`, `postingType`, and `details` as null, and does not change `listingType` or area. Tenant/agent result is `Pending`. Admin result is `Approved` when status is omitted
+- PATCH of title on an approved non-admin listing still becomes `Pending` and does not change `price`, `area`, `listingType`, or `propertySector`
+- Loading rows saved before Phase 2 returns `propertySector: null` and the same `status`, `listingType`, and `area` as before
+- `propertySector: "plot"` with `postingType: "resale"` is accepted and does not alter `status` or `listingType`
+- `propertySector: "plot"` with `postingType: "rent"`, and any unknown sector or posting type, is rejected
 
-Acceptance: existing rows keep a null category, their approval state, and their area numbers; the current form still creates and edits; staging schema diff shows only the two new nullable columns.
+Acceptance: existing rows keep a null sector, their approval state, and their area numbers; the current form still creates and edits; staging schema diff shows only the new nullable columns.
 
 ## Phase 3 — Shared form shell
 
 Reuse the dark accordion and existing section components. This phase moves the **current** fields into a shell. It does not add unverified NoBroker fields.
 
-Create and edit are different interactions.
+### useForm contract
+
+One `useForm` in [AddProperty.tsx](c:\dev\theydbc\find-my-property\modules\tenant\AddProperty.tsx). Sections keep using `useFormContext` through the existing `Form` provider. Do not add a second form, and do not copy field values into `useState`.
+
+```ts
+useForm<PropertyFormValues>({
+  resolver: zodResolver(propertyFormSchema),
+  defaultValues: getDefaultValues(initialData),
+  mode: "onTouched",
+  reValidateMode: "onChange",
+  shouldUnregister: false,
+})
+```
+
+- `shouldUnregister: false` keeps values when a step unmounts. Previous/Next must not remount `useForm`
+- `defaultValues` come only from `getDefaultValues`. The edit page already waits for the property, then mounts `<AddProperty key={id} initialData={property} />` so the first defaults are the saved row and `isDirty` starts false
+- Selects and uploads go through `FormField` / `Controller` with `value` and `onChange`. Do not use `defaultValue` on selects
+- Read `formState.isDirty` and `formState.isSubmitting` during render so React Hook Form subscribes. `isSubmitting` replaces the manual `loading` flag. `handleSubmit` runs only on the last step
+- Step checks use `trigger(stepFieldNames)` and then advance. Do not submit from Next
+- Changing sector uses `setValue("postingType", "", { shouldDirty: true, shouldValidate: true })` when the current posting type is not in the new sector’s list. Use `useWatch({ name: "propertySector" })` for that list so the rest of the form does not re-render on every keystroke
+- Programmatic writes that are not user edits pass `shouldDirty: false`
+- After a successful PATCH, `reset(valuesFromResponse)` makes those values the new defaults and sets `isDirty` to false. A failed PATCH does not call `reset`
+- The schema stays one Zod object. Phase 4 may switch the resolver from the watched sector and posting type, still on this same `useForm` instance
 
 **Create**
 
-- One `useForm` instance for the whole flow. Step changes hide sections; they do not remount the form, so values survive Previous/Next
-- Previous and Next in the footer. Next calls `trigger` on that section’s field names only. Invalid sections stay put and show the existing field errors
-- Create Property is rendered only on the last section. Earlier sections cannot submit
-- Final submit runs the full current schema, then the existing POST. Success still returns to My Listings
+- Step 1 shows only the sector choice (Residential, Commercial, Land/Plot) and the listing-type choice
+- Next stays disabled until both are set, then `trigger` on those two fields reveals the other fields
+- Later steps use the same Previous/Next footer and `trigger` on that step’s field names
+- Create Property is the `handleSubmit` button, only on the last section. Success still returns to My Listings
 - No sticky update bar on create
+- Listing types on step 1 are exactly the locked matrix. Until Phase 4, only Residential + Rent can pass Next into the existing fields. The other six pairs stay selectable and do not open an unfinished form
 
 **Edit**
 
-- Do not render the form until `getRawProperty` resolves, then `reset` from the saved property once
-- Take a deep snapshot of those saved values after reset. Dirty means the current values differ from that snapshot after normalizing empty strings and numeric strings. Do not use RHF `isDirty` as the source of truth
-- All current sections stay available (accordion). This is not the create wizard
-- A sticky **Update Property** bar is shown only while the snapshot comparison is dirty. Hide it when the form matches the snapshot
-- Update validates the full schema, then PATCH. On HTTP success, replace the snapshot from the API response and hide the bar. Stay on the edit page
-- On failure, leave the form and the snapshot unchanged so the bar remains and the user’s edits remain
-- Server-forced status (`Pending` for non-admins) is not treated as an unsaved edit
-
-Category picker can select Residential Rent only. Other categories are visible and disabled until Phase 4.
+- All current sections stay available. This is not the create wizard
+- The sticky **Update Property** bar is shown only when `formState.isDirty` is true
+- Update is `handleSubmit` of the full schema, then PATCH. On success, `reset` from the API response and stay on the page. On failure, leave values and defaults untouched so the bar stays
+- Server-forced status (`Pending` for non-admins) is not a form field, so it does not mark the form dirty
+- The same sector and listing-type controls are filled from `defaultValues`. Changing them swaps later sections to that pair’s schema. A null sector on an old listing opens as the current residential form
 
 ### Phase 3 tests
 
-- Next does not advance when the active section is invalid, and does not show Create Property
-- Values entered on step 1 are still present after Next and Previous
+- Step 1 renders sector and listing type only. Price, bedrooms, and images are absent
+- Residential offers Rent, Resale, PG/Hostel, and Flatmates. Commercial offers Rent and Sale. Land/Plot offers Resale. Changing sector clears an incompatible listing type
+- Next does not advance until both choices are set, and does not show Create Property
+- After Next, the other current fields are visible. Previous returns to step 1 with those values still stored
 - Create Property submits only from the last step
-- Edit initializes title, price, listing type, and images from the saved payload
-- Sticky bar is absent on a freshly loaded edit form
-- Changing one field shows the bar; restoring the original value hides it
-- A resolved PATCH clears the bar; a rejected PATCH keeps the edited value and the bar
+- Edit initializes title, price, listing type, and images from `defaultValues`, and `isDirty` is false before any edit
+- The sticky bar follows `formState.isDirty`: hidden on load, shown after a real edit, hidden again when the value is restored to the default
+- A resolved PATCH calls `reset` with the response and `isDirty` becomes false. A rejected PATCH does not call `reset`, so the edited value and the bar remain
+- Sections do not keep a parallel copy of form state in `useState`
 
-Acceptance: create is a wizard over today’s fields; edit shows Update Property only for real unsaved changes; a failed save does not wipe the form; the visual style matches the current dark form.
+Acceptance: create step 1 is only sector and listing type; Next reveals the other fields; edit shows Update Property only for real unsaved changes; a failed save does not wipe the form; the visual style matches the current dark form.
 
 ## Phase 4 — Category workflows
 
@@ -175,7 +216,7 @@ Confirmed decision: no implementation of any phase starts until the combined NoB
 
 Implement in this order: Residential Resale, Commercial Rent, Commercial Sale, Land/Plot, PG/Hostel, Flatmates. Residential Rent gains only the extra fields the document confirms; the shell from Phase 3 already covers the current rent fields.
 
-Switching category clears answers that do not belong to the new schema. Edit reopens the saved `listingCategory` and hydrates `details`. Floor plans stay on the categories the document includes; do not assume they belong on plot or PG.
+Switching sector or listing type clears answers that do not belong to the new pair. Edit reopens the saved `propertySector` and `postingType` and hydrates `details`. Floor plans stay on the pairs the document includes; do not assume they belong on plot or PG.
 
 Making `bedrooms`, `bathrooms`, and `yearBuilt` optional in the DTO and nullable in the database happens in this phase, only for categories whose schema omits them, and only through the same schema gate as Phase 2.
 
@@ -190,15 +231,15 @@ Acceptance: each enabled category has its own sections; create still uses Previo
 
 ## Phase 5 — List layouts
 
-One card frame. A per-category fact config chooses the line under the price. Empty `details` or null `listingCategory` falls back to today’s BHK / baths / area line so favorites, featured, dashboards, and similar listings still render.
+One card frame. A per-pair fact config chooses the line under the price. Empty `details` or null `propertySector` falls back to today’s BHK / baths / area line so favorites, featured, dashboards, and similar listings still render.
 
-Browse can filter by `listingCategory` without dropping the current rent/buy filter. Fix the hero params so they match the browse parser.
+Browse can filter by sector and posting type without dropping the current rent/buy filter. Fix the hero params so they match the browse parser.
 
 ### Phase 5 tests
 
 - A residential card still shows BHK
 - A category with no bedroom fact does not render “BHK”
-- A null `listingCategory` uses the current card facts
+- A null `propertySector` uses the current card facts
 - My Listings rows show the category label when it is set
 
 Acceptance: list and My Listings stay on the dark card/row design; old listings do not lose their facts.
@@ -223,7 +264,7 @@ Acceptance: a reader can create and edit a listing from the manual without meeti
 
 ## Dependencies
 
-- Phase 3 depends on Phase 2 types, and can use null `listingCategory` as “current residential form”
+- Phase 3 depends on Phase 2 types, and can use null `propertySector` as “current residential form”
 - Phase 4 depends on Phase 3’s shell and on the requirements document
 - Phases 5 and 6 depend on Phase 2 and should follow Phase 4 so `details` is real
 - List work and detail work stay separate configs. Do not fold them into the form phases
@@ -231,13 +272,14 @@ Acceptance: a reader can create and edit a listing from the manual without meeti
 ## Decisions locked
 
 - Implementation does not start until the combined NoBroker/YDBC requirements document is attached. Field names and options will be copied from that document only
-- No backfill. Existing rows keep `listingCategory` null. The server does not infer a category from `listingType` or `propertyType`
+- No backfill. Existing rows keep `propertySector` null. The server does not infer a sector from `listingType` or `propertyType`
+- Create step 1 is only Residential, Commercial, or Land/Plot, then a listing type from the locked matrix. Next reveals the other fields. Residential offers Rent, Resale, PG/Hostel, and Flatmates. Commercial offers Rent and Sale. Land/Plot offers Resale
 
 ## Still unresolved — answer from the document before Phase 4
 
 These are not implied by the code or by [PROPERTY_CREATION.md](c:\dev\theydbc\find-my-property\docs\PROPERTY_CREATION.md). If the attached document does not answer one, leave that behavior unchanged.
 
-- Whether `Lease` remains a listing type, maps to Commercial Rent, or stays a legacy value with null category
+- Whether legacy `Lease` rows stay as they are (null sector, `listingType` Lease) or are mapped later. `Lease` is not a choice in the new picker
 - Whether subtypes stay admin-managed categories or become fixed lists
 - Flatmates: one posting flow or two, only if the document shows both
 - Whether photos are required
@@ -249,4 +291,5 @@ These are not implied by the code or by [PROPERTY_CREATION.md](c:\dev\theydbc\fi
 
 - Area stays m² on disk through Phase 2 and Phase 3. A unit column and a conversion migration are a later, separate change
 - Create stays a wizard. Edit stays a full form with the sticky bar, and stays on the page after a successful update
-- List and detail keep today’s facts when `listingCategory` is null
+- One `useForm` owns the wizard and the edit form. Dirty state is `formState.isDirty` after `reset`, not a hand-rolled snapshot
+- List and detail keep today’s facts when `propertySector` is null
