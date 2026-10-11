@@ -65,7 +65,7 @@ export default async function RootLayout({
           "antialiased",
           fontSans.variable,
           fontHeading.variable,
-          "font-[family-name:var(--font-body)]",
+          "font-(family-name:--font-body)",
         )}
       >
         <AppProviders initialBranding={branding}>{children}</AppProviders>

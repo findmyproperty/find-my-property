@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,134 +23,26 @@ import {
 } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useProperties } from "@/hooks/use-properties";
-import { useSettings } from "@/contexts/settings-context";
 import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
-import { buildPropertyPath } from "@/lib/property-slug";
+import { type HeroSlide } from "@/lib/hero-slides";
 import { cn } from "@/lib/utils";
 
-export type HeroSlide = {
-  id: string;
-  number: string;
-  title: string;
-  tagline: string;
-  subtitle: string;
-  kicker: string;
-  location: string;
-  image: string;
-  fallbackImage: string;
-  href: string;
-};
-
-const DUMMY_REAL_ESTATE_SLIDES: HeroSlide[] = [
-  {
-    id: "hudayriyat",
-    number: "01",
-    title: "Hudayriyat Golf Estates",
-    tagline: "Where life finds its swing",
-    subtitle: "Championship fairway villas with panoramic coastal green and skyline views.",
-    kicker: "Signature Golf & Waterfront Living",
-    location: "South Bay Horizon",
-    image: "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?q=80&w=2070&auto=format&fit=crop",
-    fallbackImage: "/images/hero-bg.jpg",
-    href: "/browse?type=Sale",
-  },
-  {
-    id: "tara-park",
-    number: "02",
-    title: "Tara Park Residences",
-    tagline: "Where you belong",
-    subtitle: "Contemporary architectural sky homes with panoramic central park vistas.",
-    kicker: "Metropolitan Skyline Collection",
-    location: "Central Boulevard",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=2070&auto=format&fit=crop",
-    fallbackImage: "/images/hero-bg.jpg",
-    href: "/browse?type=Sale",
-  },
-  {
-    id: "wadeem-gardens",
-    number: "03",
-    title: "Wadeem Gardens",
-    tagline: "Where everything aligns",
-    subtitle: "Private sanctuaries blending biophilic architecture with bespoke concierge.",
-    kicker: "Ultra-Luxury Villas & Estates",
-    location: "Emerald Hills",
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop",
-    fallbackImage: "/images/hero-bg.jpg",
-    href: "/browse?category=Residential",
-  },
-  {
-    id: "bashayer",
-    number: "04",
-    title: "Bashayer Coastal Bay",
-    tagline: "Where water welcomes you",
-    subtitle: "Timeless maritime residences crafted for elevated shoreline living.",
-    kicker: "Waterfront Marina Promenade",
-    location: "Coastal Harbour",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop",
-    fallbackImage: "/images/hero-bg.jpg",
-    href: "/browse?type=Sale",
-  },
-];
+export type { HeroSlide };
 
 const AUTOPLAY_DURATION = 6500; // 6.5s per slide
 
-export default function ModonHeroCarousel() {
+export default function ModonHeroCarousel({
+  slides: initialSlides = [],
+}: {
+  slides?: HeroSlide[];
+}) {
   const router = useRouter();
-  const { data: properties } = useProperties();
-  const { settings } = useSettings();
-
-  const heroCount = settings?.heroBannerPropertyCount ?? 5;
-  const pinnedIds = settings?.heroBannerPropertyIds ?? [];
+  const slides = initialSlides;
 
   // Load Google Maps Places Autocomplete
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader(getGoogleMapsLoaderOptions(apiKey));
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
-  // Dynamic slides from database if available, otherwise high-quality dummy real estate data
-  const slides = useMemo<HeroSlide[]>(() => {
-    if (properties && properties.length > 0) {
-      // Pick verified / active properties with photos
-      const validProperties = properties.filter((p) => Boolean(p.image || p.images?.length));
-      if (validProperties.length > 0) {
-        let selected: typeof validProperties = [];
-        if (pinnedIds && pinnedIds.length > 0) {
-          const idSet = new Set(pinnedIds.map((id) => Number(id)));
-          const pinned = validProperties.filter((p) => idSet.has(Number(p.id)));
-          const unpinned = validProperties.filter((p) => !idSet.has(Number(p.id)));
-          selected = [...pinned, ...unpinned].slice(0, heroCount);
-        } else {
-          selected = validProperties.slice(0, heroCount);
-        }
-
-        if (selected.length > 0) {
-          return selected.map((p, idx) => {
-            const fallback = DUMMY_REAL_ESTATE_SLIDES[idx % DUMMY_REAL_ESTATE_SLIDES.length];
-            const primaryImage = p.image || p.images?.[0] || fallback.image;
-            const displayPrice = p.price ? `${p.currency || "₹"}${p.price}` : "";
-            const subtitle = p.description
-              ? p.description.slice(0, 110) + "..."
-              : `${p.bedrooms ? `${p.bedrooms} BHK ` : ""}${p.propertyType || "Property"}${displayPrice ? ` • ${displayPrice}` : ""} • ${p.city || "Prime Location"}`;
-
-            return {
-              id: String(p.id),
-              number: String(idx + 1).padStart(2, "0"),
-              title: p.title,
-              tagline: p.locality ? `Prime living in ${p.locality}, ${p.city}` : fallback.tagline,
-              subtitle,
-              kicker: `${p.type === "rent" ? "Verified Rental" : "Exclusive Development"} • ${p.city || "Featured"}`,
-              location: p.locality || p.city || "India",
-              image: primaryImage,
-              fallbackImage: fallback.fallbackImage,
-              href: buildPropertyPath(p.id, p.title),
-            };
-          });
-        }
-      }
-    }
-    return DUMMY_REAL_ESTATE_SLIDES.slice(0, Math.max(1, heroCount));
-  }, [properties, heroCount, pinnedIds]);
 
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);

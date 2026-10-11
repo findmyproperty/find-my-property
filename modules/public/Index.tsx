@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { LandingAboutSection } from "@/modules/public/LandingAboutSection";
 import { EcosystemSection } from "@/modules/public/EcosystemSection";
 import { LocalityHubsSection } from "@/modules/public/LocalityHubsSection";
+import type { HeroSlide } from "@/lib/hero-slides";
 import type { Settings } from "@/schema/setting";
 
 const platformSteps = [
@@ -101,10 +102,16 @@ const EMPTY_REACTIONS: CustomerReactionDTO[] = [];
 type IndexProps = {
   siteName?: string;
   serverSettings?: Settings | null;
+  heroSlides?: HeroSlide[];
   children?: React.ReactNode;
 };
 
-export default function Index({ siteName: ssrSiteName, serverSettings, children }: IndexProps = {}) {
+export default function Index({
+  siteName: ssrSiteName,
+  serverSettings,
+  heroSlides,
+  children,
+}: IndexProps = {}) {
   const { isAuthenticated, isAuthReady } = useAuth();
   const { data, isLoading } = useProperties();
   const { data: customerReactions = EMPTY_REACTIONS } = useQuery({
@@ -171,7 +178,7 @@ export default function Index({ siteName: ssrSiteName, serverSettings, children 
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       {/* 01. EDITORIAL HERO & INTELLIGENT SEARCH DOCK */}
-      <HeroSection />
+      <HeroSection slides={heroSlides} />
 
       {/* 02. "EXPLORE THE YBDC" — ARCHITECTURAL 4-PILLAR ECOSYSTEM SHOWCASE */}
       <EcosystemSection />

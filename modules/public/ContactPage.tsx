@@ -41,7 +41,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/contexts/settings-context";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/branding";
+import {
+  OFFICE_ADDRESS_LINES,
+  OFFICE_MAPS_URL,
+  SITE_NAME,
+  SUPPORT_EMAIL,
+} from "@/lib/branding";
 
 const RECAPTCHA_SITE_KEY =
   process.env.NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY?.trim() ||
@@ -275,15 +280,26 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
                 </a>
               ) : null}
 
-              <div className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5">
+              <a
+                href={OFFICE_MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+              >
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <MapPin className="size-5" aria-hidden />
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold text-foreground">Based in</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">India</span>
+                  <span className="block text-sm font-semibold text-foreground">Location</span>
+                  <span className="mt-1 block text-sm leading-6 text-muted-foreground">
+                    {OFFICE_ADDRESS_LINES.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </span>
                 </span>
-              </div>
+              </a>
             </div>
 
             <div className="mt-8 rounded-2xl bg-muted/50 p-5">

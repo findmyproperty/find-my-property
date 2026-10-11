@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type Settings } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { revalidateBranding } from "@/app/(roles-routes)/admin/settings/actions";
+import { revalidateBranding } from "@/lib/server/revalidate-branding";
 import { applyFavicon } from "@/lib/branding/client";
 
 export function useAdminSettings() {
@@ -25,6 +25,7 @@ export function useAdminSettings() {
       queryClient.setQueryData(["global-settings"], updated);
       applyFavicon(updated.faviconUrl);
       queryClient.invalidateQueries({ queryKey: ["global-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
       try {
         // Bust the SSR data cache (`revalidateTag('settings')`) so server
         // metadata, JSON-LD, and any other RSC re-renders with the new value.

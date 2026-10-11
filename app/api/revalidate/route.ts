@@ -1,4 +1,4 @@
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { TAGS } from "@/config/tags";
 
@@ -41,12 +41,15 @@ export async function POST(req: NextRequest) {
 
   if (scope === "property" && propertyId) {
     revalidateTag(TAGS.property(propertyId), "max");
+    revalidateTag(TAGS.properties, "max");
   } else if (scope === "settings") {
     revalidateTag(TAGS.settings, "max");
+    revalidateTag(TAGS.properties, "max");
   } else {
     revalidateTag(TAGS.properties, "max");
     revalidateTag(TAGS.settings, "max");
   }
+  revalidatePath("/");
 
   return NextResponse.json({
     ok: true,

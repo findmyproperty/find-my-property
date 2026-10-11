@@ -1,9 +1,14 @@
 "use client";
 
-import { Building2, Heart, Phone, Mail } from "lucide-react";
+import { Building2, Heart, MapPin, Phone, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/branding";
+import {
+  OFFICE_ADDRESS_LINES,
+  OFFICE_MAPS_URL,
+  SITE_NAME,
+  SUPPORT_EMAIL,
+} from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 
 const Footer = () => {
@@ -98,6 +103,22 @@ const Footer = () => {
                   className="min-w-0 break-all hover:text-primary transition-colors"
                 >
                   {email}
+                </a>
+              </li>
+              <li className="flex items-start gap-2 min-w-0">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <a
+                  href={OFFICE_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 leading-6 hover:text-primary transition-colors"
+                >
+                  <span className="block">Location</span>
+                  {OFFICE_ADDRESS_LINES.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
                 </a>
               </li>
             </ul>

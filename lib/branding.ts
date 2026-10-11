@@ -29,3 +29,14 @@ export const SUPPORT_EMAIL =
   typeof process !== "undefined" && process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim()
     ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL.trim()
     : "findmypropertysrealtysolution@gmail.com";
+
+/** Public office shown in footer, contact page, and Organization JSON-LD. */
+export const OFFICE_ADDRESS_LINES = [
+  "12 Block BDA Layout, Stage 2, Nagarbhavi",
+  "Bengaluru, Karnataka 560072",
+] as const;
+
+export const OFFICE_ADDRESS_FULL = OFFICE_ADDRESS_LINES.join(", ");
+
+export const OFFICE_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=12%20Block%20BDA%20Layout%2C%20Stage%202%2C%20Nagarbhavi%2C%20Bengaluru%2C%20Karnataka%20560072";

@@ -1,5 +1,5 @@
 import { Property } from "@/components/property/PropertyCard";
-import { SUPPORT_EMAIL } from "@/lib/branding";
+import { OFFICE_ADDRESS_LINES, SUPPORT_EMAIL } from "@/lib/branding";
 import { getBranding } from "@/lib/branding/server";
 import { absoluteUrl, getSiteUrl, toAbsoluteImageUrl } from "@/lib/seo/site";
 
@@ -12,6 +12,14 @@ export async function buildOrganizationJsonLd() {
     name: siteName,
     url,
     email: SUPPORT_EMAIL,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: OFFICE_ADDRESS_LINES[0],
+      addressLocality: "Bengaluru",
+      addressRegion: "Karnataka",
+      postalCode: "560072",
+      addressCountry: "IN",
+    },
   };
 }
 

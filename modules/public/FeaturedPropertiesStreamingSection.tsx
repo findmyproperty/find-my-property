@@ -21,9 +21,13 @@ import {
 export async function FeaturedPropertiesStreamingSection() {
   "use cache";
   cacheTag(TAGS.properties);
-  cacheLife("days");
 
   const allProperties = await getCachedProperties();
+  if(allProperties.length === 0) {
+    cacheLife("minutes");
+  } else {
+    cacheLife("days");
+  }
   const featuredProperties = allProperties.slice(0, 4);
 
   if (featuredProperties.length === 0) {

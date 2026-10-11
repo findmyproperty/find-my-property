@@ -1,4 +1,4 @@
-import type { Property } from "@/components/property/PropertyCard";
+import type { Property } from "@/lib/property-view-model";
 import { mapBackendProperty, type BackendProperty } from "@/lib/property-mapper";
 import { request } from "@/end-points/http";
 import { cacheLife, cacheTag } from "next/cache";
@@ -8,13 +8,19 @@ import { TAGS } from "@/config/tags";
 export async function getCachedProperties(): Promise<Property[]> {
   "use cache";
   cacheTag(TAGS.properties);
-  cacheLife("days");
 
   try {
     const rows = await request<BackendProperty[]>("/properties");
-    return rows.map((property) => mapBackendProperty(property));
+    const mapped = rows.map((property) => mapBackendProperty(property));
+    if(mapped.length === 0) {
+      cacheLife("minutes");
+    } else {
+      cacheLife("days");
+    }
+    return mapped;
   } catch (error) {
     console.error("Failed to fetch cached properties:", error);
+    cacheLife("minutes");
     return [];
   }
 }

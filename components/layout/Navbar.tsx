@@ -163,36 +163,29 @@ export function getProfileMenuItems(role: UserRole | undefined): ProfileMenuItem
   return items;
 }
 
-function NavRouteWatcher({ onPathChange }: { onPathChange: (path: string) => void }) {
-  const pathname = usePathname();
-  useEffect(() => {
-    onPathChange(pathname);
-  }, [pathname, onPathChange]);
-  return null;
-}
-
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
-  const [currentPath, setCurrentPath] = useState("");
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const { settings } = useSettings();
 
   const [isScrolled, setIsScrolled] = useState(false);
+  const [allowNavTransition, setAllowNavTransition] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentPath(window.location.pathname);
-    }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 30);
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    setTimeout(() => {
+      setAllowNavTransition(true);
+    }, 0);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const isHomePage = currentPath === "/";
+  const isHomePage = pathname === "/";
   const isHeroTransparent = isHomePage && !isScrolled;
 
   // Admin-configured branding with sensible fallbacks so the navbar never
@@ -218,15 +211,13 @@ const Navbar = () => {
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+        "fixed top-0 left-0 right-0 z-50",
+        allowNavTransition && "transition-all duration-300 ease-out",
         isHeroTransparent
-          ? "bg-gradient-to-b from-black/85 via-black/40 to-transparent border-b border-white/10 backdrop-blur-[2px]"
+          ? "bg-linear-to-b from-black/85 via-black/40 to-transparent border-b border-white/10 backdrop-blur-[2px]"
           : "bg-white/85 dark:bg-card/85 backdrop-blur-xl border-b border-border/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)]"
       )}
     >
-      <Suspense fallback={null}>
-        <NavRouteWatcher onPathChange={setCurrentPath} />
-      </Suspense>
       <div
         className={cn(
           "container mx-auto flex min-w-0 items-center justify-between px-4 transition-all duration-300",
