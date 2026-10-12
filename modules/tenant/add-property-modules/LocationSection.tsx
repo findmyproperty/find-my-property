@@ -61,11 +61,11 @@ export const LocationSection = () => {
   const applyAddressComponents = useCallback(
     (addr: AddressComponents | null) => {
       if (!addr) return;
-      if (addr.address != null) setValue("address", addr.address, { shouldValidate: true });
-      if (addr.locality != null) setValue("locality", addr.locality, { shouldValidate: true });
-      if (addr.city != null) setValue("city", addr.city, { shouldValidate: true });
-      if (addr.state != null) setValue("state", addr.state, { shouldValidate: true });
-      if (addr.country != null) setValue("country", addr.country, { shouldValidate: true });
+      if (addr.address != null) setValue("address", addr.address, { shouldValidate: true, shouldDirty: true });
+      if (addr.locality != null) setValue("locality", addr.locality, { shouldValidate: true, shouldDirty: true });
+      if (addr.city != null) setValue("city", addr.city, { shouldValidate: true, shouldDirty: true });
+      if (addr.state != null) setValue("state", addr.state, { shouldValidate: true, shouldDirty: true });
+      if (addr.country != null) setValue("country", addr.country, { shouldValidate: true, shouldDirty: true });
     },
     [setValue],
   );

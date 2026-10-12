@@ -42,9 +42,9 @@ export const PropertyImagesSection = () => {
               const info = result.info as any;
               const currentImgs = getValues("propertyImages") || [];
               const newImgs = [...currentImgs, info.secure_url];
-              setValue("propertyImages", newImgs, { shouldValidate: true });
+              setValue("propertyImages", newImgs, { shouldValidate: true, shouldDirty: true });
               if (!getValues("thumbnailUrl")) {
-                setValue("thumbnailUrl", info.secure_url, { shouldValidate: true });
+                setValue("thumbnailUrl", info.secure_url, { shouldValidate: true, shouldDirty: true });
               }
             }
           }}
@@ -74,7 +74,7 @@ export const PropertyImagesSection = () => {
             {propertyImages.map((url, idx) => (
               <div
                 key={idx}
-                onClick={() => setValue("thumbnailUrl", url, { shouldValidate: true })}
+                onClick={() => setValue("thumbnailUrl", url, { shouldValidate: true, shouldDirty: true })}
                 className={cn(
                   "relative min-w-[120px] w-[120px] h-[90px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all group",
                   thumbnailUrl === url ? "border-primary shadow-md" : "border-transparent opacity-70 hover:opacity-100"
@@ -92,9 +92,9 @@ export const PropertyImagesSection = () => {
                     e.stopPropagation();
                     const currentImgs = getValues("propertyImages") || [];
                     const newImgs = currentImgs.filter((_, i) => i !== idx);
-                    setValue("propertyImages", newImgs, { shouldValidate: true });
+                    setValue("propertyImages", newImgs, { shouldValidate: true, shouldDirty: true });
                     if (thumbnailUrl === url) {
-                      setValue("thumbnailUrl", newImgs[0] || "", { shouldValidate: true });
+                      setValue("thumbnailUrl", newImgs[0] || "", { shouldValidate: true, shouldDirty: true });
                     }
                   }}
                   className="absolute top-1 left-1 bg-destructive/90 text-destructive-foreground p-1 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"

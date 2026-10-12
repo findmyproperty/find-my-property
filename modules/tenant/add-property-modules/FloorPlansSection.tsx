@@ -192,7 +192,10 @@ export const FloorPlansSection = () => {
                           if (result.event === "success" && result.info) {
                             const info = result.info as { secure_url?: unknown };
                             if (typeof info.secure_url === "string") {
-                              setValue(`floorPlans.${index}.imageUrl`, info.secure_url, { shouldValidate: true });
+                              setValue(`floorPlans.${index}.imageUrl`, info.secure_url, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              });
                             }
                           }
                         }}

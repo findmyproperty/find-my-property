@@ -15,7 +15,6 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import type { BackendProperty } from "@/lib/property-mapper";
 import { Form } from "@/components/ui/form";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { propertyFormSchema, getDefaultValues, type PropertyFormValues } from "./add-property-modules/schema";
 import { BasicInformation } from "./add-property-modules/BasicInformation";
 import { PropertyOverview } from "./add-property-modules/PropertyOverview";
@@ -26,6 +25,7 @@ import { VideoSection } from "./add-property-modules/VideoSection";
 import { FloorPlansSection } from "./add-property-modules/FloorPlansSection";
 import { ListingFields } from "./add-property-modules/ListingFields";
 import { listingSections, type ListingSection } from "./add-property-modules/listing-sections";
+import { PropertyWizardNav, type WizardStep } from "./add-property-modules/PropertyWizardNav";
 import {
   EMPTY_LISTING_DETAILS,
   POSTING_LABELS,
@@ -39,10 +39,18 @@ import {
   type PropertySector,
 } from "@/lib/property-posting";
 
-const BASE_SECTIONS = ["basic", "overview", "location", "description", "amenities", "images", "video", "floorplans"] as const;
+const CHOICE_STEP: WizardStep = { id: "choice", title: "Listing type", fields: [] };
 
-const triggerClass =
-  "px-6 py-4 text-left font-heading font-semibold text-base text-foreground hover:no-underline [&[data-state=open]]:bg-muted/40";
+const LEGACY_WIZARD_STEPS: WizardStep[] = [
+  { id: "basic", title: "Basic Information", fields: [], legacy: true },
+  { id: "overview", title: "Property Overview", fields: [], legacy: true },
+  { id: "location", title: "Locality details", fields: [], legacy: true },
+  { id: "description", title: "Description", fields: [], legacy: true },
+  { id: "amenities", title: "Amenities", fields: [], legacy: true },
+  { id: "images", title: "Gallery", fields: [], legacy: true },
+  { id: "video", title: "Video", fields: [], legacy: true },
+  { id: "floorplans", title: "Floor plans", fields: [], legacy: true },
+];
 
 const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const router = useRouter();
@@ -63,7 +71,15 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const posting = useWatch({ control: form.control, name: "postingType" }) || "";
   const isCategorized = isAllowedPair(sector, posting);
   const sections = useMemo(() => (isCategorized ? listingSections(sector, posting) : []), [isCategorized, sector, posting]);
-  const steps = useMemo(() => [{ id: "choice", title: "Listing type" }, ...sections], [sections]);
+
+  const steps = useMemo((): WizardStep[] => {
+    if (isEdit && !isCategorized) {
+      return [CHOICE_STEP, ...LEGACY_WIZARD_STEPS];
+    }
+    return [CHOICE_STEP, ...sections];
+  }, [isEdit, isCategorized, sections]);
+
+  const activeStep = steps[step] ?? CHOICE_STEP;
   const { isDirty, isSubmitting } = form.formState;
 
   const applyIssues = (issues: { path: string; message: string }[]) => {
@@ -77,12 +93,10 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     const issues = validateListingForm(data);
     if (issues.length > 0) {
       applyIssues(issues);
-      if (!isEdit) {
-        const index = steps.findIndex((item) =>
-          issues.some((issue) => issue.path === "postingType" || issue.path === "propertySector" || sectionHasPath(item, issue.path)),
-        );
-        if (index >= 0) setStep(index);
-      }
+      const index = steps.findIndex((item) =>
+        issues.some((issue) => issue.path === "postingType" || issue.path === "propertySector" || sectionHasPath(item, issue.path)),
+      );
+      if (index >= 0) setStep(index);
       toast({
         variant: "destructive",
         title: "Check required fields",
@@ -119,12 +133,15 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   };
 
   const goNext = () => {
-    const issues = validateListingForm(form.getValues()).filter((issue) => stepOwns(steps[step], issue.path));
-    if (issues.length > 0) {
-      applyIssues(issues);
-      return;
+    const current = steps[step];
+    if (!current?.legacy) {
+      const issues = validateListingForm(form.getValues()).filter((issue) => stepOwns(current, issue.path));
+      if (issues.length > 0) {
+        applyIssues(issues);
+        return;
+      }
     }
-    setStep((current) => Math.min(current + 1, steps.length - 1));
+    setStep((currentIndex) => Math.min(currentIndex + 1, steps.length - 1));
   };
 
   const onSector = (next: PropertySector) => {
@@ -143,9 +160,20 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     form.setValue("details", { ...EMPTY_LISTING_DETAILS, rooms: {} }, { shouldDirty: true });
   };
 
+  const onSubmit = form.handleSubmit((data) => {
+    if (step < steps.length - 1) {
+      goNext();
+      return;
+    }
+    return save(data);
+  });
+
+  const showNext = step < steps.length - 1;
+  const nextDisabled = !isEdit && step === 0 && !isCategorized;
+
   return (
-    <div className={`max-w-3xl space-y-6 ${isEdit ? "pb-24" : ""}`}>
-      <div className="flex items-center gap-3">
+    <div className={`mx-auto w-full max-w-6xl px-4 ${isEdit && isDirty ? "pb-24" : "pb-8"}`}>
+      <div className="mb-6 flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/listings">
             <ArrowLeft className="h-4 w-4" />
@@ -154,73 +182,73 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">{initialData ? "Edit Property" : "Add Property"}</h2>
           <p className="text-sm text-muted-foreground">
-            {initialData ? "Update your property listing details" : "Choose a sector, then the listing type"}
+            {initialData ? "Update your listing step by step" : "Choose a sector, then complete each section"}
           </p>
         </div>
       </div>
 
       <Form {...form}>
-        <motion.form
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={form.handleSubmit((data) => {
-            if (!isEdit && step < steps.length - 1) {
-              goNext();
-              return;
-            }
-            return save(data);
-          })}
-          className="space-y-6"
-        >
-          {isEdit ? (
-            <EditBody
-              sector={sector}
-              posting={posting}
-              sections={sections}
-              onSector={onSector}
-              onPosting={onPosting}
-            />
-          ) : (
-            <CreateBody
-              step={steps[step]}
-              sector={sector}
-              posting={posting}
-              onSector={onSector}
-              onPosting={onPosting}
-            />
-          )}
+        <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={onSubmit} className="space-y-6">
+          <div className="overflow-x-auto pb-1 md:hidden">
+            <PropertyWizardNav steps={steps} activeIndex={step} onSelect={setStep} variant="pills" className="min-w-max" />
+          </div>
 
-          {isEdit ? (
-            isDirty ? (
-              <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-                <div className="mx-auto flex max-w-3xl gap-3">
-                  <Button type="submit" size="lg" className="flex-1" disabled={isSubmitting}>
-                    <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : "Update Property"}
-                  </Button>
-                </div>
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-center">
+            <aside className="hidden w-52 shrink-0 rounded-xl border border-border bg-muted/20 p-3 md:block">
+              <PropertyWizardNav steps={steps} activeIndex={step} onSelect={setStep} />
+            </aside>
+
+            <div className="w-full min-w-0 md:max-w-2xl md:flex-1">
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h3 className="mb-4 font-heading text-lg font-semibold text-foreground">{activeStep.title}</h3>
+                <WizardStepBody
+                  step={activeStep}
+                  sector={sector}
+                  posting={posting}
+                  onSector={onSector}
+                  onPosting={onPosting}
+                />
               </div>
-            ) : null
-          ) : (
-            <div className="flex gap-3">
-              {step > 0 ? (
-                <Button type="button" variant="outline" size="lg" onClick={() => setStep((current) => current - 1)}>
-                  Previous
-                </Button>
-              ) : null}
-              {step < steps.length - 1 ? (
-                <Button type="button" size="lg" className="flex-1" onClick={goNext} disabled={step === 0 && !isCategorized}>
-                  Next
-                </Button>
-              ) : (
-                <Button type="submit" size="lg" className="flex-1" disabled={isSubmitting || !isCategorized}>
-                  <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : "Create Property"}
-                </Button>
-              )}
-              <Button type="button" variant="outline" size="lg" asChild>
-                <Link href="/listings">Cancel</Link>
-              </Button>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {step > 0 ? (
+                  <Button type="button" variant="outline" size="lg" onClick={() => setStep((current) => current - 1)}>
+                    Previous
+                  </Button>
+                ) : null}
+                {showNext ? (
+                  <Button type="button" size="lg" className="min-w-[8rem] flex-1 sm:flex-none" onClick={goNext} disabled={nextDisabled}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="min-w-[8rem] flex-1 sm:flex-none"
+                    disabled={isSubmitting || (!isEdit && !isCategorized) || (isEdit && !isDirty)}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isSubmitting ? "Saving…" : isEdit ? "Update Property" : "Create Property"}
+                  </Button>
+                )}
+                {!isEdit ? (
+                  <Button type="button" variant="outline" size="lg" asChild>
+                    <Link href="/listings">Cancel</Link>
+                  </Button>
+                ) : null}
+              </div>
             </div>
-          )}
+          </div>
+
+          {isEdit && isDirty ? (
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
+              <div className="mx-auto flex max-w-6xl justify-center">
+                <Button type="submit" size="lg" className="w-full max-w-md" disabled={isSubmitting}>
+                  <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : "Update Property"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </motion.form>
       </Form>
     </div>
@@ -293,92 +321,62 @@ function SectionBody({ section }: { section: ListingSection }) {
   );
 }
 
-function CreateBody({
+function LegacyStepBody({ stepId }: { stepId: string }) {
+  switch (stepId) {
+    case "basic":
+      return <BasicInformation />;
+    case "overview":
+      return <PropertyOverview />;
+    case "location":
+      return <LocationSection />;
+    case "description":
+      return <DescriptionFields />;
+    case "amenities":
+      return <AmenitiesFields />;
+    case "images":
+      return <PropertyImagesSection />;
+    case "video":
+      return <VideoSection />;
+    case "floorplans":
+      return <FloorPlansSection />;
+    default:
+      return null;
+  }
+}
+
+function WizardStepBody({
   step,
   sector,
   posting,
   onSector,
   onPosting,
 }: {
-  step?: { id: string; title: string };
+  step: WizardStep;
   sector: string;
   posting: string;
   onSector: (value: PropertySector) => void;
   onPosting: (value: PostingType) => void;
 }) {
-  if (!step || step.id === "choice") {
-    return (
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <ChoiceFields sector={sector} posting={posting} onSector={onSector} onPosting={onPosting} />
-      </div>
-    );
+  if (step.id === "choice") {
+    return <ChoiceFields sector={sector} posting={posting} onSector={onSector} onPosting={onPosting} />;
   }
-  return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h3 className="mb-4 font-heading text-base font-semibold">{step.title}</h3>
-      <SectionBody section={step as ListingSection} />
-    </div>
-  );
+  if (step.legacy) {
+    return <LegacyStepBody stepId={step.id} />;
+  }
+  return <SectionBody section={step} />;
 }
 
-function EditBody({
-  sector,
-  posting,
-  sections,
-  onSector,
-  onPosting,
-}: {
-  sector: string;
-  posting: string;
-  sections: ListingSection[];
-  onSector: (value: PropertySector) => void;
-  onPosting: (value: PostingType) => void;
-}) {
-  const categorized = isAllowedPair(sector, posting);
-  return (
-    <Accordion type="multiple" defaultValue={["choice", ...(categorized ? sections.map((section) => section.id) : BASE_SECTIONS)]} className="w-full rounded-xl border border-border bg-card shadow-sm">
-      <AccordionItem value="choice" className="border-b border-border">
-        <AccordionTrigger className={triggerClass}>Listing type</AccordionTrigger>
-        <AccordionContent className="px-6 pt-4">
-          <ChoiceFields sector={sector} posting={posting} onSector={onSector} onPosting={onPosting} />
-        </AccordionContent>
-      </AccordionItem>
-      {categorized
-        ? sections.map((section) => (
-            <AccordionItem key={section.id} value={section.id} className="border-b border-border last:border-b-0">
-              <AccordionTrigger className={triggerClass}>{section.title}</AccordionTrigger>
-              <AccordionContent className="px-6 pt-4">
-                <SectionBody section={section} />
-              </AccordionContent>
-            </AccordionItem>
-          ))
-        : (
-          <>
-            <LegacySection value="basic" title="Basic Information"><BasicInformation /></LegacySection>
-            <LegacySection value="overview" title="Property Overview"><PropertyOverview /></LegacySection>
-            <LegacySection value="location" title="Location"><LocationSection /></LegacySection>
-            <LegacySection value="description" title="Description"><DescriptionFields /></LegacySection>
-            <LegacySection value="amenities" title="Amenities & Features"><AmenitiesFields /></LegacySection>
-            <LegacySection value="images" title="Property Images"><PropertyImagesSection /></LegacySection>
-            <LegacySection value="video" title="Video"><VideoSection /></LegacySection>
-            <LegacySection value="floorplans" title="Floor Plans"><FloorPlansSection /></LegacySection>
-          </>
-        )}
-    </Accordion>
-  );
-}
-
-function LegacySection({ value, title, children }: { value: string; title: string; children: ReactNode }) {
-  return (
-    <AccordionItem value={value} className="border-b border-border last:border-b-0">
-      <AccordionTrigger className={triggerClass}>{title}</AccordionTrigger>
-      <AccordionContent className="px-6 pt-4">{children}</AccordionContent>
-    </AccordionItem>
-  );
-}
-
-function sectionHasPath(step: { id: string; fields?: ListingSection["fields"]; extras?: ListingSection["extras"] }, path: string) {
+function sectionHasPath(step: WizardStep, path: string) {
   if (step.id === "choice") return path === "propertySector" || path === "postingType";
+  if (step.legacy) {
+    if (step.id === "images" && (path === "propertyImages" || path === "thumbnailUrl")) return true;
+    if (step.id === "video" && path === "videoUrl") return true;
+    if (step.id === "floorplans" && (path === "floorPlans" || path.startsWith("floorPlans."))) return true;
+    if (step.id === "location" && ["address", "locality", "city", "country", "state", "latitude", "longitude"].includes(path)) {
+      return true;
+    }
+    return false;
+  }
   if (step.fields?.some((field) => field.kind === "pgRooms" && (path === "details.roomTypes" || path.startsWith("details.rooms")))) {
     return true;
   }
@@ -386,10 +384,13 @@ function sectionHasPath(step: { id: string; fields?: ListingSection["fields"]; e
   if (step.extras?.includes("location") && ["address", "locality", "city", "country", "state", "latitude", "longitude"].includes(path)) {
     return true;
   }
+  if (step.extras?.includes("images") && (path === "propertyImages" || path === "thumbnailUrl")) return true;
+  if (step.extras?.includes("video") && path === "videoUrl") return true;
+  if (step.extras?.includes("floorplans") && (path === "floorPlans" || path.startsWith("floorPlans."))) return true;
   return false;
 }
 
-function stepOwns(step: { id: string; fields?: ListingSection["fields"]; extras?: ListingSection["extras"] } | undefined, path: string) {
+function stepOwns(step: WizardStep | undefined, path: string) {
   if (!step) return false;
   return sectionHasPath(step, path);
 }

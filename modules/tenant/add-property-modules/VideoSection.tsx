@@ -49,7 +49,7 @@ export const VideoSection = () => {
                 onSuccess={(result) => {
                   if (result.event === "success" && result.info) {
                     const info = result.info as any;
-                    setValue("videoUrl", info.secure_url, { shouldValidate: true });
+                    setValue("videoUrl", info.secure_url, { shouldValidate: true, shouldDirty: true });
                   }
                 }}
               >
