@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
@@ -73,13 +73,13 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const sections = useMemo(() => (isCategorized ? listingSections(sector, posting) : []), [isCategorized, sector, posting]);
 
   const steps = useMemo((): WizardStep[] => {
-    if (isEdit && !isCategorized) {
-      return [CHOICE_STEP, ...LEGACY_WIZARD_STEPS];
+    if (isEdit) {
+      return isCategorized ? sections : LEGACY_WIZARD_STEPS;
     }
     return [CHOICE_STEP, ...sections];
   }, [isEdit, isCategorized, sections]);
 
-  const activeStep = steps[step] ?? CHOICE_STEP;
+  const activeStep = steps[step] ?? steps[0] ?? CHOICE_STEP;
   const { isDirty, isSubmitting } = form.formState;
 
   const applyIssues = (issues: { path: string; message: string }[]) => {
