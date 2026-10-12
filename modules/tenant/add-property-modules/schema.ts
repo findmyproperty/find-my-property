@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BackendProperty } from "@/lib/property-mapper";
+import { EMPTY_LISTING_DETAILS, type ListingDetails, type RoomPanel } from "@/lib/property-posting";
 
 const listingTypeOptions = ["Rent", "Sale", "Lease"] as const;
 
@@ -23,30 +24,24 @@ const emptyFloorPlan = {
   imageUrl: "",
 };
 
+const listingDetailsSchema = z.custom<ListingDetails>((value) => value != null && typeof value === "object");
+
 export const propertyFormSchema = z.object({
+  propertySector: z.string().default(""),
+  postingType: z.string().default(""),
+  details: listingDetailsSchema.default(EMPTY_LISTING_DETAILS),
   // Accepts any non-empty string; populated dynamically from admin-managed categories
-  propertyType: z.string().min(1, { message: "Please select a property type." }),
-  listingType: z.enum(listingTypeOptions, {
-    required_error: "Please select a listing type.",
-  }),
-  title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title is too long."),
+  propertyType: z.string().default(""),
+  listingType: z.string().default("Rent"),
+  title: z.string().default(""),
 
-  bedrooms: z.string().min(1, "Please select number of bedrooms."),
-  bathrooms: z.string().min(1, "Please select number of bathrooms."),
-  area: z
-    .string()
-    .min(1, "Area is required.")
-    .refine((val) => {
-      const clean = val.replace(/[^0-9.]/g, "");
-      const num = parseFloat(clean);
-      return Number.isFinite(num) && num > 0;
-    }, "Please enter a valid positive area (e.g. 1450)."),
-  yearBuilt: z.coerce.number().min(1900, "Year must be 1900 or later.").max(new Date().getFullYear() + 5, "Year cannot be too far in the future."),
-  price: z.coerce.number().min(1, "Price must be greater than 0."),
+  bedrooms: z.string().default(""),
+  bathrooms: z.string().default(""),
+  area: z.string().default(""),
+  yearBuilt: z.coerce.number().optional(),
+  price: z.coerce.number().optional(),
 
-  furnishing: z.enum(furnishingOptions, {
-    required_error: "Please select furnishing status.",
-  }),
+  furnishing: z.string().default(""),
 
   address: z.string().min(5, "Address must be at least 5 characters."),
   locality: z.string().min(2, "Locality is required."),
@@ -104,6 +99,73 @@ export const propertyFormSchema = z.object({
 
 export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
 
+const YES_NO_DETAIL_KEYS = new Set([
+  "boundaryWall",
+  "cornerPlot",
+  "insideGatedProject",
+  "priceNegotiable",
+  "currentlyUnderLoan",
+  "gatedSecurity",
+  "onMainRoad",
+  "cornerProperty",
+  "rentNegotiable",
+  "depositNegotiable",
+  "parkingAvailable",
+  "petAllowed",
+  "gym",
+  "nonVegAllowed",
+  "similarUnits",
+  "foodIncluded",
+  "laundry",
+  "roomCleaning",
+  "warden",
+  "attachedBathroom",
+  "acRoom",
+  "balcony",
+  "smokingAllowed",
+  "drinkingAllowed",
+  "whatsappUpdates",
+]);
+
+function detailsToForm(raw: unknown): ListingDetails {
+  const base: ListingDetails = {
+    ...EMPTY_LISTING_DETAILS,
+    rooms: {},
+    amenityList: [],
+    mealTypes: [],
+    rules: [],
+    furnishingItems: [],
+    preferredVisitDays: [],
+    otherAmenities: [],
+  };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
+  const source = raw as Record<string, unknown>;
+  for (const [key, value] of Object.entries(source)) {
+    if (key === "rooms" && value && typeof value === "object" && !Array.isArray(value)) {
+      const rooms: Record<string, RoomPanel> = {};
+      for (const [roomType, panel] of Object.entries(value as Record<string, RoomPanel>)) {
+        rooms[roomType] = {
+          rent: panel?.rent != null ? String(panel.rent) : "",
+          deposit: panel?.deposit != null ? String(panel.deposit) : "",
+          amenities: panel?.amenities ?? [],
+        };
+      }
+      base.rooms = rooms;
+      continue;
+    }
+    if (typeof value === "boolean" && YES_NO_DETAIL_KEYS.has(key)) {
+      (base as Record<string, unknown>)[key] = value ? "yes" : "no";
+      continue;
+    }
+    if (typeof value === "number") {
+      (base as Record<string, unknown>)[key] = String(value);
+      continue;
+    }
+    (base as Record<string, unknown>)[key] = value;
+  }
+  return base;
+}
+
 /** Map `BackendProperty` (`PropertyWithRelations` / `PropertyRow` + relations) into form defaults. */
 export const getDefaultValues = (initialData?: BackendProperty): Partial<PropertyFormValues> => {
   // propertyType is now free-form string (from admin categories). Fall back to a common default.
@@ -149,6 +211,9 @@ export const getDefaultValues = (initialData?: BackendProperty): Partial<Propert
   const images = initialData?.propertyImages?.length ? initialData.propertyImages : [];
 
   return {
+    propertySector: initialData?.propertySector ?? "",
+    postingType: initialData?.postingType ?? "",
+    details: detailsToForm(initialData?.details),
     propertyType,
     listingType,
     title: initialData?.title || "",

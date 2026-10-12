@@ -26,6 +26,10 @@ export type Property = {
   /** Derived for filters (rent vs sale) */
   type: "rent" | "buy";
   listingType: ListingType;
+  propertySector?: string | null;
+  postingType?: string | null;
+  details?: Record<string, unknown> | null;
+  categoryLabel?: string | null;
   propertyType: PropertyType;
   status: PropertyStatus;
   currency: string;

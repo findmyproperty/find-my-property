@@ -25,6 +25,7 @@ import PropertiesMap from "@/modules/properties/PropertiesMap";
 import { useAuth } from "@/contexts/auth-context";
 import { buildAreaFilterOptions, matchesAreaFilter } from "@/lib/property-location-options";
 import { sortPropertiesByDistance, propertyDistanceKm } from "@/lib/property-distance";
+import { POSTING_LABELS, POSTING_TYPES, PROPERTY_SECTORS, SECTOR_LABELS } from "@/lib/property-posting";
 
 const PAGE_SIZE = 12;
 
@@ -60,6 +61,8 @@ const propertyFilterParsers = {
   budget: parseAsString,
   view: parseAsStringLiteral(["list", "map"] as const).withDefault("list"),
   page: parseAsInteger.withDefault(1),
+  sector: parseAsStringLiteral(PROPERTY_SECTORS),
+  posting: parseAsStringLiteral(POSTING_TYPES),
 };
 
 const Properties = () => {
@@ -80,6 +83,8 @@ const Properties = () => {
       budget: selectedBudgetPreset,
       view: viewMode,
       page: currentPage,
+      sector,
+      posting,
     },
     setQuery,
   ] = useQueryStates(propertyFilterParsers, { history: "replace", shallow: true });
@@ -119,6 +124,8 @@ const Properties = () => {
     priceRange[0] > 0 || priceRange[1] < maxPrice,
     !!search,
     !!searchLocation,
+    !!sector,
+    !!posting,
   ].filter(Boolean).length;
 
   const isFiltered = activeFilterCount > 0;
@@ -134,6 +141,8 @@ const Properties = () => {
       max: null,
       budget: null,
       page: 1,
+      sector: null,
+      posting: null,
     });
   };
 
@@ -166,6 +175,8 @@ const Properties = () => {
     () =>
       allProperties.filter((p) => {
         const matchType = filter === "all" || p.type === filter;
+        const matchSector = !sector || p.propertySector === sector;
+        const matchPosting = !posting || p.postingType === posting;
         const matchSearch =
           !search ||
           p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -179,6 +190,8 @@ const Properties = () => {
         const matchPrice = p.priceValue >= priceRange[0] && p.priceValue <= priceRange[1];
         return (
           matchType &&
+          matchSector &&
+          matchPosting &&
           matchSearch &&
           matchSearchLocation &&
           matchBHK &&
@@ -190,6 +203,8 @@ const Properties = () => {
     [
       allProperties,
       filter,
+      sector,
+      posting,
       search,
       searchLocation,
       selectedBHK,
@@ -347,6 +362,46 @@ const Properties = () => {
           >
             All
           </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-card border border-border p-4">
+        <Label className="text-sm font-medium text-foreground mb-3 block">Sector</Label>
+        <div className="flex flex-wrap gap-2">
+          {PROPERTY_SECTORS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => void setQuery({ sector: sector === item ? null : item, posting: null, page: 1 })}
+              className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                sector === item
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {SECTOR_LABELS[item]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-card border border-border p-4">
+        <Label className="text-sm font-medium text-foreground mb-3 block">Posting type</Label>
+        <div className="flex flex-wrap gap-2">
+          {POSTING_TYPES.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => void setQuery({ posting: posting === item ? null : item, page: 1 })}
+              className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                posting === item
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {POSTING_LABELS[item]}
+            </button>
+          ))}
         </div>
       </div>
 

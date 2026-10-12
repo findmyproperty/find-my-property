@@ -10,93 +10,51 @@ If you have no listings yet, the page says to add a property to get started.
 
 ## The form
 
-The page title is **Add Property**. Every section is already open. Fields marked with * are required. You can collapse a section if you want to focus on one part.
+Create is a wizard. Edit opens every section at once, and **Update Property** stays pinned to the bottom only after you change something. A failed save leaves your edits in place.
 
-### 1. Basic Information
+The first step asks for two choices and nothing else:
 
-| Field | What to enter |
+1. **Sector:** Residential, Commercial, or Land/Plot.
+2. **Listing type**, which depends on the sector.
+
+| Sector | Listing types |
 |---|---|
-| Property Type * | Apartment, House, Villa, Townhome, or whatever active categories the admin has set up |
-| Listing Type * | **Rent**, **For Sale**, or **Lease** |
-| Property Title * | At least 5 characters, at most 100. Example: `Spacious 3BHK in Whitefield` |
+| Residential | Rent, Resale, PG/Hostel, Flatmates |
+| Commercial | Rent, Sale |
+| Land/Plot | Resale |
 
-### 2. Property Overview
+**Next** stays off until both are chosen. It then opens the fields for that pair. **Previous** goes back without clearing what you already typed. **Create Property** is only on the last step.
 
-| Field | What to enter |
-|---|---|
-| Rooms * | 1 to 5 |
-| Bathrooms * | 1 to 5 |
-| Area * | Size in square feet, for example `1450` |
-| Year Built * | 1900 through five years ahead of this year. It starts as the current year |
-| Furnishing * | Unfurnished, Semi-furnished, or Furnished |
-| Price (₹) * | A number greater than 0. Monthly rent, or the sale price if the listing is for sale |
+Older listings that have no sector still open the original form: property type, Rent / For Sale / Lease, rooms, bathrooms, area, year built, and furnishing.
 
-### 3. Location
+### What each new listing asks for
 
-You can type the address, or click **Use current location**. That uses the device location and fills the address fields, and it drops a pin on the map. Allow location access when the browser asks. If it is denied, type the address yourself.
+The fields come from the PDFs in `doc/` (YDBC property creation, the plot specification, and the commercial specification). Fields whose option list was not in those PDFs are not shown. That includes plot sale-deed, encumbrance, and RERA statuses, and commercial “ideal for”.
 
-| Field | What to enter |
-|---|---|
-| Address / Street * | Building, street, landmark. At least 5 characters |
-| Locality / Area * | Example: Whitefield |
-| City * | Example: Bengaluru |
-| State | Example: Karnataka. Optional |
-| Country * | Defaults to India |
-| Pin your property on map | Optional. Drag the pin or paste a map link. The pin is what search uses |
+Shared on every new listing: title, city, locality, street address, and a price (rent, sale price, lease amount, or the lowest PG room rent). Photos and video stay optional. Floor plans stay on residential rent only.
 
-Clicking the map can also fill the address fields. Check them and correct anything that looks wrong.
+Residential rent adds apartment type, BHK, built-up area, rent or lease, deposit, furnishing, parking, preferred tenants, and the amenity yes/no questions from the YDBC rent screens.
 
-### 4. Description
+Residential resale adds ownership, carpet area, maintenance, documents (allotment letter, sale deed, property tax, occupancy certificate), and a sale agreement question when the sale deed answer is No.
 
-Optional. Write about the property, nearby schools, hospitals, shops, and how people get there. If you leave it blank, the listing is saved with a short default note.
+PG/Hostel asks for room types (single, double, three, four), rent and deposit per person, who the place is for, food, rules, and services.
 
-### 5. Amenities & Features
+Flatmates asks for room type, tenant type, and the shared residential rent fields.
 
-Optional. Tick any that apply:
+Commercial rent and sale ask for property type, building type, age, floor, super built-up area, furnishing, a map pin, a description of at least 50 characters, and contact preference. Sale asks for ownership and possession. The commercial schedule step is included because that PDF names visit days and contact hours. The plot PDF excludes schedule, so plot does not ask for it.
 
-- Garden
-- Solar Panels
-- Tennis Court
-- Swimming Pool
-- Fireplace
-- Outdoor Kitchen
-- Parking
-- Gym
-- 24/7 Security
-- Lift
-- Power Backup
-
-### 6. Property Images
-
-Optional, but listings look empty without them.
-
-1. Click **Click to upload image**. You can choose more than one image.
-2. After they upload, click one image under **Select Thumbnail**. That image is the main photo. The first upload is selected automatically.
-3. Hover an image and use the trash icon to remove it.
-
-### 7. Video
-
-Optional. Paste a YouTube or Vimeo link, or click **or click to upload video file**.
-
-### 8. Floor Plans
-
-Optional. One empty floor is already there. It is saved only if you add an image.
-
-For each floor:
-
-1. Pick a floor name: Ground, First, Second, Third, Fourth, Basement, or Other. If you pick Other, type a custom name such as Penthouse.
-2. Choose rooms (1–5 BHK) and bathrooms (1–5). Both are required once an image is added.
-3. Paste an image URL or upload the floor-plan image.
-4. Click **Add another floor** for more levels. **Remove** deletes a floor when more than one is listed.
+Area is still stored in square metres. You type square feet.
 
 ## Save the listing
 
-Click **Create Property**.
+On create, click **Create Property** on the last step.
 
-- If a required field is missing, a message says **Check required fields**. Fix anything marked with * and try again.
+- If a required field is missing, the wizard returns to that step and names the field.
 - While it saves, the button shows **Saving…**.
 - On success you see **Property submitted** and return to **My Listings**.
 - **Cancel** leaves the form and does not save anything.
+
+On edit, **Update Property** appears only when the form is dirty. A successful save stays on the page. A failed save does not clear what you typed.
 
 ## What happens after you submit
 

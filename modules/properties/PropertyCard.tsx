@@ -1,11 +1,12 @@
 "use client";
 
-import { MapPin, Bed, Bath, Star, Square } from "lucide-react";
+import { MapPin, Bed, Bath, Star, Square, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { buildPropertyPath } from "@/lib/property-slug";
 import type { Property } from "@/lib/property-view-model";
+import { listingFacts } from "@/lib/property-posting";
 import Image from "next/image";
 
 export type { FurnishingStatus, Property } from "@/lib/property-view-model";
@@ -50,9 +51,9 @@ const PropertyCard = ({
           )}
 
           {/* Top-left badge */}
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 flex gap-1.5">
             <Badge className="border-0 bg-card/90 px-3 py-1 text-xs font-medium text-foreground shadow-sm backdrop-blur-sm">
-              {property.listingType}
+              {property.categoryLabel || property.listingType}
             </Badge>
           </div>
 
@@ -91,17 +92,18 @@ const PropertyCard = ({
               </>
             ) : null}
             <span className="text-border shrink-0">•</span>
-            <span className="flex items-center gap-1 shrink-0">
-              <Bed className="w-3.5 h-3.5" /> {property.bedrooms} BHK
-            </span>
-            <span className="flex items-center gap-1 shrink-0">
-              <Bath className="w-3.5 h-3.5" /> {property.bathrooms} Bath
-            </span>
-            <span className="flex items-center gap-1 min-w-0 wrap-break-word">
-              <Square className="w-3.5 h-3.5 shrink-0" /> {property.area}
-            </span>
+            {listingFacts(property).map((fact) => {
+              const Icon = fact.icon === "bed" ? Bed : fact.icon === "bath" ? Bath : fact.icon === "area" ? Square : Tag;
+              return (
+                <span key={`${fact.icon}-${fact.text}`} className="flex items-center gap-1 min-w-0 wrap-break-word">
+                  <Icon className="w-3.5 h-3.5 shrink-0" /> {fact.text}
+                </span>
+              );
+            })}
           </div>
-          <p className="text-xs text-muted-foreground capitalize wrap-break-word">{property.furnishing.replace("-", " ")}</p>
+          {property.propertySector !== "plot" && property.postingType !== "pg" ? (
+            <p className="text-xs text-muted-foreground capitalize wrap-break-word">{property.furnishing.replace("-", " ")}</p>
+          ) : null}
         </div>
       </motion.div>
     </Link>

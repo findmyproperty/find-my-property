@@ -1,5 +1,6 @@
 import type { Property, FurnishingStatus } from "@/lib/property-view-model";
 import type { FloorPlanDto, PropertyWithRelations } from "@/schema/property";
+import { pairLabel } from "@/lib/property-posting";
 
 /** API property row + optional `creator` / `agent` (see `propertyWithRelationsSchema`). */
 export type BackendProperty = PropertyWithRelations;
@@ -66,11 +67,15 @@ export function mapBackendProperty(property: BackendProperty): Property {
     priceValue: Number(property.price) || 0,
     type: isRent ? "rent" : "buy",
     listingType: property.listingType,
+    propertySector: property.propertySector ?? null,
+    postingType: property.postingType ?? null,
+    details: property.details ?? null,
+    categoryLabel: pairLabel(property.propertySector, property.postingType),
     propertyType: property.propertyType,
     status: property.status,
     currency: property.currency,
-    bedrooms: Number(property.bedrooms) || 0,
-    bathrooms: Number(property.bathrooms) || 0,
+    bedrooms: property.bedrooms == null ? 0 : Number(property.bedrooms) || 0,
+    bathrooms: property.bathrooms == null ? 0 : Number(property.bathrooms) || 0,
     area: `${areaSqFt.toLocaleString("en-IN")} sq.ft`,
     image: primaryImage,
     images: images.length ? images : undefined,

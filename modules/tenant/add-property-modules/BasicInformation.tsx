@@ -57,7 +57,7 @@ export const BasicInformation = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel required>Listing Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || undefined}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Rent or Sale" />

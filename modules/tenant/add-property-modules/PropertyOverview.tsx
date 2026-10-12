@@ -31,7 +31,7 @@ export const PropertyOverview = () => {
               <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                 <Bed className="w-3.5 h-3.5" /> Rooms
               </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || undefined}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="BHK" />
@@ -57,7 +57,7 @@ export const PropertyOverview = () => {
               <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                 <Bath className="w-3.5 h-3.5" /> Bathrooms
               </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || undefined}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Bath" />

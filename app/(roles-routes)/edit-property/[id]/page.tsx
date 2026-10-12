@@ -49,5 +49,5 @@ export default function EditPropertyPage() {
     );
   }
 
-  return <AddProperty initialData={property || undefined} />;
+  return property ? <AddProperty key={property.id} initialData={property} /> : null;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plus, MapPin, Bed, Bath, Edit, Trash2 } from "lucide-react";
+import { Plus, MapPin, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { PropertyStatus } from "@/lib/property-mapper";
+import { listingFacts } from "@/lib/property-posting";
 
 const TenantListings = () => {
   const router = useRouter();
@@ -84,6 +85,9 @@ const TenantListings = () => {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium text-foreground">{p.title}</h3>
+                {p.categoryLabel ? (
+                  <Badge variant="outline" className="text-[10px]">{p.categoryLabel}</Badge>
+                ) : null}
                 <Badge variant={p.status === PropertyStatus.APPROVED ? "default" : p.status === PropertyStatus.REJECTED ? "destructive" : "secondary"} className="text-[10px]">
                   {p.status || PropertyStatus.PENDING}
                 </Badge>
@@ -92,8 +96,9 @@ const TenantListings = () => {
                 <MapPin className="w-3.5 h-3.5" /> {p.location}
               </p>
               <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                <span className="flex items-center gap-1"><Bed className="w-3.5 h-3.5" />{p.bedrooms} Bed</span>
-                <span className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{p.bathrooms} Bath</span>
+                {listingFacts(p).map((fact) => (
+                  <span key={`${fact.icon}-${fact.text}`}>{fact.text}</span>
+                ))}
                 <span className="font-semibold text-foreground ml-auto">{p.price}{p.priceLabel}</span>
               </div>
             </div>

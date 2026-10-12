@@ -25,6 +25,7 @@ import {
   SimilarListingsSection,
   VideoSection,
 } from "@/modules/properties/detail";
+import { detailRows, listingFacts, showsFloorPlans } from "@/lib/property-posting";
 
 const PropertyDetail = () => {
   const params = useParams<{ slug: string }>();
@@ -66,6 +67,8 @@ const PropertyDetail = () => {
   const amenities = property.amenities ?? [];
   const floorPlans = property.floorPlans ?? [];
   const isAgentOwner = property.ownerRole === "agent";
+  const categorized = Boolean(property.propertySector);
+  const rows = categorized ? detailRows(property.details) : [];
 
   return (
     <div className="pb-20 pt-6">
@@ -79,14 +82,29 @@ const PropertyDetail = () => {
       <div className="container mx-auto mt-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <KeyFactsCard property={property} />
+            <KeyFactsCard property={property} facts={categorized ? listingFacts(property) : undefined} />
             <DescriptionSection property={property} />
+            {rows.length > 0 ? (
+              <section className="rounded-2xl border border-border bg-card p-6">
+                <h2 className="mb-4 font-heading text-base font-semibold text-foreground">Listing details</h2>
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {rows.map((row) => (
+                    <div key={row.label}>
+                      <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                      <dd className="text-sm text-foreground">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ) : null}
             <AmenitiesSection amenities={amenities} />
-            <FloorPlansSection
-              floorPlans={floorPlans}
-              activeIndex={activeFloorIndex}
-              onFloorChange={setActiveFloorIndex}
-            />
+            {showsFloorPlans(property.propertySector, property.postingType) ? (
+              <FloorPlansSection
+                floorPlans={floorPlans}
+                activeIndex={activeFloorIndex}
+                onFloorChange={setActiveFloorIndex}
+              />
+            ) : null}
             {property.videoUrl ? <VideoSection videoUrl={property.videoUrl} /> : null}
             <LocationMapSection location={property.location} />
           </div>

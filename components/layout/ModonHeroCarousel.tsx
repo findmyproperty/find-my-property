@@ -146,11 +146,11 @@ export default function ModonHeroCarousel({
       params.set("loc", locationQuery.trim());
     }
     if (listingType === "rent") {
-      params.set("type", "Rent");
+      params.set("type", "rent");
     } else if (listingType === "buy") {
-      params.set("type", "Sale");
+      params.set("type", "buy");
     } else if (listingType === "commercial") {
-      params.set("category", "Commercial");
+      params.set("sector", "commercial");
     }
     const queryString = params.toString();
     router.push(`/browse${queryString ? `?${queryString}` : ""}`);

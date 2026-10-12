@@ -31,9 +31,16 @@ export async function generatePropertyPageMetadata(slug: string): Promise<Metada
   const title = clip(`${row.title} · ${location || row.city || "India"}`, 59);
   const listingPhrase =
     row.listingType === "Sale" ? "for sale" : row.listingType === "Lease" ? "for lease" : "for rent";
+  const mentionBhk =
+    row.bedrooms > 0 &&
+    row.propertySector !== "plot" &&
+    row.propertySector !== "commercial" &&
+    row.postingType !== "pg";
   const rawDesc =
     row.description?.trim() ||
-    `${row.propertyType} ${listingPhrase} in ${location || row.city}. ${row.bedrooms} BHK, ${row.bathrooms} baths.`;
+    (mentionBhk
+      ? `${row.propertyType} ${listingPhrase} in ${location || row.city}. ${row.bedrooms} BHK, ${row.bathrooms} baths.`
+      : `${row.propertyType} ${listingPhrase} in ${location || row.city}.`);
   const description = clip(rawDesc, 160);
 
   const canonical = absoluteUrl(canonicalPath);
