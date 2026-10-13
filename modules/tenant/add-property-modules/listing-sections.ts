@@ -398,20 +398,6 @@ function commercialSections(posting: string): ListingSection[] {
         },
       ],
     },
-    {
-      id: "commercial-schedule",
-      title: "Schedule",
-      fields: [
-        {
-          name: "details.preferredVisitDays",
-          label: "Preferred visit days",
-          kind: "checks",
-          options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => opt(day, day)),
-        },
-        { name: "details.preferredVisitStart", label: "Visit start time", kind: "time" },
-        { name: "details.preferredVisitEnd", label: "Visit end time", kind: "time" },
-      ],
-    },
   ];
 }
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
 import { invalidatePropertyQueries } from "@/lib/invalidate-property-queries";
 import { motion } from "framer-motion";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,8 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const { toast } = useToast();
   const isEdit = Boolean(initialData?.id);
   const [step, setStep] = useState(0);
+  /** Step indices with validation errors (quick nav shows X); cleared on success or sector/listing change */
+  const [errorStepIndices, setErrorStepIndices] = useState<number[]>([]);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -82,6 +84,22 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const activeStep = steps[step] ?? steps[0] ?? CHOICE_STEP;
   const { isDirty, isSubmitting } = form.formState;
 
+  useEffect(() => {
+    setStep((current) => Math.min(current, Math.max(0, steps.length - 1)));
+  }, [steps.length]);
+
+  useEffect(() => {
+    setErrorStepIndices([]);
+  }, [sector, posting]);
+
+  /** Drop X markers for steps that no longer fail validation (e.g. after fixing fields and using quick navigate). */
+  useEffect(() => {
+    setErrorStepIndices((prev) => pruneErrorStepIndices(steps, prev, form.getValues()));
+  }, [step, steps, form]);
+
+  const isLastStep = steps.length > 0 && step === steps.length - 1;
+  const showStickySave = isEdit && isDirty && isLastStep;
+
   const applyIssues = (issues: { path: string; message: string }[]) => {
     form.clearErrors();
     for (const issue of issues) {
@@ -89,14 +107,20 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     }
   };
 
+  const focusFirstStepWithIssue = (issues: { path: string }[]) => {
+    const index = steps.findIndex((item) =>
+      issues.some(
+        (issue) => issue.path === "postingType" || issue.path === "propertySector" || sectionHasPath(item, issue.path),
+      ),
+    );
+    if (index >= 0) setStep(index);
+  };
+
   const save = async (data: PropertyFormValues) => {
     const issues = validateListingForm(data);
     if (issues.length > 0) {
       applyIssues(issues);
-      const index = steps.findIndex((item) =>
-        issues.some((issue) => issue.path === "postingType" || issue.path === "propertySector" || sectionHasPath(item, issue.path)),
-      );
-      if (index >= 0) setStep(index);
+      focusFirstStepWithIssue(issues);
       toast({
         variant: "destructive",
         title: "Check required fields",
@@ -104,6 +128,8 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
       });
       return;
     }
+
+    setErrorStepIndices([]);
 
     try {
       const payload = buildPropertyPayload(data);
@@ -137,10 +163,18 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     if (!current?.legacy) {
       const issues = validateListingForm(form.getValues()).filter((issue) => stepOwns(current, issue.path));
       if (issues.length > 0) {
-        applyIssues(issues);
+        for (const issue of issues) {
+          form.setError(issue.path as never, { message: issue.message });
+        }
+        setErrorStepIndices((prev) => {
+          const next = new Set(prev);
+          next.add(step);
+          return pruneErrorStepIndices(steps, [...next], form.getValues());
+        });
         return;
       }
     }
+    setErrorStepIndices((prev) => pruneErrorStepIndices(steps, prev.filter((index) => index !== step), form.getValues()));
     setStep((currentIndex) => Math.min(currentIndex + 1, steps.length - 1));
   };
 
@@ -160,72 +194,144 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     form.setValue("details", { ...EMPTY_LISTING_DETAILS, rooms: {} }, { shouldDirty: true });
   };
 
-  const onSubmit = form.handleSubmit((data) => {
-    if (step < steps.length - 1) {
-      goNext();
-      return;
+  const handleSave = form.handleSubmit(
+    (data) => save(data),
+    (fieldErrors) => {
+      const paths = flattenFormErrorPaths(fieldErrors);
+      const issues = paths.map((path) => ({ path, message: "Invalid value" }));
+      focusFirstStepWithIssue(issues);
+      toast({
+        variant: "destructive",
+        title: "Check required fields",
+        description: issues[0]?.message ?? "Fill in the fields marked with *.",
+      });
+    },
+  );
+
+  const preventEnterSubmit = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter") return;
+    const target = e.target;
+    if (target instanceof HTMLTextAreaElement) return;
+    if (target instanceof HTMLInputElement) {
+      e.preventDefault();
     }
-    return save(data);
-  });
+  };
 
   const showNext = step < steps.length - 1;
   const nextDisabled = !isEdit && step === 0 && !isCategorized;
+  const progressPct = steps.length > 0 ? Math.round(((step + 1) / steps.length) * 100) : 0;
 
   return (
-    <div className={`mx-auto w-full max-w-6xl px-4 ${isEdit && isDirty ? "pb-24" : "pb-8"}`}>
-      <div className="mb-6 flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/listings">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="font-heading text-xl font-bold text-foreground">{initialData ? "Edit Property" : "Add Property"}</h2>
-          <p className="text-sm text-muted-foreground">
-            {initialData ? "Update your listing step by step" : "Choose a sector, then complete each section"}
-          </p>
+    <div
+      className={`mx-auto w-full max-w-6xl overflow-x-hidden ${showStickySave ? "pb-28 sm:pb-24" : "pb-8"}`}
+    >
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" asChild>
+            <Link href="/listings">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              {initialData ? "Edit Property" : "Add Property"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {initialData ? "Update your listing step by step" : "Choose a sector, then complete each section"}
+            </p>
+          </div>
         </div>
+        {steps.length > 1 ? (
+          <div className="w-full min-w-0 sm:max-w-xs lg:max-w-sm">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                Step {step + 1} of {steps.length}
+              </span>
+              <span className="truncate font-medium text-foreground">{activeStep.title}</span>
+            </div>
+            <div
+              className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={progressPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Progress: step ${step + 1} of ${steps.length}`}
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <Form {...form}>
-        <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={onSubmit} className="space-y-6">
-          <div className="overflow-x-auto pb-1 md:hidden">
-            <PropertyWizardNav steps={steps} activeIndex={step} onSelect={setStep} variant="pills" className="min-w-max" />
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={(e) => e.preventDefault()}
+          onKeyDown={preventEnterSubmit}
+          className="space-y-6"
+        >
+          <div className="overflow-x-auto pb-2 md:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <PropertyWizardNav
+              steps={steps}
+              activeIndex={step}
+              errorStepIndices={errorStepIndices}
+              onSelect={setStep}
+              variant="pills"
+              className="min-w-max px-0.5"
+            />
           </div>
 
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-center">
-            <aside className="hidden w-52 shrink-0 rounded-xl border border-border bg-muted/20 p-3 md:block">
-              <PropertyWizardNav steps={steps} activeIndex={step} onSelect={setStep} />
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6">
+            <aside className="hidden shrink-0 rounded-xl border border-border bg-card/50 p-3 md:block md:w-56 lg:w-60">
+              <PropertyWizardNav steps={steps} activeIndex={step} errorStepIndices={errorStepIndices} onSelect={setStep} />
             </aside>
 
-            <div className="w-full min-w-0 md:max-w-2xl md:flex-1">
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                <h3 className="mb-4 font-heading text-lg font-semibold text-foreground">{activeStep.title}</h3>
-                <WizardStepBody
-                  step={activeStep}
-                  sector={sector}
-                  posting={posting}
-                  onSector={onSector}
-                  onPosting={onPosting}
-                />
+            <div className="min-w-0 flex-1">
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7 lg:p-8">
+                <div className="mb-6 border-b border-border/60 pb-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {steps.length > 1 ? `Step ${step + 1} of ${steps.length}` : "Getting started"}
+                  </p>
+                  <h3 className="mt-1 font-heading text-lg font-semibold text-foreground sm:text-xl">{activeStep.title}</h3>
+                </div>
+                <div className="space-y-5">
+                  <WizardStepBody
+                    step={activeStep}
+                    sector={sector}
+                    posting={posting}
+                    onSector={onSector}
+                    onPosting={onPosting}
+                  />
+                </div>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border/60 pt-6">
                 {step > 0 ? (
                   <Button type="button" variant="outline" size="lg" onClick={() => setStep((current) => current - 1)}>
                     Previous
                   </Button>
                 ) : null}
                 {showNext ? (
-                  <Button type="button" size="lg" className="min-w-[8rem] flex-1 sm:flex-none" onClick={goNext} disabled={nextDisabled}>
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="min-w-32 flex-1 rounded-lg sm:flex-none"
+                    onClick={goNext}
+                    disabled={nextDisabled}
+                  >
                     Next
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
                     size="lg"
-                    className="min-w-[8rem] flex-1 sm:flex-none"
+                    className="min-w-32 flex-1 rounded-lg sm:flex-none"
                     disabled={isSubmitting || (!isEdit && !isCategorized) || (isEdit && !isDirty)}
+                    onClick={() => void handleSave()}
                   >
                     <Upload className="mr-2 h-4 w-4" />
                     {isSubmitting ? "Saving…" : isEdit ? "Update Property" : "Create Property"}
@@ -240,10 +346,18 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
             </div>
           </div>
 
-          {isEdit && isDirty ? (
-            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
+          {showStickySave ? (
+            <div
+              className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            >
               <div className="mx-auto flex max-w-6xl justify-center">
-                <Button type="submit" size="lg" className="w-full max-w-md" disabled={isSubmitting}>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full max-w-md"
+                  disabled={isSubmitting}
+                  onClick={() => void handleSave()}
+                >
                   <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : "Update Property"}
                 </Button>
               </div>
@@ -254,6 +368,15 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     </div>
   );
 };
+
+const choiceTileClass = (selected: boolean) =>
+  [
+    "rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition-colors",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    selected
+      ? "border-primary bg-primary/10 text-foreground shadow-sm"
+      : "border-border bg-muted/20 text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
+  ].join(" ");
 
 function ChoiceFields({
   sector,
@@ -268,18 +391,18 @@ function ChoiceFields({
 }) {
   const options = postingOptionsFor(sector);
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-foreground">Property sector</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <legend className="text-sm font-semibold text-foreground">Property sector</legend>
+        <p className="text-sm text-muted-foreground">Select the category that best describes your listing.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
           {PROPERTY_SECTORS.map((item) => (
             <button
               key={item}
               type="button"
+              aria-pressed={sector === item}
               onClick={() => onSector(item)}
-              className={`rounded-lg border px-3 py-3 text-sm font-medium ${
-                sector === item ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground"
-              }`}
+              className={choiceTileClass(sector === item)}
             >
               {SECTOR_LABELS[item]}
             </button>
@@ -288,16 +411,24 @@ function ChoiceFields({
       </fieldset>
       {options.length > 0 ? (
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-foreground">Listing type</legend>
-          <div className="flex flex-wrap gap-2">
+          <legend className="text-sm font-semibold text-foreground">Listing type</legend>
+          <p className="text-sm text-muted-foreground">
+            Steps and fields depend on this choice—pick the option that matches how you want to list.
+          </p>
+          <div className="flex flex-wrap gap-2.5">
             {options.map((item) => (
               <button
                 key={item}
                 type="button"
+                aria-pressed={posting === item}
                 onClick={() => onPosting(item)}
-                className={`rounded-full border px-3 py-2 text-sm ${
-                  posting === item ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"
-                }`}
+                className={[
+                  "rounded-full border px-4 py-2.5 text-sm font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  posting === item
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-muted/20 text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
+                ].join(" ")}
               >
                 {POSTING_LABELS[item]}
               </button>
@@ -311,7 +442,7 @@ function ChoiceFields({
 
 function SectionBody({ section }: { section: ListingSection }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <ListingFields fields={section.fields} />
       {section.extras?.includes("location") ? <LocationSection /> : null}
       {section.extras?.includes("images") ? <PropertyImagesSection /> : null}
@@ -393,6 +524,44 @@ function sectionHasPath(step: WizardStep, path: string) {
 function stepOwns(step: WizardStep | undefined, path: string) {
   if (!step) return false;
   return sectionHasPath(step, path);
+}
+
+function stepIndicesWithValidationIssues(steps: WizardStep[], issues: { path: string }[]) {
+  const indices = new Set<number>();
+  for (const issue of issues) {
+    const idx = steps.findIndex((item) =>
+      issue.path === "postingType" || issue.path === "propertySector" || sectionHasPath(item, issue.path),
+    );
+    if (idx >= 0) indices.add(idx);
+  }
+  return [...indices];
+}
+
+/** Keep only step indices that still have listing validation errors (quick-nav X icons). */
+function pruneErrorStepIndices(steps: WizardStep[], indices: number[], values: PropertyFormValues) {
+  if (indices.length === 0) return indices;
+  const allIssues = validateListingForm(values);
+  return indices.filter((index) => {
+    const stepDef = steps[index];
+    if (!stepDef || stepDef.legacy) return false;
+    return allIssues.some((issue) => stepOwns(stepDef, issue.path));
+  });
+}
+
+function flattenFormErrorPaths(errors: FieldErrors<PropertyFormValues>, prefix = ""): string[] {
+  const paths: string[] = [];
+  for (const [key, value] of Object.entries(errors)) {
+    if (!value) continue;
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "object" && "message" in value && value.message) {
+      paths.push(path);
+      continue;
+    }
+    if (typeof value === "object") {
+      paths.push(...flattenFormErrorPaths(value as FieldErrors<PropertyFormValues>, path));
+    }
+  }
+  return paths;
 }
 
 export default AddProperty;
