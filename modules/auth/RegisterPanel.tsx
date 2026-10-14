@@ -12,6 +12,7 @@ import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } fro
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { OtpField } from "@/modules/auth/OtpField";
 
 const normalizePhone = (value: string) => {
   const trimmed = value.trim();
@@ -167,17 +168,13 @@ export default function RegisterPanel({
           </div>
 
           {otpSent ? (
-            <div className="space-y-2 overflow-hidden">
-              <label className="ml-1 text-sm font-medium leading-none text-foreground">One-Time Password</label>
-              <Input
-                placeholder="Enter OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="h-12 w-full rounded-xl border-input bg-background text-center text-lg font-medium tracking-[0.5em] shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
-                maxLength={10}
-                required
-              />
-            </div>
+            <OtpField
+              value={otp}
+              onChange={setOtp}
+              disabled={verifyingOtp}
+              active={otpSent}
+              hint={`Enter the 6-digit code sent to ${phone}.`}
+            />
           ) : null}
         </div>
 

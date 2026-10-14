@@ -29,6 +29,7 @@ import {
   HandHelping,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -1347,21 +1348,29 @@ function ServiceTimeline({ request }: { request: ServiceRequestDTO }) {
   const items = buildServiceTimeline(request);
   if (items.length === 0) return null;
 
+  const list = (
+    <ol className="flex flex-col gap-3 pr-2">
+      {items.map((item, index) => (
+        <TimelineRow
+          key={item.key}
+          item={item}
+          isLast={index === items.length - 1}
+        />
+      ))}
+    </ol>
+  );
+
   return (
     <div className="flex flex-col gap-3 rounded-lg bg-muted/30 p-3">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
         <History className="size-3.5" aria-hidden />
         Timeline
       </div>
-      <ol className="flex flex-col gap-3">
-        {items.map((item, index) => (
-          <TimelineRow
-            key={item.key}
-            item={item}
-            isLast={index === items.length - 1}
-          />
-        ))}
-      </ol>
+      {items.length > 4 ? (
+        <ScrollArea className="max-h-64">{list}</ScrollArea>
+      ) : (
+        list
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { DEFAULT_LOCAL_API_URL } from "@/end-points/http";
 import { buildPropertyPath } from "@/lib/property-slug";
 import { getSiteUrl } from "@/lib/seo/site";
+import { fetchPublicVendorSlugsForSitemap } from "@/lib/seo/vendor-for-seo";
 
 type PropertyRow = { id: number; title?: string | null; status?: string | null };
 
@@ -38,7 +39,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/sitemap`, lastModified, changeFrequency: "monthly", priority: 0.35 },
   ];
 
-  const rows = await fetchApprovedPropertyRows();
+  const [rows, vendorSlugs] = await Promise.all([
+    fetchApprovedPropertyRows(),
+    fetchPublicVendorSlugsForSitemap(),
+  ]);
   const propertyEntries: MetadataRoute.Sitemap = rows.map((r) => ({
     url: `${base}${buildPropertyPath(r.id, r.title)}`,
     lastModified,
@@ -46,5 +50,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }));
 
-  return [...staticEntries, ...propertyEntries];
+  const vendorEntries: MetadataRoute.Sitemap = vendorSlugs.map((slug) => ({
+    url: `${base}/vendors/${encodeURIComponent(slug)}`,
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  return [...staticEntries, ...propertyEntries, ...vendorEntries];
 }

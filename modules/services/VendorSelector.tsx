@@ -148,7 +148,8 @@ export default function VendorSelector({
 
   return (
     <div className="flex flex-col gap-2 mt-1.5">
-      <Popover> 
+      <div className="flex items-center gap-2">
+      <Popover>
         <PopoverTrigger asChild>
 
           <Button
@@ -157,7 +158,7 @@ export default function VendorSelector({
             role="combobox"
             disabled={isTriggerDisabled}
             className={cn(
-              "h-auto min-h-10 w-full justify-between px-3 py-2 font-normal",
+              "h-auto min-h-10 min-w-0 flex-1 justify-between px-3 py-2 font-normal",
               !selectedLabel && "text-muted-foreground",
             )}
           >
@@ -214,8 +215,19 @@ export default function VendorSelector({
           </Command>
         </PopoverContent>
       </Popover>
-
-
+      {value != null && !disabled ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          aria-label="Clear selected vendor"
+          onClick={() => onValueChange(null)}
+        >
+          <X className="size-4" />
+        </Button>
+      ) : null}
+      </div>
     </div>
   );
 }

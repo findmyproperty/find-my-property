@@ -28,6 +28,7 @@ import { parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { OtpField } from "@/modules/auth/OtpField";
 import { useCategories } from "@/hooks/use-categories";
 
 const normalizePhone = (value: string) => {
@@ -255,12 +256,14 @@ export default function RegisterVendorPanel() {
               <Label>Phone</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" />
             </div>
-            {otpSent && (
-              <div className="space-y-2">
-                <Label>OTP</Label>
-                <Input value={otp} onChange={(e) => setOtp(e.target.value)} />
-              </div>
-            )}
+            {otpSent ? (
+              <OtpField
+                value={otp}
+                onChange={setOtp}
+                disabled={verifying}
+                active={otpSent}
+              />
+            ) : null}
           </div>
 
           {!otpSent ? (

@@ -25,6 +25,7 @@ import {
   SimilarListingsSection,
   VideoSection,
 } from "@/modules/properties/detail";
+import { groupDetailRows } from "@/lib/detail-card-groups";
 import { detailRows, listingFacts, showsFloorPlans } from "@/lib/property-posting";
 
 const PropertyDetail = () => {
@@ -69,6 +70,7 @@ const PropertyDetail = () => {
   const isAgentOwner = property.ownerRole === "agent";
   const categorized = Boolean(property.propertySector);
   const rows = categorized ? detailRows(property.details) : [];
+  const detailGroups = groupDetailRows(rows);
 
   return (
     <div className="pb-20 pt-6">
@@ -81,21 +83,45 @@ const PropertyDetail = () => {
 
       <div className="container mx-auto mt-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
+          <div className="order-2 space-y-6 lg:order-none lg:col-span-2">
             <KeyFactsCard property={property} facts={categorized ? listingFacts(property) : undefined} />
             <DescriptionSection property={property} />
             {rows.length > 0 ? (
-              <section className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="mb-4 font-heading text-base font-semibold text-foreground">Listing details</h2>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {rows.map((row) => (
-                    <div key={row.label}>
-                      <dt className="text-xs text-muted-foreground">{row.label}</dt>
-                      <dd className="text-sm text-foreground">{row.value}</dd>
-                    </div>
+              <>
+                <section className="hidden rounded-2xl border border-border bg-card p-6 lg:block">
+                  <h2 className="mb-4 font-heading text-base font-semibold text-foreground">
+                    Listing details
+                  </h2>
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    {rows.map((row) => (
+                      <div key={row.label}>
+                        <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                        <dd className="text-sm text-foreground">{row.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+                <div className="flex flex-col gap-4 lg:hidden">
+                  {detailGroups.map((group) => (
+                    <section
+                      key={group.title}
+                      className="rounded-2xl border border-border bg-card p-5"
+                    >
+                      <h2 className="mb-3 font-heading text-sm font-semibold text-foreground">
+                        {group.title}
+                      </h2>
+                      <dl className="grid gap-3">
+                        {group.rows.map((row) => (
+                          <div key={`${group.title}-${row.label}`}>
+                            <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                            <dd className="text-sm font-medium text-foreground">{row.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
                   ))}
-                </dl>
-              </section>
+                </div>
+              </>
             ) : null}
             <AmenitiesSection amenities={amenities} />
             {showsFloorPlans(property.propertySector, property.postingType) ? (
@@ -109,8 +135,8 @@ const PropertyDetail = () => {
             <LocationMapSection location={property.location} />
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
+          <div className="order-1 lg:order-none lg:col-span-1">
+            <div className="space-y-6 lg:sticky lg:top-24">
               {isAgentOwner ? (
                 <AgentContactCard
                   property={{

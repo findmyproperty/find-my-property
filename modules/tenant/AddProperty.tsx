@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
@@ -8,7 +8,8 @@ import { invalidatePropertyQueries } from "@/lib/invalidate-property-queries";
 import { motion } from "framer-motion";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, Upload, X } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -83,6 +84,27 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
 
   const activeStep = steps[step] ?? steps[0] ?? CHOICE_STEP;
   const { isDirty, isSubmitting } = form.formState;
+  const formValues = useWatch({ control: form.control });
+  const initialSnapshotRef = useRef<string | null>(null);
+  const [rejectAlertDismissed, setRejectAlertDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!isEdit || !initialData?.id) return;
+    const defaults = getDefaultValues(initialData);
+    initialSnapshotRef.current = JSON.stringify(defaults);
+    setRejectAlertDismissed(false);
+  }, [isEdit, initialData?.id]);
+
+  const hasChanges =
+    isEdit &&
+    initialSnapshotRef.current != null &&
+    JSON.stringify(formValues) !== initialSnapshotRef.current;
+
+  const canUpdate = isEdit && (isDirty || hasChanges);
+  const rejectReason =
+    initialData?.status === "Rejected" && initialData.reason?.trim()
+      ? initialData.reason.trim()
+      : null;
 
   useEffect(() => {
     setStep((current) => Math.min(current, Math.max(0, steps.length - 1)));
@@ -98,7 +120,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   }, [step, steps, form]);
 
   const isLastStep = steps.length > 0 && step === steps.length - 1;
-  const showStickySave = isEdit && isDirty && isLastStep;
+  const showStickySave = isEdit && canUpdate;
 
   const applyIssues = (issues: { path: string; message: string }[]) => {
     form.clearErrors();
@@ -137,7 +159,9 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
       if (initialData?.id) {
         await api.updateProperty(String(initialData.id), payload);
         const fresh = await api.getRawProperty(String(initialData.id));
-        form.reset(getDefaultValues(fresh));
+        const nextDefaults = getDefaultValues(fresh);
+        form.reset(nextDefaults);
+        initialSnapshotRef.current = JSON.stringify(nextDefaults);
         propertyIdForCache = String(initialData.id);
         toast({ variant: "success", title: "Property updated", description: "Your listing has been saved successfully." });
       } else {
@@ -266,6 +290,26 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
         ) : null}
       </div>
 
+      {rejectReason && !rejectAlertDismissed ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="flex items-center justify-between gap-2">
+            Listing not approved
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+              aria-label="Dismiss"
+              onClick={() => setRejectAlertDismissed(true)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertTitle>
+          <AlertDescription>{rejectReason}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <Form {...form}>
         <motion.form
           initial={{ opacity: 0, y: 10 }}
@@ -330,7 +374,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
                     type="button"
                     size="lg"
                     className="min-w-32 flex-1 rounded-lg sm:flex-none"
-                    disabled={isSubmitting || (!isEdit && !isCategorized) || (isEdit && !isDirty)}
+                    disabled={isSubmitting || (!isEdit && !isCategorized) || (isEdit && !canUpdate)}
                     onClick={() => void handleSave()}
                   >
                     <Upload className="mr-2 h-4 w-4" />

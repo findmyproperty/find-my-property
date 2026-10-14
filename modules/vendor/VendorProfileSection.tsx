@@ -198,7 +198,7 @@ function MultiFileWidget({
 }: {
   label: string
   urls: string[]
-  onChange: (urls: string[]) => void
+  onChange: React.Dispatch<React.SetStateAction<string[]>>
   accept: string[]
   folder: string
   maxFiles?: number
@@ -225,11 +225,15 @@ function MultiFileWidget({
     setIsUploading(false)
     const uploadedUrl = info?.secure_url
     if (!uploadedUrl) return
-    onChange([...urls, uploadedUrl])
+    onChange((prev) => {
+      if (prev.includes(uploadedUrl)) return prev
+      if (prev.length >= maxFiles) return prev
+      return [...prev, uploadedUrl]
+    })
   }
 
   const removeFile = (indexToRemove: number) => {
-    onChange(urls.filter((_, i) => i !== indexToRemove))
+    onChange((prev) => prev.filter((_, i) => i !== indexToRemove))
   }
 
   return (
@@ -729,6 +733,10 @@ export function VendorKycForm({ profile }: { profile: VendorProfile | null }) {
   )
 
   const requiredComplete = Boolean(aadhaarUrl.trim()) && Boolean(panUrl.trim())
+  const [rejectDismissed, setRejectDismissed] = useState(false)
+  const rejectReason = profile?.verificationStatus === "rejected"
+    ? profile.rejectionReason?.trim()
+    : null
 
   const handleSave = () => {
     save(
@@ -764,6 +772,26 @@ export function VendorKycForm({ profile }: { profile: VendorProfile | null }) {
           partner account.
         </p>
       </div>
+
+      {rejectReason && !rejectDismissed ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="flex items-center justify-between gap-2">
+            Application rejected
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+              aria-label="Dismiss"
+              onClick={() => setRejectDismissed(true)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertTitle>
+          <AlertDescription>{rejectReason}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <Alert className="border-border bg-muted/30">
         <AlertCircle className="h-4 w-4" />

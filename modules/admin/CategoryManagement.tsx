@@ -318,7 +318,10 @@ const CategoryManagement = () => {
       {
         id: "commission",
         header: "Commission %",
-        meta: { className: "w-[110px] text-right tabular-nums" },
+        meta: {
+          className:
+            "whitespace-nowrap min-w-[7rem] text-right tabular-nums",
+        },
         cell: ({ row }) => {
           const pct = Number(row.original.commissionPercent);
           return Number.isFinite(pct) ? pct : 0;

@@ -30,7 +30,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -169,6 +178,9 @@ export default function VendorApprovals() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [blockedFilter, setBlockedFilter] = useState<BlockedFilter>("all")
   const [selectedVendor, setSelectedVendor] = useState<VendorProfile | null>(null)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectVendor, setRejectVendor] = useState<VendorProfile | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
 
   const {
     page,
@@ -305,6 +317,11 @@ export default function VendorApprovals() {
             vendor={row.original}
             isPending={isPending}
             onDetails={() => setSelectedVendor(row.original)}
+            onRequestReject={() => {
+              setRejectVendor(row.original)
+              setRejectReason("")
+              setRejectOpen(true)
+            }}
             onUpdate={updateVendor}
             toast={toast}
           />
@@ -425,6 +442,69 @@ export default function VendorApprovals() {
           if (!open) setSelectedVendor(null)
         }}
       />
+
+      <Dialog
+        open={rejectOpen}
+        onOpenChange={(open) => {
+          setRejectOpen(open)
+          if (!open) {
+            setRejectVendor(null)
+            setRejectReason("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject vendor partner</DialogTitle>
+            <DialogDescription>
+              Provide a reason the vendor will see on their profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="vendor-reject-reason">Reason</Label>
+            <Textarea
+              id="vendor-reject-reason"
+              placeholder="Explain why this application cannot be approved…"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              className="resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => setRejectOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isPending || !rejectReason.trim() || !rejectVendor}
+              onClick={() => {
+                if (!rejectVendor || !rejectReason.trim()) return
+                updateVendor(
+                  {
+                    userId: rejectVendor.userId,
+                    input: {
+                      verificationStatus: "rejected",
+                      rejectionReason: rejectReason.trim(),
+                    },
+                  },
+                  {
+                    onSuccess: () => {
+                      toast({ title: "Vendor rejected" })
+                      setRejectOpen(false)
+                      setRejectVendor(null)
+                      setRejectReason("")
+                    },
+                  },
+                )
+              }}
+            >
+              Confirm reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -433,12 +513,14 @@ function VendorRowActions({
   vendor,
   isPending,
   onDetails,
+  onRequestReject,
   onUpdate,
   toast,
 }: {
   vendor: VendorProfile
   isPending: boolean
   onDetails: () => void
+  onRequestReject: () => void
   onUpdate: ReturnType<typeof useAdminUpdateVendor>["mutate"]
   toast: ReturnType<typeof useToast>["toast"]
 }) {
@@ -480,18 +562,7 @@ function VendorRowActions({
             <DropdownMenuItem
               className="gap-2 text-destructive focus:text-destructive"
               disabled={isPending}
-              onClick={() =>
-                onUpdate(
-                  {
-                    userId: vendor.userId,
-                    input: {
-                      verificationStatus: "rejected",
-                      rejectionReason: "Did not meet verification requirements",
-                    },
-                  },
-                  { onSuccess: () => toast({ title: "Vendor rejected" }) },
-                )
-              }
+              onClick={onRequestReject}
             >
               <XCircle className="size-4" />
               Reject

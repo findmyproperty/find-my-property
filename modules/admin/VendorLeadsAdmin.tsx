@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -1221,9 +1222,12 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function LeadHistory({ lead }: { lead: VendorLead }) {
   const updates = lead.updates ?? []
-
-  return (
-    <div className="flex flex-col gap-4">
+  const rowCount =
+    1 +
+    (lead.updatedAt !== lead.createdAt ? 1 : 0) +
+    updates.length
+  const body = (
+    <div className="flex flex-col gap-4 pr-2">
       <TimelineItem
         title="Lead assigned"
         description={`Assigned to vendor #${lead.vendorUserId}.`}
@@ -1254,6 +1258,12 @@ function LeadHistory({ lead }: { lead: VendorLead }) {
         </p>
       ) : null}
     </div>
+  )
+
+  return rowCount > 4 ? (
+    <ScrollArea className="max-h-64">{body}</ScrollArea>
+  ) : (
+    body
   )
 }
 

@@ -55,9 +55,37 @@ function walletHref(role: UserRole | undefined): string | null {
   return null;
 }
 
-function propertyHref(role: UserRole | undefined): string | null {
+function propertyHref(
+  role: UserRole | undefined,
+  propertyId: number | null,
+  meta: Record<string, unknown> | null,
+  haystack = "",
+): string | null {
   if (role === "admin") return "/approvals";
-  if (role === "agent" || role === "tenant") return "/listings";
+  if (role === "agent" || role === "tenant") {
+    if (propertyId != null) {
+      const status = (asString(meta?.propertyStatus) ?? "").toLowerCase();
+      const trigger = (asString(meta?.triggerEvent) ?? "").toLowerCase();
+      const rejected =
+        status === "rejected" ||
+        trigger === "rejected" ||
+        haystack.includes("not approved") ||
+        haystack.includes("listing not approved");
+      if (rejected) return `/edit-property/${propertyId}`;
+      if (trigger === "approved" || haystack.includes("property approved")) {
+        return "/listings";
+      }
+      if (
+        trigger === "created" ||
+        trigger === "resubmitted" ||
+        haystack.includes("awaiting approval") ||
+        haystack.includes("pending review")
+      ) {
+        return `/edit-property/${propertyId}`;
+      }
+    }
+    return "/listings";
+  }
   return null;
 }
 
@@ -146,7 +174,7 @@ export function getNotificationHref(
     return supportHref(role);
   }
   if (entityType === "property" || entityType === "listing") {
-    return propertyHref(role);
+    return propertyHref(role, entityId, meta, haystack);
   }
   if (entityType === "email_log" || entityType === "email") {
     return role === "admin" ? "/admin/email-logs" : null;
@@ -163,6 +191,18 @@ export function getNotificationHref(
   if (vendorLeadId != null) return vendorLeadHref(role, vendorLeadId);
   if (serviceRequestId != null) return serviceRequestHref(role);
   if (ticketId != null) return supportHref(role);
+
+  const propertyId = asNumber(
+    meta?.propertyId ?? meta?.property_id ?? entityId,
+  );
+  if (
+    propertyId != null &&
+    (asString(meta?.feature) === "property" ||
+      haystack.includes("property") ||
+      haystack.includes("listing"))
+  ) {
+    return propertyHref(role, propertyId, meta, haystack);
+  }
 
   // --- Notification type ---
   if (
@@ -231,6 +271,18 @@ export function getNotificationHref(
     haystack.includes("payment link")
   ) {
     return walletHref(role);
+  }
+
+  if (
+    haystack.includes("property") ||
+    haystack.includes("listing") ||
+    haystack.includes("awaiting approval")
+  ) {
+    const inferredId = propertyId ?? entityId;
+    if (inferredId != null && (role === "tenant" || role === "agent")) {
+      return propertyHref(role, inferredId, meta, haystack);
+    }
+    if (role === "admin") return "/approvals";
   }
 
   // Last resort for admin email mirrors

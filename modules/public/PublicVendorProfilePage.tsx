@@ -10,14 +10,27 @@ import type { PublicVendorProfile } from "@/schema/vendor";
 
 type Props = {
   idOrSlug: string;
+  /** When provided from the server, skip the initial client fetch. */
+  initialProfile?: PublicVendorProfile | null;
 };
 
-export default function PublicVendorProfilePage({ idOrSlug }: Props) {
-  const [profile, setProfile] = useState<PublicVendorProfile | null>(null);
+export default function PublicVendorProfilePage({
+  idOrSlug,
+  initialProfile,
+}: Props) {
+  const [profile, setProfile] = useState<PublicVendorProfile | null>(
+    initialProfile ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialProfile === undefined);
 
   useEffect(() => {
+    if (initialProfile !== undefined) {
+      setProfile(initialProfile);
+      setLoading(false);
+      setError(initialProfile ? null : "Partner not found");
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -38,7 +51,7 @@ export default function PublicVendorProfilePage({ idOrSlug }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [idOrSlug]);
+  }, [idOrSlug, initialProfile]);
 
   if (loading) {
     return (

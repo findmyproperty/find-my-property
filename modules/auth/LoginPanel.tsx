@@ -1,18 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Smartphone } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { OtpField } from "@/modules/auth/OtpField";
 
 const normalizePhone = (value: string) => {
   const trimmed = value.trim();
@@ -21,9 +21,6 @@ const normalizePhone = (value: string) => {
   if (digits.length === 10) return `+91${digits}`;
   return trimmed;
 };
-
-const OTP_SLOT_CLASS =
-  "h-12 flex-1 min-w-0 max-w-12 rounded-xl border border-input shadow-sm first:rounded-xl last:rounded-xl first:border-l";
 
 type LoginPanelProps = {
   /** Compact layout for service-page auth modal. */
@@ -42,7 +39,6 @@ export default function LoginPanel({
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const otpInputRef = useRef<React.ElementRef<typeof InputOTP>>(null);
   const { loginWithPhone, requestPhoneOtp } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -53,14 +49,6 @@ export default function LoginPanel({
   const siteName = settings?.siteName?.trim() || SITE_NAME;
   const logoUrl = settings?.primaryLogoUrl?.trim() || null;
   const isModal = variant === "modal";
-
-  useEffect(() => {
-    if (!otpSent) return;
-    const timer = window.setTimeout(() => {
-      otpInputRef.current?.focus();
-    }, 100);
-    return () => window.clearTimeout(timer);
-  }, [otpSent]);
 
   const handleSendOtp = async (e?: React.SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -172,29 +160,13 @@ export default function LoginPanel({
           </div>
 
           {otpSent ? (
-            <div className="space-y-2">
-              <label className="ml-1 text-sm font-medium leading-none text-foreground">
-                One-Time Password
-              </label>
-              <InputOTP
-                ref={otpInputRef}
-                maxLength={6}
-                value={otp}
-                onChange={setOtp}
-                disabled={verifyingOtp}
-                containerClassName="w-full"
-                autoFocus
-              >
-                <InputOTPGroup className="w-full gap-2">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <InputOTPSlot key={index} index={index} className={OTP_SLOT_CLASS} />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-              <p className="text-xs text-muted-foreground">
-                Enter the 6-digit code sent to {phone}.
-              </p>
-            </div>
+            <OtpField
+              value={otp}
+              onChange={setOtp}
+              disabled={verifyingOtp}
+              active={otpSent}
+              hint={`Enter the 6-digit code sent to ${phone}.`}
+            />
           ) : null}
         </div>
 

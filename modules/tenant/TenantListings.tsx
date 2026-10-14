@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plus, MapPin, Edit, Trash2 } from "lucide-react";
+import { Plus, MapPin, Edit, Trash2, Eye } from "lucide-react";
+import { buildPropertyPath } from "@/lib/property-slug";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -75,49 +76,87 @@ const TenantListings = () => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-card rounded-xl border border-border p-4 flex flex-col sm:flex-row gap-4"
+            className="overflow-hidden rounded-xl border border-border bg-card sm:flex sm:flex-row sm:gap-4 sm:p-4"
           >
             {p.image ? (
-              <img src={p.image} alt={p.title} className="h-24 w-full rounded-lg object-cover sm:w-36" />
+              <img
+                src={p.image}
+                alt={p.title}
+                className="aspect-[16/10] w-full object-cover sm:h-24 sm:w-36 sm:shrink-0 sm:rounded-lg"
+              />
             ) : (
-              <div className="h-24 w-full shrink-0 rounded-lg bg-muted sm:w-36" aria-hidden />
+              <div
+                className="aspect-[16/10] w-full bg-muted sm:h-24 sm:w-36 sm:shrink-0 sm:rounded-lg"
+                aria-hidden
+              />
             )}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium text-foreground">{p.title}</h3>
+            <div className="flex flex-1 flex-col gap-3 p-4 sm:p-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {p.categoryLabel ? (
                   <Badge variant="outline" className="text-[10px]">{p.categoryLabel}</Badge>
                 ) : null}
-                <Badge variant={p.status === PropertyStatus.APPROVED ? "default" : p.status === PropertyStatus.REJECTED ? "destructive" : "secondary"} className="text-[10px]">
+                <Badge
+                  variant={
+                    p.status === PropertyStatus.APPROVED
+                      ? "default"
+                      : p.status === PropertyStatus.REJECTED
+                        ? "destructive"
+                        : "secondary"
+                  }
+                  className="text-[10px]"
+                >
                   {p.status || PropertyStatus.PENDING}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                <MapPin className="w-3.5 h-3.5" /> {p.location}
+              <div>
+                <h3 className="font-medium text-foreground">{p.title}</h3>
+                <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="size-3.5 shrink-0" /> {p.location}
+                </p>
+              </div>
+              <p className="text-lg font-semibold tabular-nums text-foreground">
+                {p.price}
+                {p.priceLabel}
               </p>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                 {listingFacts(p).map((fact) => (
                   <span key={`${fact.icon}-${fact.text}`}>{fact.text}</span>
                 ))}
-                <span className="font-semibold text-foreground ml-auto">{p.price}{p.priceLabel}</span>
               </div>
-            </div>
-            
-            <div className="flex sm:flex-col gap-2 justify-end sm:justify-start mt-4 sm:mt-0 sm:ml-4 border-t sm:border-t-0 sm:border-l border-border pt-4 sm:pt-0 sm:pl-4">
-              <Button size="sm" variant="outline" asChild className="w-full sm:w-auto h-8 px-3">
-                <Link href={`/edit-property/${p.id}`}>
-                  <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-                </Link>
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3"
-                disabled={deletingId === p.id}
-                onClick={() => handleDelete(p.id)}
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> {deletingId === p.id ? "Deleting..." : "Delete"}
-              </Button>
+              <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 sm:mt-auto sm:flex sm:w-auto sm:flex-col sm:border-0 sm:pt-0">
+                {p.status === PropertyStatus.APPROVED ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    asChild
+                    className="min-h-11 w-full sm:min-h-8"
+                  >
+                    <Link href={buildPropertyPath(p.id, p.title)}>
+                      <Eye className="mr-1 size-3.5" /> View
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  asChild
+                  className="min-h-11 w-full sm:min-h-8"
+                >
+                  <Link href={`/edit-property/${p.id}`}>
+                    <Edit className="mr-1 size-3.5" /> Edit
+                  </Link>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-11 w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:min-h-8"
+                  disabled={deletingId === p.id}
+                  onClick={() => handleDelete(p.id)}
+                >
+                  <Trash2 className="mr-1 size-3.5" />
+                  {deletingId === p.id ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
             </div>
           </motion.div>
         ))
