@@ -17,6 +17,16 @@ const QK = {
   adminStats: ["job-consultancy", "admin", "stats"] as const,
 };
 
+export function useMyJobConsultancyRequests() {
+  const { user, isAuthReady } = useAuth();
+  return useQuery({
+    queryKey: QK.mine,
+    queryFn: api.getMyJobConsultancyRequests,
+    enabled: isAuthReady && Boolean(user),
+    staleTime: 30_000,
+  });
+}
+
 export function useSubmitJobConsultancy() {
   const qc = useQueryClient();
   const { toast } = useToast();

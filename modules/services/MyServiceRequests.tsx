@@ -27,6 +27,8 @@ import {
   Wrench,
   Monitor,
   HandHelping,
+  Briefcase,
+  Landmark,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,15 +54,26 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { useAuth } from "@/contexts/auth-context";
+import { useMyJobConsultancyRequests } from "@/hooks/use-job-consultancy";
+import { useMyLoanRequests } from "@/hooks/use-loan-requests";
 import { useMyServiceRequests } from "@/hooks/use-service-requests";
+import { CONSULTANCY_META } from "@/modules/job-consultancy/job-consultancy-config";
+import { LOAN_META } from "@/modules/loans/loan-config";
 import { useSupportTelContact } from "@/hooks/use-support-tel-contact";
 import { useToast } from "@/hooks/use-toast";
 import {
   paginateItems,
   useAdminListControls,
 } from "@/hooks/use-admin-list-controls";
-import { SERVICE_REQUEST_STATUS_OPTIONS } from "@/lib/admin/status-config";
+import {
+  JOB_CONSULTANCY_STATUS_OPTIONS,
+  LOAN_REQUEST_STATUS_OPTIONS,
+  SERVICE_REQUEST_STATUS_OPTIONS,
+  getAdminStatusStyle,
+  type AdminStatusOption,
+} from "@/lib/admin/status-config";
 import { cn } from "@/lib/utils";
 import {
   api,
@@ -75,6 +88,8 @@ import {
   type ServiceRequestStatus,
   type ServiceRequestTimelineItem,
   type ServiceType,
+  type LoanRequestDTO,
+  type JobConsultancyDTO,
 } from "@/lib/api";
 
 const FEEDBACK_SKIP_KEY = "fmp:v1:service-feedback-skipped";
@@ -157,6 +172,46 @@ const SERVICE_META: Record<
     href: "/general-services",
   },
 };
+
+const EXTRA_REQUEST_META: Record<
+  "loan" | "job_consultancy",
+  { label: string; icon: typeof Truck; href: string }
+> = {
+  loan: {
+    label: "Loan assistance",
+    icon: Landmark,
+    href: "/loans",
+  },
+  job_consultancy: {
+    label: "Job consultancy",
+    icon: Briefcase,
+    href: "/job-consultancy",
+  },
+};
+
+type ExtendedServiceFilter = ServiceType | "loan" | "job_consultancy";
+
+type UnifiedMyRequest =
+  | { kind: "service"; data: ServiceRequestDTO }
+  | { kind: "loan"; data: LoanRequestDTO }
+  | { kind: "job"; data: JobConsultancyDTO };
+
+const MY_REQUEST_STATUS_OPTIONS: AdminStatusOption[] = (() => {
+  const seen = new Set<string>();
+  const out: AdminStatusOption[] = [];
+  for (const list of [
+    SERVICE_REQUEST_STATUS_OPTIONS,
+    LOAN_REQUEST_STATUS_OPTIONS,
+    JOB_CONSULTANCY_STATUS_OPTIONS,
+  ]) {
+    for (const opt of list) {
+      if (seen.has(opt.value)) continue;
+      seen.add(opt.value);
+      out.push(opt);
+    }
+  }
+  return out;
+})();
 
 const EVENT_TYPE_LABELS: Record<EventManagementDetails["eventType"], string> = {
   birthday: "Birthday",
@@ -362,6 +417,100 @@ function matchesDateRange(
   return true;
 }
 
+function unifiedCreatedAt(item: UnifiedMyRequest): string {
+  return item.data.createdAt;
+}
+
+function unifiedStatus(item: UnifiedMyRequest): string {
+  return item.data.status;
+}
+
+function unifiedMatchesDateRange(
+  item: UnifiedMyRequest,
+  from: string,
+  to: string,
+): boolean {
+  if (item.kind === "service") {
+    return matchesDateRange(item.data, from, to);
+  }
+  if (!from && !to) return true;
+  const day = parseRequestDay(item.data.createdAt);
+  if (!day) return false;
+  if (from) {
+    const fromDay = parseRequestDay(from);
+    if (fromDay && day < fromDay) return false;
+  }
+  if (to) {
+    const toDay = parseRequestDay(to);
+    if (toDay && day > toDay) return false;
+  }
+  return true;
+}
+
+function unifiedMatchesServiceFilter(
+  item: UnifiedMyRequest,
+  filter: string,
+): boolean {
+  if (filter === ALL_FILTER) return true;
+  if (filter === "loan") return item.kind === "loan";
+  if (filter === "job_consultancy") return item.kind === "job";
+  return item.kind === "service" && item.data.serviceType === filter;
+}
+
+function unifiedSearchText(item: UnifiedMyRequest): string {
+  if (item.kind === "service") return requestSearchText(item.data);
+  if (item.kind === "loan") {
+    const loanMeta = LOAN_META[item.data.loanType];
+    const statusMeta = getAdminStatusStyle(
+      LOAN_REQUEST_STATUS_OPTIONS,
+      item.data.status,
+    );
+    return [
+      String(item.data.id),
+      "loan",
+      loanMeta?.label,
+      item.data.loanType,
+      item.data.status,
+      statusMeta.label,
+      item.data.name,
+      item.data.phone,
+      item.data.city,
+      item.data.email,
+      item.data.details?.notes,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+  const typeMeta = CONSULTANCY_META[item.data.consultancyType];
+  const statusMeta = getAdminStatusStyle(
+    JOB_CONSULTANCY_STATUS_OPTIONS,
+    item.data.status,
+  );
+  return [
+    String(item.data.id),
+    "job consultancy",
+    typeMeta?.label,
+    item.data.consultancyType,
+    item.data.status,
+    statusMeta.label,
+    item.data.name,
+    item.data.phone,
+    item.data.city,
+    item.data.email,
+    item.data.details?.notes,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function unifiedListKey(item: UnifiedMyRequest): string {
+  if (item.kind === "service") return `service-${item.data.id}`;
+  if (item.kind === "loan") return `loan-${item.data.id}`;
+  return `job-${item.data.id}`;
+}
+
 function normalizeTimelineItems(
   items: ServiceRequestTimelineItem[] | null | undefined,
 ): TimelineViewItem[] {
@@ -449,7 +598,16 @@ export default function MyServiceRequests() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, error } = useMyServiceRequests();
+  const serviceQuery = useMyServiceRequests();
+  const loanQuery = useMyLoanRequests();
+  const jobQuery = useMyJobConsultancyRequests();
+  const isLoading =
+    serviceQuery.isLoading || loanQuery.isLoading || jobQuery.isLoading;
+  const loadErrors = [
+    serviceQuery.isError ? serviceQuery.error : null,
+    loanQuery.isError ? loanQuery.error : null,
+    jobQuery.isError ? jobQuery.error : null,
+  ].filter(Boolean) as Error[];
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [skippedRequestIds, setSkippedRequestIds] = useState<Set<number>>(
     () => new Set(),
@@ -478,12 +636,32 @@ export default function MyServiceRequests() {
     resetPageDeps: [statusFilter, serviceFilter, dateFrom, dateTo],
   });
 
-  const allRequests = data ?? [];
+  const serviceRequests = serviceQuery.data ?? [];
+
+  const allRequests = useMemo(() => {
+    const items: UnifiedMyRequest[] = [];
+    for (const request of serviceRequests) {
+      items.push({ kind: "service", data: request });
+    }
+    for (const request of loanQuery.data ?? []) {
+      items.push({ kind: "loan", data: request });
+    }
+    for (const request of jobQuery.data ?? []) {
+      items.push({ kind: "job", data: request });
+    }
+    items.sort(
+      (a, b) =>
+        new Date(unifiedCreatedAt(b)).getTime() -
+        new Date(unifiedCreatedAt(a)).getTime(),
+    );
+    return items;
+  }, [serviceRequests, loanQuery.data, jobQuery.data]);
 
   const statusCounts = useMemo(() => {
     const counts: Partial<Record<string, number>> = {};
     for (const request of allRequests) {
-      counts[request.status] = (counts[request.status] ?? 0) + 1;
+      const status = unifiedStatus(request);
+      counts[status] = (counts[status] ?? 0) + 1;
     }
     return counts;
   }, [allRequests]);
@@ -491,17 +669,17 @@ export default function MyServiceRequests() {
   const filteredRequests = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
     return allRequests.filter((request) => {
-      if (statusFilter !== ALL_FILTER && request.status !== statusFilter) {
-        return false;
-      }
       if (
-        serviceFilter !== ALL_FILTER &&
-        request.serviceType !== serviceFilter
+        statusFilter !== ALL_FILTER &&
+        unifiedStatus(request) !== statusFilter
       ) {
         return false;
       }
-      if (!matchesDateRange(request, dateFrom, dateTo)) return false;
-      if (q && !requestSearchText(request).includes(q)) return false;
+      if (!unifiedMatchesServiceFilter(request, serviceFilter)) {
+        return false;
+      }
+      if (!unifiedMatchesDateRange(request, dateFrom, dateTo)) return false;
+      if (q && !unifiedSearchText(request).includes(q)) return false;
       return true;
     });
   }, [
@@ -535,11 +713,11 @@ export default function MyServiceRequests() {
   };
 
   const pendingFeedbackRequests = useMemo(() => {
-    if (!allRequests.length) return [];
-    return allRequests.filter((request) =>
+    if (!serviceRequests.length) return [];
+    return serviceRequests.filter((request) =>
       shouldAskForFeedback(request, user?.id, skippedRequestIds),
     );
-  }, [allRequests, skippedRequestIds, user?.id]);
+  }, [serviceRequests, skippedRequestIds, user?.id]);
 
   useEffect(() => {
     if (pendingFeedbackRequests.length === 0) {
@@ -630,11 +808,11 @@ export default function MyServiceRequests() {
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="mb-1 font-heading text-xl font-bold text-foreground">
-          My Service Requests
+          My requests
         </h2>
         <p className="text-sm text-muted-foreground">
-          Track your Packers & Movers, Painting & Cleaning, and Event Management
-          bookings.
+          Track home services, loan applications, job consultancy, and other
+          bookings in one place.
         </p>
       </div>
 
@@ -645,7 +823,7 @@ export default function MyServiceRequests() {
         </div>
       ) : null}
 
-      {isError ? (
+      {loadErrors.length > 0 ? (
         <div
           role="alert"
           className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
@@ -653,22 +831,25 @@ export default function MyServiceRequests() {
           <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
           <div>
             <p className="font-medium text-destructive">
-              Could not load your requests
+              Could not load some of your requests
             </p>
-            <p className="mt-1 text-muted-foreground">
-              {(error as Error)?.message || "Please try again in a moment."}
-            </p>
+            <ul className="mt-1 list-inside list-disc text-muted-foreground">
+              {loadErrors.map((err, i) => (
+                <li key={i}>{err.message || "Please try again in a moment."}</li>
+              ))}
+            </ul>
           </div>
         </div>
       ) : null}
 
-      {!isLoading && !isError && (!data || data.length === 0) ? (
+      {!isLoading && allRequests.length === 0 && loadErrors.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
           <p className="font-heading text-lg font-semibold text-foreground">
-            No service requests yet
+            No requests yet
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Book a service and it will show up here with live status updates.
+            Book a service, apply for a loan, or submit job consultancy — it will
+            show up here with status updates.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button asChild size="sm">
@@ -707,17 +888,29 @@ export default function MyServiceRequests() {
                 General Services
               </Link>
             </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/loans">
+                <Landmark data-icon="inline-start" />
+                Loan assistance
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/job-consultancy">
+                <Briefcase data-icon="inline-start" />
+                Job consultancy
+              </Link>
+            </Button>
           </div>
         </div>
       ) : null}
 
-      {!isLoading && !isError && data && data.length > 0 ? (
+      {!isLoading && allRequests.length > 0 ? (
         <div className="space-y-4">
           <AdminToolbar
             statusFilter={{
               value: statusFilter,
               onChange: setStatusFilter,
-              options: SERVICE_REQUEST_STATUS_OPTIONS,
+              options: MY_REQUEST_STATUS_OPTIONS,
               counts: statusCounts,
               totalCount: allRequests.length,
               label: "Status",
@@ -757,6 +950,18 @@ export default function MyServiceRequests() {
                         {(
                           Object.entries(SERVICE_META) as Array<
                             [ServiceType, (typeof SERVICE_META)[ServiceType]]
+                          >
+                        ).map(([value, meta]) => (
+                          <SelectItem key={value} value={value}>
+                            {meta.label}
+                          </SelectItem>
+                        ))}
+                        {(
+                          Object.entries(EXTRA_REQUEST_META) as Array<
+                            [
+                              ExtendedServiceFilter,
+                              (typeof EXTRA_REQUEST_META)["loan"],
+                            ]
                           >
                         ).map(([value, meta]) => (
                           <SelectItem key={value} value={value}>
@@ -823,14 +1028,34 @@ export default function MyServiceRequests() {
                 {hasActiveFilters ? " (filtered)" : ""}
               </p>
               <div className="grid gap-3">
-                {paged.items.map((request, i) => (
-                  <ServiceRequestCard
-                    key={request.id}
-                    request={request}
-                    index={i}
-                    onRate={() => handleRateClick(request)}
-                  />
-                ))}
+                {paged.items.map((item, i) => {
+                  if (item.kind === "service") {
+                    return (
+                      <ServiceRequestCard
+                        key={unifiedListKey(item)}
+                        request={item.data}
+                        index={i}
+                        onRate={() => handleRateClick(item.data)}
+                      />
+                    );
+                  }
+                  if (item.kind === "loan") {
+                    return (
+                      <LoanRequestCard
+                        key={unifiedListKey(item)}
+                        request={item.data}
+                        index={i}
+                      />
+                    );
+                  }
+                  return (
+                    <JobConsultancyRequestCard
+                      key={unifiedListKey(item)}
+                      request={item.data}
+                      index={i}
+                    />
+                  );
+                })}
               </div>
               <AdminPagination
                 page={paged.page}
@@ -935,6 +1160,138 @@ function ServiceRequestCard({
 
       <CustomerReview request={request} onRate={onRate} />
       <ServiceTimeline request={request} />
+    </motion.article>
+  );
+}
+
+function LoanRequestCard({
+  request,
+  index,
+}: {
+  request: LoanRequestDTO;
+  index: number;
+}) {
+  const loanMeta = LOAN_META[request.loanType];
+  const notes = request.details?.notes?.trim();
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <loanMeta.icon className="size-5 text-primary" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium text-foreground">
+              {EXTRA_REQUEST_META.loan.label}
+            </h3>
+            <AdminStatusBadge
+              status={request.status}
+              options={LOAN_REQUEST_STATUS_OPTIONS}
+              className="text-[10px] uppercase"
+            />
+            <span className="text-xs text-muted-foreground">#{request.id}</span>
+          </div>
+          <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+            {loanMeta.label}
+            {notes ? ` · ${notes.slice(0, 80)}` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Phone className="size-3" aria-hidden />
+              {request.phone}
+            </span>
+            {request.city ? (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-3" aria-hidden />
+                {request.city}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-1 sm:items-end">
+          <span className="text-xs text-muted-foreground">
+            {formatRelativeTimestamp(request.createdAt)}
+          </span>
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={EXTRA_REQUEST_META.loan.href}>
+              Apply again
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function JobConsultancyRequestCard({
+  request,
+  index,
+}: {
+  request: JobConsultancyDTO;
+  index: number;
+}) {
+  const typeMeta = CONSULTANCY_META[request.consultancyType];
+  const notes = request.details?.notes?.trim();
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <typeMeta.icon className="size-5 text-primary" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium text-foreground">
+              {EXTRA_REQUEST_META.job_consultancy.label}
+            </h3>
+            <AdminStatusBadge
+              status={request.status}
+              options={JOB_CONSULTANCY_STATUS_OPTIONS}
+              className="text-[10px] uppercase"
+            />
+            <span className="text-xs text-muted-foreground">#{request.id}</span>
+          </div>
+          <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+            {typeMeta.label}
+            {notes ? ` · ${notes.slice(0, 80)}` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Phone className="size-3" aria-hidden />
+              {request.phone}
+            </span>
+            {request.city ? (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-3" aria-hidden />
+                {request.city}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-1 sm:items-end">
+          <span className="text-xs text-muted-foreground">
+            {formatRelativeTimestamp(request.createdAt)}
+          </span>
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={EXTRA_REQUEST_META.job_consultancy.href}>
+              Submit again
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
+        </div>
+      </div>
     </motion.article>
   );
 }
