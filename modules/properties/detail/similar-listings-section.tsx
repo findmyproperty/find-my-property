@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import PropertyCard from "@/components/property/PropertyCard";
+import { buildPropertyPath } from "@/lib/property-slug";
 import type { Property } from "@/components/property/PropertyCard";
 
 type SimilarListingsSectionProps = {
   properties: Property[];
 };
 
-/** Grid of related PropertyCards + link to full catalogue. */
+/** Compact horizontal cards + link to full catalogue. */
 export function SimilarListingsSection({ properties }: SimilarListingsSectionProps) {
   return (
     <motion.div
@@ -19,17 +19,38 @@ export function SimilarListingsSection({ properties }: SimilarListingsSectionPro
       className="mt-16"
     >
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-heading text-xl font-semibold text-foreground">Similar Listings</h2>
+        <h2 className="font-heading text-xl font-semibold text-foreground">Similar listings</h2>
         <Link href="/browse" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
           See all listings
         </Link>
       </div>
       {properties.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {properties.map((p, i) => (
-            <PropertyCard key={p.id} property={p} index={i} />
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {properties.map((p) => (
+            <li key={p.id}>
+              <Link
+                href={buildPropertyPath(p.id, p.title)}
+                className="flex gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40"
+              >
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {p.image ? (
+                    <img src={p.image} alt="" className="size-full object-cover" />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 font-medium text-sm text-foreground">{p.title}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.location}</p>
+                  <p className="mt-2 text-sm font-semibold tabular-nums text-foreground">
+                    {p.price}
+                    <span className="text-xs font-normal text-muted-foreground">{p.priceLabel}</span>
+                    <span className="mx-2 text-muted-foreground">·</span>
+                    <span className="text-xs font-normal text-muted-foreground">{p.area}</span>
+                  </p>
+                </div>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
         <p className="text-sm text-muted-foreground">No similar listings to show.</p>
       )}

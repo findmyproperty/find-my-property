@@ -30,9 +30,17 @@ function MarketplacePublicChrome({
     : "px-5 pb-4 pt-24 sm:pb-6 md:px-10 md:pt-[7.5rem]"
   return (
     <ServiceAuthModalProvider>
-      <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
+      <div className="flex min-h-screen flex-col bg-background">
         <Navbar />
-        <div className={cn("min-h-0 flex-1", padding)}>{children}</div>
+        <div
+          className={cn(
+            "min-h-0 flex-1",
+            padding,
+            !isPropertyPage && "overflow-x-clip",
+          )}
+        >
+          {children}
+        </div>
         <Footer />
       </div>
     </ServiceAuthModalProvider>
@@ -70,7 +78,12 @@ export default function RolesRoutesShell({
           <DashboardSidebar groups={groups} />
           <div className="flex min-w-0 flex-1 flex-col">
             <DashboardHeader title={title} />
-            <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">
+            <main
+              className={cn(
+                "min-w-0 flex-1 p-4 sm:p-6",
+                isPropertyPage ? "overflow-x-clip" : "overflow-x-hidden",
+              )}
+            >
               {children}
             </main>
           </div>

@@ -90,6 +90,7 @@ export function mapBackendProperty(property: BackendProperty): Property {
     floorPlans,
     videoUrl: property.videoUrl ?? undefined,
     yearBuilt: Number(property.yearBuilt) || undefined,
+    rejectionReason: property.reason?.trim() || null,
     assignedAgentId: property.assignedAgentId ?? null,
     ...(() => {
       const lat =

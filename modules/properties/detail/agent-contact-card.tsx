@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Property } from "@/components/property/PropertyCard";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
+import { cn } from "@/lib/utils";
 
 type LeadPayload = { propertyId: string; message?: string };
 
@@ -34,6 +35,7 @@ type AgentContactCardProps = {
     mutateAsync: (payload: LeadPayload) => Promise<unknown>;
     isPending: boolean;
   };
+  compactActions?: boolean;
 };
 
 /** Listing agent: enquiry flow (lead) for tenants; sign-in CTA for guests. */
@@ -48,15 +50,21 @@ export function AgentContactCard({
   enquiryMessage,
   onEnquiryMessageChange,
   createLead,
+  compactActions = false,
 }: AgentContactCardProps) {
   const agentLabel = property.agentName?.trim() || "Listing agent";
   const { settings } = useSettings();
   const siteName = settings?.siteName?.trim() || SITE_NAME;
 
   return (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <div className="mb-6 flex min-w-0 items-center gap-3">
+    <motion.div
+      className="block w-full max-w-full shrink-0 self-stretch"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.15 }}
+    >
+      <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex w-full items-center gap-3 border-b border-border px-4 py-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
             <Headphones className="h-6 w-6 text-primary" />
           </div>
@@ -68,15 +76,25 @@ export function AgentContactCard({
           </div>
         </div>
 
-        <p className="mb-4 text-xs text-muted-foreground">
+        <p className="line-clamp-2 px-4 py-2 text-xs text-muted-foreground">
           Ref #{property.id} · {property.title}
         </p>
 
-        <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <div className="border-t border-border px-4 py-3">
           {canEnquireAsTenant ? (
             <>
-              <Button className="w-full gap-2" size="lg" type="button" onClick={() => onEnquiryOpenChange(true)}>
-                <Send className="h-4 w-4" /> Send enquiry to agent
+              <Button
+                className={cn(
+                  "w-full gap-2",
+                  compactActions && "md:px-0 md:[&>span]:hidden md:justify-center",
+                )}
+                size="lg"
+                type="button"
+                onClick={() => onEnquiryOpenChange(true)}
+                aria-label="Send enquiry to agent"
+              >
+                <Send className="h-4 w-4" />
+                <span>Send enquiry</span>
               </Button>
               <Dialog open={enquiryOpen} onOpenChange={onEnquiryOpenChange}>
                 <DialogContent className="sm:max-w-md">

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
+import { PropertySection } from "@/modules/properties/listing-ui";
 
 type LocationMapSectionProps = {
   location: string;
@@ -16,9 +17,8 @@ export function LocationMapSection({ location }: LocationMapSectionProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="rounded-2xl border border-border bg-card p-6"
     >
-      <h2 className="mb-3 font-heading text-base font-semibold text-foreground">Location</h2>
+      <PropertySection title="Neighbourhood">
       <div className="aspect-[16/10] overflow-hidden rounded-xl bg-muted">
         {hasKey ? (
           <iframe
@@ -41,6 +41,7 @@ export function LocationMapSection({ location }: LocationMapSectionProps) {
           </a>
         )}
       </div>
+      </PropertySection>
     </motion.div>
   );
 }

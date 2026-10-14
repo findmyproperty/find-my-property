@@ -60,4 +60,6 @@ export type Property = {
   }>;
   videoUrl?: string | null;
   yearBuilt?: number;
+  /** Admin rejection reason when status is Rejected */
+  rejectionReason?: string | null;
 };
