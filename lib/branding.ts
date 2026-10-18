@@ -28,15 +28,20 @@ export const DEFAULT_BRANDING: PublicBranding = {
 export const SUPPORT_EMAIL =
   typeof process !== "undefined" && process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim()
     ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL.trim()
-    : "findmypropertysrealtysolution@gmail.com";
+    : "teamtheybdc@gmail.com";
+
+export const PUBLIC_CONTACT_EMAIL = "teamtheybdc@gmail.com";
+export const PUBLIC_CONTACT_PHONE = "+91 6360685656";
+export const FACEBOOK_URL = "https://www.facebook.com/share/19rc4JmPWh/";
+export const INSTAGRAM_URL =
+  "https://www.instagram.com/theybdc?srtk=MXI2ZmxmNHdoOTFwNA==";
 
 /** Public office shown in footer, contact page, and Organization JSON-LD. */
 export const OFFICE_ADDRESS_LINES = [
-  "12 Block BDA Layout, Stage 2, Nagarbhavi",
+  "Nagarbhavi",
   "Bengaluru, Karnataka 560072",
 ] as const;
 
 export const OFFICE_ADDRESS_FULL = OFFICE_ADDRESS_LINES.join(", ");
 
-export const OFFICE_MAPS_URL =
-  "https://www.google.com/maps/search/?api=1&query=12%20Block%20BDA%20Layout%2C%20Stage%202%2C%20Nagarbhavi%2C%20Bengaluru%2C%20Karnataka%20560072";
+export const OFFICE_MAPS_URL = "https://maps.app.goo.gl/2E2ALvXh3FWRSHuK8?g_st=ac";

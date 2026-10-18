@@ -265,13 +265,13 @@ const AdminSettings = () => {
               </Field>
 
               <Field
-                label="Support phone"
-                htmlFor="support-phone"
-                hint="Shown in the footer and contact page. Also used when vendors or customers tap Call (opens the phone dialer). Leave blank to hide Call actions."
+                label="Contact number"
+                htmlFor="contact-number"
+                hint="Shown in the footer and Contact page, and used for customer property enquiries."
                 icon={<Phone className="h-3.5 w-3.5" />}
               >
                 <Input
-                  id="support-phone"
+                  id="contact-number"
                   type="tel"
                   inputMode="tel"
                   placeholder="+91 98765 43210"

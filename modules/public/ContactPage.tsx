@@ -38,14 +38,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { SocialPlatformIcon } from "@/components/layout/SocialPlatformIcon";
 import { useSettings } from "@/contexts/settings-context";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import {
   OFFICE_ADDRESS_LINES,
   OFFICE_MAPS_URL,
+  FACEBOOK_URL,
+  INSTAGRAM_URL,
+  PUBLIC_CONTACT_EMAIL,
+  PUBLIC_CONTACT_PHONE,
   SITE_NAME,
-  SUPPORT_EMAIL,
 } from "@/lib/branding";
 
 const RECAPTCHA_SITE_KEY =
@@ -81,8 +85,8 @@ type ContactPageProps = {
 export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps = {}) {
   const { toast } = useToast();
   const { settings } = useSettings();
-  const supportEmail = settings?.supportEmail?.trim() || SUPPORT_EMAIL;
-  const supportPhone = settings?.supportPhone?.trim() || null;
+  const supportEmail = settings?.supportEmail?.trim() || PUBLIC_CONTACT_EMAIL;
+  const supportPhone = settings?.supportPhone?.trim() || PUBLIC_CONTACT_PHONE;
   const siteName = settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
   const recaptchaRef = useRef<ElementRef<typeof ReCAPTCHA>>(null);
   const [name, setName] = useState("");
@@ -243,8 +247,8 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
               Reach the team directly.
             </h2>
             <p className="mt-4 leading-7 text-muted-foreground">
-              Email is the best route for detailed enquiries. If a support phone is
-              configured, you can also call during normal business hours.
+              Email is the best route for detailed enquiries. You can also call us
+              during normal business hours.
             </p>
 
             <div className="mt-8 flex flex-col gap-3">
@@ -299,6 +303,33 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
                     ))}
                   </span>
                 </span>
+              </a>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <a
+                href={FACEBOOK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Visit YBDC on Facebook (opens in a new tab)"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <SocialPlatformIcon platform="facebook" className="size-5" />
+                </span>
+                <span className="text-sm font-semibold text-foreground">Facebook</span>
+              </a>
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Visit YBDC on Instagram (opens in a new tab)"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <SocialPlatformIcon platform="instagram" className="size-5" />
+                </span>
+                <span className="text-sm font-semibold text-foreground">Instagram</span>
               </a>
             </div>
 

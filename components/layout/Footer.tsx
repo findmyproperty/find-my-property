@@ -1,13 +1,23 @@
 "use client";
 
-import { Building2, Heart, MapPin, Phone, Mail } from "lucide-react";
+import {
+  Building2,
+  Heart,
+  MapPin,
+  Phone,
+  Mail,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { SocialPlatformIcon } from "@/components/layout/SocialPlatformIcon";
 import {
   OFFICE_ADDRESS_LINES,
   OFFICE_MAPS_URL,
+  FACEBOOK_URL,
+  INSTAGRAM_URL,
+  PUBLIC_CONTACT_EMAIL,
+  PUBLIC_CONTACT_PHONE,
   SITE_NAME,
-  SUPPORT_EMAIL,
 } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 
@@ -18,8 +28,8 @@ const Footer = () => {
   // correctly during the initial client-side settings fetch and in contexts
   // where the settings API is unreachable (e.g. offline static renders).
   const siteName = settings?.siteName?.trim() || SITE_NAME;
-  const email = settings?.supportEmail?.trim() || SUPPORT_EMAIL;
-  const phone = settings?.supportPhone?.trim() || null;
+  const email = settings?.supportEmail?.trim() || PUBLIC_CONTACT_EMAIL;
+  const phone = settings?.supportPhone?.trim() || PUBLIC_CONTACT_PHONE;
   const logoUrl = settings?.primaryLogoUrl?.trim() || null;
   // Hardcoded: Next 16's prerender checker rejects `new Date()` in Client
   // Components (non-deterministic at build time). Copyright years don't need
@@ -122,6 +132,26 @@ const Footer = () => {
                 </a>
               </li>
             </ul>
+            <div className="mt-4 flex items-center gap-3">
+              <a
+                href={FACEBOOK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="YBDC on Facebook"
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+              >
+                <SocialPlatformIcon platform="facebook" className="size-4" />
+              </a>
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="YBDC on Instagram"
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+              >
+                <SocialPlatformIcon platform="instagram" className="size-4" />
+              </a>
+            </div>
           </div>
         </div>
 
