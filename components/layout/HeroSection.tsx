@@ -1,14 +1,11 @@
 "use client";
 
-import ModonHeroCarousel from "@/components/layout/ModonHeroCarousel";
-import { buildHeroSlides, type HeroSlide } from "@/lib/hero-slides";
+import HeroSearchBanner from "@/components/layout/HeroSearchBanner";
 
-export default function HeroSection({ slides }: { slides?: HeroSlide[] }) {
-  const resolvedSlides = slides && slides.length > 0 ? slides : buildHeroSlides([]);
+export default function HeroSection({ bannerImageUrl }: { bannerImageUrl?: string | null }) {
   return (
     <section className="relative w-full overflow-hidden bg-background">
-      {/* 01. FULL-SCREEN MODON-STYLE HERO CAROUSEL */}
-      <ModonHeroCarousel slides={resolvedSlides} />
+      <HeroSearchBanner imageUrl={bannerImageUrl} />
 
       {/* 02. ARCHITECTURAL PROOF & TRUST METRICS BAR */}
       <div className="border-b border-border/70 bg-card/60 backdrop-blur-xl">

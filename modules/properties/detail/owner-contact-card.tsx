@@ -20,7 +20,13 @@ import { cn } from "@/lib/utils";
 
 type OwnerContactCardProps = {
 
-  property: Pick<Property, "id" | "title" | "ownerName" | "ownerPhone">;
+  property: Pick<Property, "id" | "title" | "ownerName">;
+
+  phone?: string | null;
+
+  contactReady: boolean;
+
+  isSupportContact: boolean;
 
   compactActions?: boolean;
 
@@ -30,11 +36,17 @@ type OwnerContactCardProps = {
 
 /** Owner: direct call + WhatsApp (URLs respect phone vs desktop WhatsApp Web). */
 
-export function OwnerContactCard({ property, compactActions = false }: OwnerContactCardProps) {
+export function OwnerContactCard({
+  property,
+  phone,
+  contactReady,
+  isSupportContact,
+  compactActions = false,
+}: OwnerContactCardProps) {
 
-  const ownerLabel = property.ownerName?.trim() || "Property owner";
-
-  const phone = property.ownerPhone?.trim();
+  const ownerLabel = isSupportContact
+    ? "YDBC Support"
+    : property.ownerName?.trim() || "Property owner";
 
   const hasPhone = Boolean(phone);
 
@@ -90,7 +102,9 @@ export function OwnerContactCard({ property, compactActions = false }: OwnerCont
 
             <p className="truncate font-heading text-sm font-semibold text-foreground">{ownerLabel}</p>
 
-            <p className="text-xs text-muted-foreground">Property owner · Direct contact</p>
+            <p className="text-xs text-muted-foreground">
+              {isSupportContact ? "Property enquiries" : "Property owner · Direct contact"}
+            </p>
 
           </div>
 
@@ -110,7 +124,10 @@ export function OwnerContactCard({ property, compactActions = false }: OwnerCont
 
               <Button className={actionBtnClass} size="lg" asChild>
 
-                <a href={buildTelHref(phone!)} aria-label="Call owner">
+                <a
+                  href={buildTelHref(phone!)}
+                  aria-label={isSupportContact ? "Call YDBC support" : "Call owner"}
+                >
 
                   <Phone className="size-4 shrink-0" />
 
@@ -136,7 +153,7 @@ export function OwnerContactCard({ property, compactActions = false }: OwnerCont
 
                 onClick={openWhatsApp}
 
-                aria-label="WhatsApp owner"
+                aria-label={isSupportContact ? "WhatsApp YDBC support" : "WhatsApp owner"}
 
               >
 
@@ -152,7 +169,11 @@ export function OwnerContactCard({ property, compactActions = false }: OwnerCont
 
             <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
 
-              Owner phone is not listed for this property.
+              {!contactReady
+                ? "Loading contact options…"
+                : isSupportContact
+                  ? "YDBC support phone is unavailable."
+                  : "Owner phone is not listed for this property."}
 
             </p>
 
@@ -167,5 +188,3 @@ export function OwnerContactCard({ property, compactActions = false }: OwnerCont
   );
 
 }
-
-

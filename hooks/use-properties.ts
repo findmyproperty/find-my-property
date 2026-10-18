@@ -41,11 +41,12 @@ export function useAdminProperties(options?: { enabled?: boolean }) {
   });
 }
 
-export function useProperties() {
+export function useProperties(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["properties"],
     queryFn: api.getProperties,
     staleTime: 60_000,
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -19,8 +19,9 @@ import { PropertyDetailSkeleton } from "@/components/skeletons/property-detail-s
 import { useProperties, useProperty } from "@/hooks/use-properties";
 
 import { useAuth } from "@/contexts/auth-context";
-
+import { useSettings } from "@/contexts/settings-context";
 import { useCreateLead } from "@/hooks/use-leads";
+import { normalizeContactPhone } from "@/lib/contact-links";
 
 import { parsePropertyIdFromSlugParam } from "@/lib/property-slug";
 
@@ -70,7 +71,8 @@ const PropertyDetail = () => {
 
   const id = params.slug ? parsePropertyIdFromSlugParam(params.slug) : null;
 
-  const { user, isAuthReady } = useAuth();
+  const { user, isAuthReady, isAuthenticated } = useAuth();
+  const { settings, isLoading: areSettingsLoading } = useSettings();
 
   const { data: properties } = useProperties();
 
@@ -142,12 +144,22 @@ const PropertyDetail = () => {
   const floorPlans = property.floorPlans ?? [];
 
   const isAgentOwner = property.ownerRole === "agent";
+  const isAdmin = isAuthReady && isAuthenticated && user?.role === "admin";
+  const contactReady = isAuthReady && (isAdmin || !areSettingsLoading);
 
   const categorized = Boolean(property.propertySector);
 
   const rows = categorized ? detailRows(property.details) : [];
 
-  const contactPhone = isAgentOwner ? property.agentPhone : property.ownerPhone;
+  const authorizedPropertyPhone = isAgentOwner
+    ? property.agentPhone || property.ownerPhone
+    : property.ownerPhone;
+  const isSupportContact = contactReady && !isAdmin;
+  const contactPhone = !contactReady
+    ? null
+    : normalizeContactPhone(
+        isAdmin ? authorizedPropertyPhone : settings?.supportPhone,
+      );
 
   const { deposit, maintenance } = getPriceStripExtras(property);
 
@@ -155,7 +167,7 @@ const PropertyDetail = () => {
 
 
 
-  const foldContactCard = isAgentOwner ? (
+  const foldContactCard = isAgentOwner && !isAdmin ? (
 
     <AgentContactCard
 
@@ -189,7 +201,12 @@ const PropertyDetail = () => {
 
   ) : (
 
-    <OwnerContactCard property={property} />
+    <OwnerContactCard
+      property={property}
+      phone={contactPhone}
+      contactReady={contactReady}
+      isSupportContact={isSupportContact}
+    />
 
   );
 
@@ -290,7 +307,7 @@ const PropertyDetail = () => {
 
 
 
-      {isAgentOwner ? (
+      {isAgentOwner && !isAdmin ? (
 
         <PropertyMobileContactBar
 
@@ -302,13 +319,10 @@ const PropertyDetail = () => {
 
           primaryLabel="Enquire"
 
-          onPrimaryAction={() => {
-
+          onPrimaryAction={isAuthReady ? () => {
             if (canEnquireAsTenant) setEnquiryOpen(true);
-
             else window.location.href = loginHref;
-
-          }}
+          } : undefined}
 
         />
 
@@ -335,5 +349,3 @@ const PropertyDetail = () => {
 
 
 export default PropertyDetail;
-
-

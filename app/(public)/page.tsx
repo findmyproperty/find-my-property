@@ -3,12 +3,12 @@ import type { Metadata } from "next";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { getBranding } from "@/lib/branding/server";
-import { getCachedHeroSlides } from "@/lib/server/cached-hero-slides";
 import { getServerSettings } from "@/lib/server/cached-settings";
 import { buildFaqJsonLd, buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/seo/jsonld";
 import { absoluteUrl } from "@/lib/seo/site";
 import Home from "@/modules/public/Index";
 import { FeaturedPropertiesStreamingSection } from "@/modules/public/FeaturedPropertiesStreamingSection";
+import { PopularCitiesStreamingSection } from "@/modules/public/PopularCitiesStreamingSection";
 import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
 
 const HOME_OG_IMAGE =
@@ -76,12 +76,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
-  const [org, web, { siteName }, serverSettings, heroSlides] = await Promise.all([
+  const [org, web, { siteName }, serverSettings] = await Promise.all([
     buildOrganizationJsonLd(),
     buildWebSiteJsonLd(),
     getBranding(),
     getServerSettings(),
-    getCachedHeroSlides(),
   ]);
 
   const faqItems = serverSettings?.faqs && serverSettings.faqs.length > 0
@@ -94,7 +93,15 @@ export default async function Page() {
   return (
     <>
       <JsonLd data={schemas} />
-      <Home siteName={siteName} serverSettings={serverSettings} heroSlides={heroSlides}>
+      <Home
+        siteName={siteName}
+        serverSettings={serverSettings}
+        popularCitiesContent={
+          <Suspense fallback={null}>
+            <PopularCitiesStreamingSection />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<PropertyGridSkeleton count={4} columns="featured" />}>
           <FeaturedPropertiesStreamingSection />
         </Suspense>

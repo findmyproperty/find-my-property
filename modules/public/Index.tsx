@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -37,7 +37,6 @@ import AuthGateModal from "@/components/auth/AuthGateModal";
 import HeroSection from "@/components/layout/HeroSection";
 import { UserAvatar } from "@/components/user-avatar";
 import PropertyCard, { type Property } from "@/components/property/PropertyCard";
-import { PropertyCardSkeleton } from "@/components/skeletons/property-card-skeleton";
 import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,13 +59,10 @@ import { useSettings } from "@/contexts/settings-context";
 import { useProperties } from "@/hooks/use-properties";
 import { api, type CustomerReactionDTO } from "@/lib/api";
 import { SITE_NAME } from "@/lib/branding";
-import { buildPopularCitiesFromProperties } from "@/lib/property-location-options";
 import { buildPropertyPath } from "@/lib/property-slug";
 import { cn } from "@/lib/utils";
 import { LandingAboutSection } from "@/modules/public/LandingAboutSection";
 import { EcosystemSection } from "@/modules/public/EcosystemSection";
-import { LocalityHubsSection } from "@/modules/public/LocalityHubsSection";
-import type { HeroSlide } from "@/lib/hero-slides";
 import type { Settings } from "@/schema/setting";
 
 const platformSteps = [
@@ -102,18 +98,18 @@ const EMPTY_REACTIONS: CustomerReactionDTO[] = [];
 type IndexProps = {
   siteName?: string;
   serverSettings?: Settings | null;
-  heroSlides?: HeroSlide[];
+  popularCitiesContent?: React.ReactNode;
   children?: React.ReactNode;
 };
 
 export default function Index({
   siteName: ssrSiteName,
   serverSettings,
-  heroSlides,
+  popularCitiesContent,
   children,
 }: IndexProps = {}) {
   const { isAuthenticated, isAuthReady } = useAuth();
-  const { data, isLoading } = useProperties();
+  const { data, isLoading } = useProperties({ enabled: !children });
   const { data: customerReactions = EMPTY_REACTIONS } = useQuery({
     queryKey: ["customer-reactions"],
     queryFn: api.getCustomerReactions,
@@ -124,7 +120,7 @@ export default function Index({
       customerReactions.length
     : 0;
   const { settings: clientSettings } = useSettings();
-  const settings = clientSettings || serverSettings;
+  const settings = { ...serverSettings, ...clientSettings };
   const siteName = settings?.siteName?.trim() || ssrSiteName?.trim() || SITE_NAME;
 
   const defaultFaqItems = [
@@ -159,10 +155,6 @@ export default function Index({
 
   const allProperties = data ?? EMPTY_PROPERTIES;
   const featuredProperties = allProperties.slice(0, 4);
-  const popularCities = useMemo(
-    () => buildPopularCitiesFromProperties(data ?? EMPTY_PROPERTIES, 8),
-    [data],
-  );
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [pendingProperty, setPendingProperty] = useState<Property | null>(null);
 
@@ -178,7 +170,7 @@ export default function Index({
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       {/* 01. EDITORIAL HERO & INTELLIGENT SEARCH DOCK */}
-      <HeroSection slides={heroSlides} />
+      <HeroSection bannerImageUrl={settings?.heroBannerImageUrl} />
 
       {/* 02. "EXPLORE THE YBDC" — ARCHITECTURAL 4-PILLAR ECOSYSTEM SHOWCASE */}
       <EcosystemSection />
@@ -362,7 +354,7 @@ export default function Index({
       <LandingAboutSection />
 
       {/* 07. ACTIVE LOCALITY & CITY HUBS WITH INTERACTIVE MAP BACKDROP */}
-      <LocalityHubsSection popularCities={popularCities} />
+      {popularCitiesContent}
 
       {/* 08. INSTITUTIONAL FAQ & CLARITY */}
       <section className="bg-muted/20 py-20 sm:py-28 border-b border-border/80">

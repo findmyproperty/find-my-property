@@ -39,6 +39,7 @@ export const settingsSchema = z.object({
     .array(z.number().int())
     .nullish()
     .transform((val) => val ?? []),
+  heroBannerImageUrl: z.string().url().nullish(),
   faqs: z
     .array(
       z.object({

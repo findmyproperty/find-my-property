@@ -1,5 +1,28 @@
 import { normalizePhone } from "@/helpers";
 
+/** Return a valid international-format number, assuming Indian numbers when no country code is supplied. */
+export function normalizeContactPhone(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null;
+
+  const value = raw.trim();
+  const digits = value.replace(/\D/g, "");
+
+  if (value.startsWith("+")) {
+    return digits.length >= 7 && digits.length <= 15 ? `+${digits}` : null;
+  }
+  if (value.startsWith("00")) {
+    const internationalDigits = digits.slice(2);
+    return internationalDigits.length >= 7 && internationalDigits.length <= 15
+      ? `+${internationalDigits}`
+      : null;
+  }
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+
+  return null;
+}
+
 /** Digits only, international (e.g. 919876543210) for wa.me / web.whatsapp.com */
 export function toWhatsAppDigits(raw: string): string {
   return normalizePhone(raw).replace(/\D/g, "");

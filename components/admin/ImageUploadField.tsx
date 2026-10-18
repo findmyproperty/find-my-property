@@ -24,6 +24,8 @@ export interface ImageUploadFieldProps {
   maxSizeMb?: number;
   /** Visual aspect ratio for the preview tile. */
   aspect?: "square" | "wide";
+  /** Cloudinary folder for the uploaded image. */
+  folder?: string;
   /** Disables all interactions. */
   disabled?: boolean;
   className?: string;
@@ -56,6 +58,7 @@ export function ImageUploadField({
   accept = "image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon",
   maxSizeMb = 5,
   aspect = "square",
+  folder,
   disabled,
   className,
 }: ImageUploadFieldProps) {
@@ -120,7 +123,7 @@ export function ImageUploadField({
           multiple: false,
           maxFileSize: maxSizeMb * MB,
           clientAllowedFormats: acceptToCloudinaryFormats(accept),
-          folder: aspect === "square" ? "branding/favicons" : "branding/logos",
+          folder: folder ?? (aspect === "square" ? "branding/favicons" : "branding/logos"),
           sources: ["local", "url"],
           ...(aspect === "square"
             ? {

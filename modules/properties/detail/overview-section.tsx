@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Bath,
@@ -19,7 +19,6 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PropertySection } from "@/modules/properties/listing-ui";
 import { cn } from "@/lib/utils";
 import { detailRows } from "@/lib/property-posting";
@@ -69,59 +68,38 @@ function iconForOverviewLabel(label: string): LucideIcon {
 }
 
 const overviewValueClass =
-  "ml-auto min-w-0 max-w-[min(14rem,52%)] truncate text-right text-sm font-semibold text-foreground";
+  "min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground";
 
 function OverviewValue({ value }: { value: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [truncated, setTruncated] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const check = () => {
-      setTruncated(el.scrollWidth > el.clientWidth);
-    };
-
-    check();
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [value]);
-
-  if (!truncated) {
-    return (
-      <span ref={ref} className={overviewValueClass}>
-        {value}
-      </span>
-    );
-  }
-
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          ref={ref}
-          className={cn(overviewValueClass, "cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2")}
-          tabIndex={0}
-        >
-          {value}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-sm whitespace-normal text-left font-normal">
-        {value}
-      </TooltipContent>
-    </Tooltip>
+    <span className={overviewValueClass} title={value}>
+      {value}
+    </span>
   );
 }
 
 function OverviewRow({ label, value }: DetailRow) {
   const Icon = iconForOverviewLabel(label);
+  const preferredGuestsBoth =
+    label === "Preferred guests" && value.trim().toLowerCase() === "both";
+
   return (
     <div className="flex min-w-0 items-center gap-3 border-b border-dashed border-border/80 py-3 last:border-b-0">
       <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 shrink text-sm text-muted-foreground">{label}</span>
-      <OverviewValue value={value} />
+      <div className="ml-auto flex w-full min-w-0 max-w-[min(14rem,52%)] items-center justify-end gap-1.5">
+        <OverviewValue value={preferredGuestsBoth ? "Both" : value} />
+        {preferredGuestsBoth ? (
+          <span
+            className="inline-flex shrink-0 cursor-help text-muted-foreground"
+            title="Students and working professionals"
+            aria-label="Both students and working professionals"
+            tabIndex={0}
+          >
+            <Info className="size-4" aria-hidden />
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
