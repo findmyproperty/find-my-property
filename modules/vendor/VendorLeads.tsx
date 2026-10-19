@@ -291,7 +291,7 @@ export default function VendorLeads() {
   return (
     <AdminListPage
       title="Leads"
-      description="Customer enquiries assigned by Find My Property"
+      description="Customer enquiries assigned to your account"
       isLoading={isLoading}
       loadingLabel="Loading leads…"
       isError={isError}

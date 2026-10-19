@@ -234,7 +234,7 @@ const AdminSettings = () => {
               <Field label="Site name" htmlFor="site-name" required>
                 <Input
                   id="site-name"
-                  placeholder="Find My Property"
+                  placeholder="The YBDC"
                   maxLength={255}
                   {...register("siteName", {
                     required: "Site name is required",

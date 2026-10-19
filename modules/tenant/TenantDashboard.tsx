@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 const perks = [
-  { icon: Shield, title: "Verified Properties", desc: "All listings verified by our team" },
-  { icon: Headphones, title: "24/7 Support", desc: "We're here to help you move" },
+  { icon: Shield, title: "Property listings", desc: "Browse available listings and their details" },
+  { icon: Headphones, title: "Platform support", desc: "Contact us if you need help" },
 ];
 
 const TenantDashboard = () => {
@@ -30,7 +30,7 @@ const TenantDashboard = () => {
               Find Your Dream Home <span className="text-accent">Today</span>
             </h1>
             <p className="text-muted-foreground max-w-lg mx-auto px-1 text-sm sm:text-base">
-              Browse verified properties with clear details and direct contact options.
+              Browse property listings with clear details and contact options.
             </p>
             <Button size="lg" className="mt-6" asChild>
               <Link href="/browse">

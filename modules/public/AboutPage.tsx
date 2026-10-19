@@ -7,16 +7,10 @@ import { Button } from "@/components/ui/button";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 
-const milestones = [
-  { year: "2024", text: "Platform launched with a focus on verified listings and direct contact." },
-  { year: "2025", text: "Expanded tools for agents and owners — approvals, leads, and analytics." },
-  { year: "2026", text: "Growing cities across India with the same transparent experience." },
-];
-
 const principles = [
-  "Listings reviewed for consistency — photos and basics should match reality.",
+  "Browse residential, commercial, and land listings by location and property details.",
   "Roles for tenants, owners, and agents so everyone sees the right tools.",
-  "No paywall just to ask a question — sign-in gates only where they protect users.",
+  "Contact the owner or assigned agent shown on a property listing.",
 ];
 
 type AboutPageProps = {
@@ -53,13 +47,13 @@ export default function AboutPage({ siteName: ssrSiteName }: AboutPageProps = {}
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
             We&apos;re building a calmer alternative to noisy listing sites: fewer surprises, clearer ownership of
-            conversations, and a product team obsessed with the unglamorous work — verification, permissions, and
+            conversations, and a product team focused on the practical work — listing reviews, permissions, and
             performance on real devices.
           </p>
         </motion.div>
 
         <section className="mb-16 space-y-4">
-          <h2 className="font-heading text-2xl font-semibold text-foreground">What we believe</h2>
+          <h2 className="font-heading text-2xl font-semibold text-foreground">What you can do</h2>
           <ul className="space-y-3">
             {principles.map((line) => (
               <li key={line} className="flex gap-3 text-muted-foreground">
@@ -68,26 +62,6 @@ export default function AboutPage({ siteName: ssrSiteName }: AboutPageProps = {}
               </li>
             ))}
           </ul>
-        </section>
-
-        <section className="mb-16">
-          <h2 className="mb-6 font-heading text-2xl font-semibold text-foreground">Timeline</h2>
-          <div className="relative border-l-2 border-border pl-8">
-            {milestones.map((m, i) => (
-              <motion.div
-                key={m.year}
-                initial={{ opacity: 0, x: -8 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="relative mb-10 last:mb-0"
-              >
-                <span className="absolute -left-[calc(2rem+5px)] top-1 flex h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
-                <p className="font-heading text-sm font-bold text-primary">{m.year}</p>
-                <p className="mt-1 text-muted-foreground">{m.text}</p>
-              </motion.div>
-            ))}
-          </div>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-8 md:p-10">

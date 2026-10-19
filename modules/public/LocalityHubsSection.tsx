@@ -173,7 +173,7 @@ export function LocalityHubsSection({
             </h2>
           </div>
           <p className="max-w-md text-sm sm:text-base leading-relaxed text-muted-foreground">
-            Ranked by verified inventory and active partner coverage across key Indian metropolitan micro-markets.
+            Explore property listings by city and locality.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export function LocalityHubsSection({
                           {city.name}
                         </span>
                         <span className="block text-xs text-muted-foreground font-mono">
-                          {city.count} {city.count === 1 ? "Verified Property" : "Verified Properties"}
+                          {city.count} {city.count === 1 ? "Available listing" : "Available listings"}
                         </span>
                       </div>
                     </div>

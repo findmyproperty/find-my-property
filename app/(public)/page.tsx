@@ -15,39 +15,39 @@ const HOME_OG_IMAGE =
   "https://framerusercontent.com/images/oSCsz14veQXmjGyGMAQAK0BUUA.png?width=1200&height=630";
 
 const HOME_DESCRIPTION =
-  "The YBDC connects you directly with verified real estate listings across India, supported by an ecosystem for relocation, home services, loans, and business consultancy.";
+  "The YBDC connects you with approved real estate listings across India, supported by an ecosystem for relocation, home services, loans, and business consultancy.";
 
 const DEFAULT_FAQS = [
   {
-    question: "What makes The YBDC the premier property and consultancy platform?",
+    question: "What can I do on The YBDC?",
     answer:
-      "We combine verified direct real estate listings with end-to-end relocation and business advisory services. Every listing and vendor undergoes documentation and physical inspection checks, ensuring a secure, seamless transaction from discovery to handover.",
+      "Browse property listings, contact the listing representative, and explore related home, finance, and business services.",
   },
   {
-    question: "How does The YBDC verification process work?",
+    question: "How are property listings reviewed?",
     answer:
-      "Our dedicated verification team checks property titles, ownership authenticity, and vendor credentials (including GST, trade licenses, and past track records). Only partners meeting our benchmark receive the verified mark.",
+      "New property listings are reviewed by the platform team before approval. Approval is a platform review, not a legal title guarantee; verify documents independently before proceeding.",
   },
   {
-    question: "Can I deal directly with property owners and verified partners?",
+    question: "Who can I contact about a property?",
     answer:
-      "Yes. The YBDC facilitates transparent, direct communication between verified buyers/tenants and property owners or vetted service providers, removing unnecessary intermediaries and hidden commissions.",
+      "Use the enquiry options on the property page to contact the owner or the agent assigned to that listing.",
   },
   {
-    question: "What guarantees and support do you provide across service requests?",
+    question: "Where can I get help with a service request?",
     answer:
-      "Every service request initiated on The YBDC is tracked within your account dashboard. Our central customer care team monitors milestones, enforces quality service level agreements (SLAs), and provides prompt dispute resolution if needed.",
+      "Check your account for available request updates, or contact platform support if you need help.",
   },
   {
-    question: "Why choose The YBDC over generic classifieds and search engines?",
+    question: "How can I compare properties on The YBDC?",
     answer:
-      "Unlike open search engines that show unvetted advertisements, The YBDC provides a curated, accountable ecosystem with transparent pricing, verified identities, and an integrated suite of relocation and professional services all in one place.",
+      "Browse listings and compare their available location, price, photos, amenities, and property details. Contact the listing representative to confirm information before making a decision.",
   },
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await getBranding();
-  const homeTitle = `${siteName} — Verified Real Estate, Home Services & Advisory`;
+  const homeTitle = `${siteName} — Property Listings, Home Services & Advisory`;
 
   return {
     title: { absolute: homeTitle },
@@ -62,7 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: HOME_OG_IMAGE,
           width: 1200,
           height: 630,
-          alt: `Explore verified properties and services on ${siteName}`,
+          alt: `Explore property listings and services on ${siteName}`,
         },
       ],
     },

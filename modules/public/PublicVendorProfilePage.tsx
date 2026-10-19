@@ -213,7 +213,7 @@ export default function PublicVendorProfilePage({
       </section>
 
       <p className="mt-12 text-center text-xs text-muted-foreground">
-        Verified Find My Property partner · Book services through our platform
+        Partner profile · Book services through our platform
       </p>
     </article>
   );

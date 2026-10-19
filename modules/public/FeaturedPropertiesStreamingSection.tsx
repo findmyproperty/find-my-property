@@ -35,9 +35,9 @@ export async function FeaturedPropertiesStreamingSection() {
       <Card className="rounded-2xl border-border/80">
         <CardHeader className="text-center py-16">
           <Building2 className="mx-auto size-12 text-primary/40 mb-3" />
-          <CardTitle className="font-heading text-2xl">Properties being onboarded</CardTitle>
+          <CardTitle className="font-heading text-2xl">No featured properties yet</CardTitle>
           <CardDescription className="max-w-md mx-auto mt-2">
-            Our verification team is inspecting newly submitted listings. You can browse all available listings or list your property directly.
+            No properties are available to feature right now. Browse all listings or add your property.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center pb-12 gap-3">

@@ -2,43 +2,24 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
-  ArrowUpRight,
   Award,
   Building2,
   CheckCircle2,
   ClipboardCheck,
   FileCheck2,
-  HandHelping,
-  Home,
-  Layers,
-  MapPin,
-  MoveRight,
   Search,
   ShieldCheck,
-  Sparkles,
   Star,
-  Users,
-  Wallet,
-  Wrench,
-  PaintBucket,
-  Truck,
-  Briefcase,
-  Monitor,
-  PartyPopper,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 import AuthGateModal from "@/components/auth/AuthGateModal";
 import HeroSection from "@/components/layout/HeroSection";
 import { UserAvatar } from "@/components/user-avatar";
 import PropertyCard, { type Property } from "@/components/property/PropertyCard";
 import { PropertyGridSkeleton } from "@/components/skeletons/property-grid-skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -50,7 +31,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -69,26 +49,26 @@ const platformSteps = [
   {
     icon: Search,
     step: "01",
-    title: "Discover & Inspect",
-    description: "Explore title-verified properties or select the specialized living service matching your timeline.",
+    title: "Browse properties",
+    description: "Find residential, commercial, and land listings by location and property type.",
   },
   {
     icon: ShieldCheck,
     step: "02",
-    title: "Verify & Due Diligence",
-    description: "Review clear documentation, transparent fixed pricing, and verified partner credentials upfront.",
+    title: "Review listing details",
+    description: "Compare the location, pricing, photos, and other information provided with each listing.",
   },
   {
     icon: ClipboardCheck,
     step: "03",
-    title: "Request & Coordinate",
-    description: "Submit your requirement once. Receive dedicated concierge follow-up and formal SLAs.",
+    title: "Contact the listing representative",
+    description: "Send an enquiry to the owner or assigned agent shown for the property.",
   },
   {
     icon: CheckCircle2,
     step: "04",
-    title: "Handover & Support",
-    description: "Track milestones in real time from contract signing to final keys and handover sign-off.",
+    title: "Arrange a visit",
+    description: "Coordinate a property viewing directly with the listing representative.",
   },
 ];
 
@@ -125,29 +105,29 @@ export default function Index({
 
   const defaultFaqItems = [
     {
-      question: `What makes ${siteName} the premier property and consultancy platform?`,
+      question: `What can I do on ${siteName}?`,
       answer:
-        `We combine verified direct real estate listings with end-to-end relocation and business advisory services. Every listing and vendor undergoes rigorous documentation, physical inspection, or background checks, ensuring a secure, seamless transaction from discovery to handover.`,
+        `${siteName} helps you browse property listings and connect with the listing representative. Related home, finance, and business services are also available through the platform.`,
     },
     {
-      question: "How does The YBDC verification process work?",
+      question: "How are property listings reviewed?",
       answer:
-        `Our dedicated verification team checks property titles, ownership authenticity, and vendor credentials (including GST, trade licenses, and past track records). Only partners meeting our benchmark receive the verified mark.`,
+        "New property listings are reviewed by the platform team before approval. Approval is a platform review and is not a legal title guarantee; buyers and tenants should verify documents independently before proceeding.",
     },
     {
-      question: "Can I deal directly with property owners and verified partners?",
+      question: "Who can I contact about a property?",
       answer:
-        `Yes. The YBDC facilitates transparent, direct communication between verified buyers/tenants and property owners or vetted service providers, removing unnecessary intermediaries and hidden commissions.`,
+        "Use the enquiry options on the property page to contact the owner or the agent assigned to that listing.",
     },
     {
-      question: "What guarantees and support do you provide across service requests?",
+      question: "Where can I get help with a service request?",
       answer:
-        `Every service request initiated on The YBDC is tracked within your account dashboard. Our central customer care team monitors milestones, enforces quality service level agreements (SLAs), and provides prompt dispute resolution if needed.`,
+        "Check your account for available request updates, or contact platform support if you need help.",
     },
     {
-      question: `Why choose ${siteName} over generic classifieds and search engines?`,
+      question: `How can I compare properties on ${siteName}?`,
       answer:
-        `Unlike open search engines that show unvetted advertisements, The YBDC provides a curated, accountable ecosystem with transparent pricing, verified identities, and an integrated suite of relocation and professional services all in one place.`,
+        "Browse listings and compare their available location, price, photos, amenities, and property details. Contact the listing representative to confirm information before making a decision.",
     },
   ];
 
@@ -175,22 +155,22 @@ export default function Index({
       {/* 02. "EXPLORE THE YBDC" — ARCHITECTURAL 4-PILLAR ECOSYSTEM SHOWCASE */}
       <EcosystemSection />
 
-      {/* 03. CURATED MASTERPIECE DEVELOPMENTS & VERIFIED LISTINGS */}
+      {/* 03. FEATURED PROPERTY LISTINGS */}
       <section className="py-20 sm:py-28">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Section Kicker */}
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 pb-8 border-b border-border/60 mb-10">
             <div>
               <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">
-                <span>02 — Curated Portfolio</span>
+                <span>02 — Property Listings</span>
                 <span className="text-border">•</span>
-                <span>Verified Real Estate</span>
+                <span>Residential, Commercial &amp; Land</span>
               </div>
               <h2 className="mt-2 font-heading text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
-                Featured Residences &amp; Commercial Spaces
+                Featured Properties
               </h2>
               <p className="mt-2 max-w-xl text-muted-foreground text-sm sm:text-base leading-relaxed">
-                Inspected for physical quality, RERA compliance, and direct developer or owner title authenticity.
+                Explore available property listings and review the details provided by each representative.
               </p>
             </div>
             <Button variant="outline" asChild className="rounded-xl shrink-0 h-11 px-5 font-medium">
@@ -210,9 +190,9 @@ export default function Index({
               <Card className="rounded-2xl border-border/80">
                 <CardHeader className="text-center py-16">
                   <Building2 className="mx-auto size-12 text-primary/40 mb-3" />
-                  <CardTitle className="font-heading text-2xl">Properties being onboarded</CardTitle>
+                  <CardTitle className="font-heading text-2xl">No featured properties yet</CardTitle>
                   <CardDescription className="max-w-md mx-auto mt-2">
-                    Our verification team is inspecting newly submitted listings. You can browse all available listings or list your property directly.
+                    Browse all available listings or add your property to the platform.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center pb-12 gap-3">
@@ -243,7 +223,7 @@ export default function Index({
         </div>
       </section>
 
-      {/* 04. INSTITUTIONAL TRUST & PROOF MATRIX */}
+      {/* 04. PROPERTY LISTING INFORMATION */}
       <section className="border-y border-border/80 bg-muted/20 py-20 sm:py-28">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border/60 mb-12">
@@ -251,14 +231,14 @@ export default function Index({
               <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">
                 <span>03 — The YBDC Standard</span>
                 <span className="text-border">•</span>
-                <span>Verification Framework</span>
+                <span>Listing Information</span>
               </div>
               <h2 className="mt-2 font-heading text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
-                Built on Verified Due Diligence
+                Clearer property decisions
               </h2>
             </div>
             <p className="max-w-md text-sm sm:text-base leading-relaxed text-muted-foreground">
-              Where open search engines leave doubts unanswered, The YBDC enforces rigorous physical, legal, and operational standards.
+              Review available listing details, compare properties, and contact the representative before deciding.
             </p>
           </div>
 
@@ -268,10 +248,10 @@ export default function Index({
                 <ShieldCheck className="size-5" />
               </div>
               <h3 className="mt-5 font-heading text-lg font-semibold text-foreground">
-                100% Title Clearance
+                Reviewed listings
               </h3>
               <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                Every property and service partner undergoes government title registry, ownership authenticity, and RERA verification.
+                New property submissions are reviewed by the platform team before approval.
               </p>
             </div>
 
@@ -280,10 +260,10 @@ export default function Index({
                 <Award className="size-5" />
               </div>
               <h3 className="mt-5 font-heading text-lg font-semibold text-foreground">
-                Direct &amp; Transparent
+                Listing contacts
               </h3>
               <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                Direct owner and developer connections without hidden middlemen commissions or unexpected price inflation.
+                Property pages show the owner or assigned agent contact for enquiries.
               </p>
             </div>
 
@@ -292,10 +272,10 @@ export default function Index({
                 <FileCheck2 className="size-5" />
               </div>
               <h3 className="mt-5 font-heading text-lg font-semibold text-foreground">
-                Tracked Service SLAs
+                Property details
               </h3>
               <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                Real-time milestone visibility inside your dashboard for relocation, painting, loan sanctions, and key handovers.
+                Review available pricing, location, photos, floor plans, and listed amenities.
               </p>
             </div>
 
@@ -304,29 +284,29 @@ export default function Index({
                 <CheckCircle2 className="size-5" />
               </div>
               <h3 className="mt-5 font-heading text-lg font-semibold text-foreground">
-                Dedicated Dispute Care
+                Platform support
               </h3>
               <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                Active customer support with escrow guarantees to protect your time, security, and capital at every step.
+                Contact the YBDC team for help with listings or service requests.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 05. TRANSPARENT 4-STEP EXECUTION FLOW */}
+      {/* 05. PROPERTY BROWSING FLOW */}
       <section className="border-b border-border/80 bg-foreground py-20 text-background sm:py-28">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-background/60">
-                04 — Transparent Workflow
+                04 — Finding a Property
               </span>
               <h2 className="mt-4 font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl leading-tight">
-                One Structured Journey From Shortlist to Handover.
+                From Browsing to a Property Visit.
               </h2>
               <p className="mt-4 text-sm sm:text-base leading-relaxed text-background/70">
-                Whether acquiring prime real estate or scheduling relocation and living assistance, every action is structured with clear ownership.
+                From finding a property to contacting its representative, the next steps stay clear.
               </p>
             </div>
 
@@ -361,13 +341,13 @@ export default function Index({
         <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">
-              <span>06 — Institutional FAQ</span>
+              <span>06 — Platform FAQ</span>
             </div>
             <h2 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
               Clarity &amp; Common Inquiries
             </h2>
             <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-              Everything you need to know about our verification framework, direct connectivity, and service governance.
+              Find answers about property listings, enquiries, and platform services.
             </p>
           </div>
 
@@ -397,7 +377,7 @@ export default function Index({
             <div className="flex flex-col gap-6 pb-8 border-b border-border/60 sm:flex-row sm:items-end sm:justify-between mb-10">
               <div>
                 <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">
-                  <span>07 — Verified Track Record</span>
+                  <span>07 — Customer Feedback</span>
                 </div>
                 <h2 className="mt-2 font-heading text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
                   Client Feedback &amp; Experiences
@@ -422,9 +402,13 @@ export default function Index({
                   key={id}
                   className="flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-6 shadow-xs transition-colors hover:border-foreground/30"
                 >
-                  <blockquote className="text-sm leading-relaxed text-foreground">
-                    &ldquo;{feedback || "The verified team made our relocation seamless."}&rdquo;
-                  </blockquote>
+                  {feedback ? (
+                    <blockquote className="text-sm leading-relaxed text-foreground">
+                      &ldquo;{feedback}&rdquo;
+                    </blockquote>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Customer rating</p>
+                  )}
                   <footer className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
                     <div className="flex items-center gap-3">
                       <UserAvatar name={name} className="size-9" />
@@ -470,10 +454,10 @@ export default function Index({
                   <span>Join The YBDC Network</span>
                 </div>
                 <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl leading-tight">
-                  List Your Property or Partner With Our Enterprise Network.
+                  List Your Property or Explore Our Services.
                 </h2>
                 <p className="mt-4 text-sm sm:text-base leading-relaxed text-muted-foreground">
-                  Direct owner listings, verified institutional developers, and licensed home/business service providers across India.
+                  Property listings and related home, finance, and business services across India.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">

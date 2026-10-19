@@ -473,7 +473,7 @@ const AgentManagement = () => {
                 id="name"
                 value={newAgent.name}
                 onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                placeholder="John Doe"
+                placeholder="Agent full name"
               />
             </div>
             <div className="grid gap-2">
@@ -483,7 +483,7 @@ const AgentManagement = () => {
                 type="email"
                 value={newAgent.email}
                 onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
-                placeholder="john@example.com"
+                placeholder="name@example.com"
               />
             </div>
             <div className="grid gap-2">
@@ -667,7 +667,7 @@ const AgentManagement = () => {
                   id="edit-name"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  placeholder="John Doe"
+                  placeholder="Agent full name"
                 />
               </div>
               <div className="grid gap-2">
@@ -677,7 +677,7 @@ const AgentManagement = () => {
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  placeholder="john@example.com"
+                  placeholder="name@example.com"
                 />
               </div>
               <div className="grid gap-2">

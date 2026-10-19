@@ -13,7 +13,7 @@ const principles = [
   {
     icon: HousePlus,
     title: "Real estate as the flagship anchor",
-    description: "Search and title-verified property listings lead the front of the platform.",
+    description: "Browse available listings and contact the owner or assigned agent.",
   },
   {
     icon: Network,
@@ -22,8 +22,8 @@ const principles = [
   },
   {
     icon: ShieldCheck,
-    title: "Vetted partners & transparent SLAs",
-    description: "Verified providers, fixed pricing, and monitored customer protection.",
+    title: "Financial and business services",
+    description: "Explore finance, consultancy, and business services available through the platform.",
   },
 ];
 
@@ -70,7 +70,7 @@ export function LandingAboutSection() {
                 Ecosystem Model
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                One unified network connecting property buyers, owners, lenders, and vetted service crews.
+                One platform connecting property buyers, owners, lenders, and service providers.
               </p>
             </div>
           </motion.div>
@@ -87,8 +87,7 @@ export function LandingAboutSection() {
             </h2>
             <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
               {siteName} was established to solve fragmented real estate and home services.
-              Instead of dealing with unvetted classified ads or juggling unverified contractors,
-              we provide verified residential and commercial developments alongside vetted professionals for relocation, legal due-diligence, and capital advisory.
+              Browse residential and commercial property listings, contact the representative shown on each listing, and explore related home, legal, and financial services.
             </p>
 
             <ul className="mt-8 grid gap-3">

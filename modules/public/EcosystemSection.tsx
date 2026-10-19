@@ -39,18 +39,18 @@ export const ECOSYSTEM_PILLARS: EcosystemPillar[] = [
     title: "Real Estate & Developments",
     badge: "Core Business",
     description:
-      "Curated residential sky villas, gated communities, prime commercial developments, and verified direct owner inventory across prime metropolitan hubs.",
+      "Browse residential, commercial, and land listings, then contact the owner or agent listed for each property.",
     image: "/images/hero-bg.jpg",
     icon: Building2,
     highlights: [
-      "100% Legal Title & Verification",
-      "Direct Owner & Developer Inventory",
-      "Prime Residential & Commercial",
+      "Residential and commercial listings",
+      "Land and plot listings",
+      "Owner or agent enquiries",
     ],
     links: [
       { label: "Prime Residential Homes", href: "/browse?type=Sale" },
       { label: "Commercial Hubs & Offices", href: "/browse?category=Commercial" },
-      { label: "Verified Rental Catalog", href: "/browse?type=Rent" },
+      { label: "Rental listings", href: "/browse?type=Rent" },
       { label: "Browse All Properties", href: "/browse" },
     ],
     primaryHref: "/browse",
@@ -61,15 +61,15 @@ export const ECOSYSTEM_PILLARS: EcosystemPillar[] = [
     number: "02",
     kicker: "Capital & Advisory",
     title: "Loan & Financial Assistance",
-    badge: "Tier-1 Lending",
+    badge: "Loan assistance",
     description:
-      "Pre-approved mortgage assistance, commercial project loans, and balance transfer advisory backed by top institutional banking partners.",
+      "Submit enquiries for home, mortgage, personal, and commercial loan assistance.",
     image: "/images/services/loans.png",
     icon: HandCoins,
     highlights: [
-      "Pre-Approved Home Mortgages",
-      "Commercial Project Funding",
-      "Competitive Interest Rates",
+      "Home and mortgage enquiries",
+      "Commercial loan enquiries",
+      "Personal and vehicle loan support",
     ],
     links: [
       { label: "Home Loans & Mortgage", href: "/loans" },
@@ -78,7 +78,7 @@ export const ECOSYSTEM_PILLARS: EcosystemPillar[] = [
       { label: "Balance Transfer Advisory", href: "/loans" },
     ],
     primaryHref: "/loans",
-    primaryActionText: "Calculate Loan Eligibility",
+    primaryActionText: "Explore loan assistance",
   },
   {
     id: "living",
@@ -87,13 +87,13 @@ export const ECOSYSTEM_PILLARS: EcosystemPillar[] = [
     title: "Relocation & Home Care",
     badge: "Turnkey Setup",
     description:
-      "End-to-end relocation crews, move-in painting, deep sanitization, carpentry, and handover repairs backed by verified service level agreements.",
+      "Find service options for moving, painting, cleaning, and home repairs around a property move.",
     image: "/images/services/packers-movers.png",
     icon: Truck,
     highlights: [
-      "Vetted Shifting & Move-in Crews",
-      "48-Hour SLA Guarantee",
-      "Handover & Deep Sanitization",
+      "Packers and movers",
+      "Painting and cleaning",
+      "Home repairs and maintenance",
     ],
     links: [
       { label: "Packers & Movers", href: "/packers-movers" },
@@ -176,7 +176,7 @@ export function EcosystemSection() {
             </h2>
           </div>
           <p className="max-w-md text-sm sm:text-base leading-relaxed text-muted-foreground">
-            Real estate sits at the core, surrounded by verified living, financial, and enterprise services for a complete life transition.
+            Real estate sits at the core, with related home, financial, and business services available through the platform.
           </p>
         </div>
 

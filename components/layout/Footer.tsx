@@ -66,7 +66,7 @@ const Footer = () => {
               Yashas Business Development &amp; Consultancy
             </p>
             <p className="text-sm text-muted-foreground max-w-xs wrap-break-word">
-              Connecting customers with verified real estate listings and vetted service professionals across relocation, finance, and enterprise development.
+              Browse property listings and explore related relocation, finance, and business services.
             </p>
           </div>
 
