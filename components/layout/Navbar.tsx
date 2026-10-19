@@ -231,15 +231,15 @@ const Navbar = () => {
                 className={cn(
                   "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl transition-all duration-300",
                   isHeroTransparent
-                    ? "h-11 w-20 md:h-12 md:w-24 bg-white/10 p-1 border border-white/20 shadow-sm backdrop-blur-md group-hover:bg-white/15"
-                    : "h-10 w-20 md:h-11 md:w-24 bg-black/[0.03] dark:bg-white/5 p-1 border border-black/10 dark:border-white/10 shadow-xs group-hover:border-primary/40"
+                    ? "h-14 w-28 md:h-16 md:w-32 bg-white/10 p-1 border border-white/20 shadow-sm backdrop-blur-md group-hover:bg-white/15"
+                    : "h-14 w-28 md:h-16 md:w-32 bg-black/3 dark:bg-white/5 p-1 border border-black/10 dark:border-white/10 shadow-xs group-hover:border-primary/40"
                 )}
               >
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes="(min-width: 768px) 96px, 80px"
+                  sizes="(min-width: 768px) 128px, 112px"
                   unoptimized
                   className="object-contain"
                 />
