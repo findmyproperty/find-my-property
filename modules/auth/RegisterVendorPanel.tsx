@@ -168,7 +168,7 @@ export default function RegisterVendorPanel() {
         <div className="w-full max-w-md bg-card rounded-2xl border border-border p-8 shadow-sm space-y-6">
           <div className="text-center">
             <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mx-auto mb-4" />
-            <h1 className="text-xl font-bold">Register as {siteName} Partner</h1>
+            <h1 className="text-xl font-bold">Register as a {siteName} Vendor</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Join as a verified service vendor
             </p>

@@ -148,7 +148,7 @@ const adminNavGroups: NavGroup[] = [
   {
     title: "Vendors",
     items: [
-      { title: "Vendor Partners", url: "/admin/vendors", icon: Store },
+      { title: "Vendors", url: "/admin/vendors", icon: Store },
       {
         title: "Vendor Leads",
         url: "/admin/vendor-leads",
@@ -184,17 +184,17 @@ const vendorNav: NavItem[] = flattenNavGroups(vendorNavGroups)
 const adminNav: NavItem[] = flattenNavGroups(adminNavGroups)
 
 const dashboardTitles: Record<UserRole, string> = {
-  tenant: "Tenant Dashboard",
-  agent: "Agent Dashboard",
+  tenant: "My Dashboard",
+  agent: "My Dashboard",
   admin: "Admin Dashboard",
-  vendor: "Partner Dashboard",
+  vendor: "Vendor Dashboard",
 }
 
 const roleSidebarLabels: Record<UserRole, string> = {
   tenant: "Tenant account",
   agent: "Agent account",
   admin: "Administration",
-  vendor: "Partner account",
+  vendor: "Vendor account",
 }
 
 export function getNavGroupsForRole(role: UserRole | undefined): NavGroup[] {

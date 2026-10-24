@@ -28,7 +28,7 @@ export default function PublicVendorProfilePage({
     if (initialProfile !== undefined) {
       setProfile(initialProfile);
       setLoading(false);
-      setError(initialProfile ? null : "Partner not found");
+      setError(initialProfile ? null : "Vendor not found");
       return;
     }
     let cancelled = false;
@@ -42,7 +42,7 @@ export default function PublicVendorProfilePage({
       .catch((e) => {
         if (!cancelled) {
           setProfile(null);
-          setError(e instanceof Error ? e.message : "Partner not found");
+          setError(e instanceof Error ? e.message : "Vendor not found");
         }
       })
       .finally(() => {
@@ -64,7 +64,7 @@ export default function PublicVendorProfilePage({
   if (error || !profile) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold">Partner not found</h1>
+        <h1 className="text-xl font-semibold">Vendor not found</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           This profile may be unverified or no longer available.
         </p>
@@ -213,7 +213,7 @@ export default function PublicVendorProfilePage({
       </section>
 
       <p className="mt-12 text-center text-xs text-muted-foreground">
-        Partner profile · Book services through our platform
+        Vendor profile · Book services through our platform
       </p>
     </article>
   );

@@ -469,7 +469,7 @@ export default function Index({
                 </Button>
                 <Button size="lg" variant="outline" className="rounded-xl border-border bg-background hover:bg-accent font-medium text-foreground transition-transform active:scale-95" asChild>
                   <Link href="/register-vendor">
-                    Register as Partner
+                    Register as Vendor
                   </Link>
                 </Button>
               </div>
