@@ -67,7 +67,12 @@ export const LocationSection = ({ lockCity = false }: { lockCity?: boolean }) =>
       if (addr.locality != null) setValue("locality", addr.locality, { shouldValidate: true, shouldDirty: true });
       const currentCity = getValues("city");
       // Keep allowlist city from the listing-type step; do not overwrite with reverse-geocode.
-      if (addr.city != null && !isListingCity(currentCity)) {
+      // Only accept Chennai/Bengaluru from geocode when city is still unset.
+      if (
+        addr.city != null &&
+        isListingCity(addr.city) &&
+        !isListingCity(currentCity)
+      ) {
         setValue("city", addr.city, { shouldValidate: true, shouldDirty: true });
       }
       if (addr.state != null) setValue("state", addr.state, { shouldValidate: true, shouldDirty: true });

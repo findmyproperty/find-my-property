@@ -27,7 +27,7 @@ export const AdminAgentAssignment = () => {
       { value: NONE, label: "— None —" },
       ...(agents?.filter((a) => a.isEmailVerified) ?? []).map((agent) => ({
         value: String(agent.id),
-        label: agent.name,
+        label: agent.name?.trim() || `Agent #${agent.id}`,
       })),
     ],
     [agents],

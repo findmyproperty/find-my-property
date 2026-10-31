@@ -104,14 +104,15 @@ export function ApartmentNameSearchField({
             ? ["bengaluru", "bangalore", "bengalooru"]
             : ["chennai", "madras"];
 
-        const request: google.maps.places.AutocompletionRequest = {
+        // `strictBounds` is supported by AutocompleteService at runtime but missing from current typings.
+        const request = {
           input: query.trim(),
           componentRestrictions: { country: "in" },
           bounds,
           strictBounds: true,
           location: center,
           radius: geo.radiusMeters,
-        };
+        } as google.maps.places.AutocompletionRequest;
 
         service.getPlacePredictions(request, (predictions, status) => {
           if (

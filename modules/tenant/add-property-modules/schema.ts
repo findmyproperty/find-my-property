@@ -235,7 +235,10 @@ export const getDefaultValues = (initialData?: BackendProperty): Partial<Propert
         : "unfurnished",
     address: initialData?.address || "",
     locality: initialData?.locality || "",
-    city: initialData?.city || "",
+    city:
+      initialData?.city && isListingCity(initialData.city)
+        ? initialData.city
+        : undefined,
     state: initialData?.state ?? "",
     country: initialData?.country || "India",
     description: initialData?.description || "",
