@@ -8,7 +8,7 @@ import { useProperties } from "@/hooks/use-properties";
 import { useBrowseLocation } from "@/hooks/use-browse-location";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
+import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
 import {
   useQueryStates,
   parseAsString,
@@ -34,7 +34,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import PropertiesMap from "@/modules/properties/PropertiesMap";
 import { useAuth } from "@/contexts/auth-context";
 import { buildAreaFilterOptions, matchesAreaFilter } from "@/lib/property-location-options";
-import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
 import { sortPropertiesByDistance, propertyDistanceKm } from "@/lib/property-distance";
 import {
   isAllowedPair,
@@ -139,12 +138,6 @@ const propertyFilterParsers = {
 
 const Properties = () => {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
-  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader(
-    getGoogleMapsLoaderOptions(mapsApiKey),
-  );
-  const areaAutocompleteRefs = useRef<
-    Record<"desktop" | "mobile", google.maps.places.Autocomplete | null>
-  >({ desktop: null, mobile: null });
   const { data, isLoading } = useProperties();
   const { isAuthenticated } = useAuth();
   const { location: browseLocation } = useBrowseLocation();
@@ -402,17 +395,8 @@ const Properties = () => {
     }
   };
 
-  const handleAreaPlaceChanged = (idSuffix: "desktop" | "mobile") => {
-    const place = areaAutocompleteRefs.current[idSuffix]?.getPlace();
-    const selectedPlace =
-      place?.name ||
-      place?.formatted_address?.split(",")[0]?.trim() ||
-      place?.address_components?.find((component) =>
-        component.types.some((type) =>
-          ["locality", "sublocality", "neighborhood", "route"].includes(type),
-        ),
-      )?.long_name ||
-      "";
+  const handleAreaPlaceSelect = (label: string) => {
+    const selectedPlace = label.split(",")[0]?.trim() || label.trim();
     if (selectedPlace) updateFilters({ loc: selectedPlace });
   };
 
@@ -605,38 +589,21 @@ const Properties = () => {
             Search a street, locality, landmark, or city
           </p>
         </div>
-        {mapsApiKey && isGoogleMapsLoaded ? (
-          <Autocomplete
-            className="w-full"
-            onLoad={(autocomplete) => {
-              areaAutocompleteRefs.current[idSuffix] = autocomplete;
-              autocomplete.setFields([
-                "formatted_address",
-                "geometry",
-                "name",
-                "address_components",
-              ]);
-              autocomplete.setComponentRestrictions({ country: "in" });
-            }}
-            onUnmount={() => {
-              areaAutocompleteRefs.current[idSuffix] = null;
-            }}
-            onPlaceChanged={() => handleAreaPlaceChanged(idSuffix)}
-          >
-            <Input
-              id={`browse-area-search-${idSuffix}`}
-              aria-label="Search area or city"
-              placeholder="Search street, locality, or city"
-              value={activeFilters.loc === "All Localities" ? "" : activeFilters.loc}
-              onChange={(event) =>
-                updateFilters({
-                  loc: event.target.value.trim() ? event.target.value : "All Localities",
-                })
-              }
-              className="h-10 rounded-lg border-border bg-muted/50 text-sm"
-              autoComplete="off"
-            />
-          </Autocomplete>
+        {mapsApiKey ? (
+          <PlaceAutocompleteField
+            id={`browse-area-search-${idSuffix}`}
+            ariaLabel="Search area or city"
+            placeholder="Search street, locality, or city"
+            value={activeFilters.loc === "All Localities" ? "" : activeFilters.loc}
+            onTextChange={(text) =>
+              updateFilters({
+                loc: text.trim() ? text : "All Localities",
+              })
+            }
+            onPlaceSelect={(place) => handleAreaPlaceSelect(place.label)}
+            noInputIcon
+            className="h-10 rounded-lg border border-border bg-muted/50 text-sm"
+          />
         ) : (
           <Input
             id={`browse-area-search-${idSuffix}`}

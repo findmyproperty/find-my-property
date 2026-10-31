@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,8 +13,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
-
+import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
 import {
   Carousel,
   CarouselContent,
@@ -23,7 +22,6 @@ import {
 } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
 import { type HeroSlide } from "@/lib/hero-slides";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +37,7 @@ export default function ModonHeroCarousel({
   const router = useRouter();
   const slides = initialSlides;
 
-  // Load Google Maps Places Autocomplete
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
-  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader(getGoogleMapsLoaderOptions(apiKey));
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -113,20 +108,6 @@ export default function ModonHeroCarousel({
     },
     [api],
   );
-
-  // Google Places Autocomplete handler
-  const handlePlaceChanged = useCallback(() => {
-    const place = autocompleteRef.current?.getPlace();
-    if (!place) return;
-    const placeName =
-      place.name ||
-      place.formatted_address ||
-      place.address_components?.[0]?.long_name ||
-      "";
-    if (placeName) {
-      setLocationQuery(placeName);
-    }
-  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,28 +317,19 @@ export default function ModonHeroCarousel({
                   <div className="relative flex-1">
                     <MapPin className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
 
-                    {apiKey && isGoogleMapsLoaded ? (
-                      <Autocomplete
-                        onLoad={(a) => {
-                          autocompleteRef.current = a;
-                          a.setFields(["formatted_address", "geometry", "name", "address_components"]);
-                          a.setComponentRestrictions({ country: "in" });
-                        }}
-                        onPlaceChanged={handlePlaceChanged}
-                      >
-                        <Input
-                          autoFocus
-                          value={locationQuery}
-                          onChange={(e) => setLocationQuery(e.target.value)}
-                          placeholder={
-                            listingType === "services"
-                              ? "Search relocation, painting, cleaning, loans..."
-                              : "Enter city, locality, landmark, or project name..."
-                          }
-                          className="h-12 rounded-xl border-border/70 pl-10 text-xs focus-visible:ring-1 focus-visible:ring-foreground sm:text-sm"
-                          autoComplete="off"
-                        />
-                      </Autocomplete>
+                    {apiKey ? (
+                      <PlaceAutocompleteField
+                        value={locationQuery}
+                        onTextChange={setLocationQuery}
+                        onPlaceSelect={(place) => setLocationQuery(place.label)}
+                        placeholder={
+                          listingType === "services"
+                            ? "Search relocation, painting, cleaning, loans..."
+                            : "Enter city, locality, landmark, or project name..."
+                        }
+                        noInputIcon
+                        className="h-12 rounded-xl border border-border/70 bg-background pl-10 text-xs sm:text-sm"
+                      />
                     ) : (
                       <Input
                         autoFocus

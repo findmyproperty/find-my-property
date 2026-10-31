@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { MapPin, Search } from "lucide-react";
-import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
 
+import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/use-categories";
-import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
 import type { PropertySector } from "@/lib/property-posting";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +33,6 @@ export default function HeroSearchBanner({ imageUrl }: { imageUrl?: string | nul
   const router = useRouter();
   const { data: categories = [] } = useCategories();
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
-  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader(
-    getGoogleMapsLoaderOptions(apiKey),
-  );
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [listingMode, setListingMode] = useState<ListingMode>("buy");
   const [propertySector, setPropertySector] = useState<PropertySector>("residential");
   const [propertyType, setPropertyType] = useState("");
@@ -61,18 +56,6 @@ export default function HeroSearchBanner({ imageUrl }: { imageUrl?: string | nul
     if (nextMode === "rent") setRentalPreference("rent");
     if (nextMode === "commercial") setCommercialIntent("rent");
   };
-
-  const handlePlaceChanged = useCallback(() => {
-    const place = autocompleteRef.current?.getPlace();
-    if (!place) return;
-
-    const placeName =
-      place.name ||
-      place.formatted_address ||
-      place.address_components?.[0]?.long_name ||
-      "";
-    if (placeName) setLocationQuery(placeName);
-  }, []);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -169,30 +152,17 @@ export default function HeroSearchBanner({ imageUrl }: { imageUrl?: string | nul
                 <label htmlFor="hero-location-search" className="sr-only">
                   Search by location
                 </label>
-                {apiKey && isGoogleMapsLoaded ? (
-                  <Autocomplete
-                    className="w-full"
-                    onLoad={(autocomplete) => {
-                      autocompleteRef.current = autocomplete;
-                      autocomplete.setFields([
-                        "formatted_address",
-                        "geometry",
-                        "name",
-                        "address_components",
-                      ]);
-                      autocomplete.setComponentRestrictions({ country: "in" });
-                    }}
-                    onPlaceChanged={handlePlaceChanged}
-                  >
-                    <Input
-                      id="hero-location-search"
-                      value={locationQuery}
-                      onChange={(event) => setLocationQuery(event.target.value)}
-                      placeholder="City, locality, landmark, or property ID"
-                      className="h-12 min-w-0 rounded-xl border border-slate-200 bg-transparent pl-11 text-sm text-slate-950 shadow-none placeholder:text-slate-500 focus-visible:border-primary focus-visible:ring-0 sm:h-14 sm:text-base"
-                      autoComplete="off"
-                    />
-                  </Autocomplete>
+                {apiKey ? (
+                  <PlaceAutocompleteField
+                    id="hero-location-search"
+                    ariaLabel="Search by location"
+                    value={locationQuery}
+                    onTextChange={setLocationQuery}
+                    onPlaceSelect={(place) => setLocationQuery(place.label)}
+                    placeholder="City, locality, landmark, or property ID"
+                    noInputIcon
+                    className="h-12 min-w-0 rounded-xl border border-slate-200 bg-transparent pl-11 text-sm text-slate-950 shadow-none sm:h-14 sm:text-base [&_gmp-place-autocomplete]:min-h-full [&_gmp-place-autocomplete]:pl-0"
+                  />
                 ) : (
                   <Input
                     id="hero-location-search"

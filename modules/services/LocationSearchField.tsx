@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Autocomplete,
   GoogleMap,
   Marker,
   useJsApiLoader,
 } from "@react-google-maps/api";
 import { Loader2, LocateFixed, MapPin, X } from "lucide-react";
+import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getGoogleMapsServicesLoaderOptions } from "@/lib/google-maps-loader";
@@ -36,12 +36,11 @@ export interface LocationSearchFieldProps {
 }
 
 /**
- * Autocomplete-backed location input used across the service-request forms.
+ * PlaceAutocompleteElement-backed location input used across the service-request forms.
  *
  * Why a single component: Packers & Movers needs many instances (pickup + N drops),
  * Painting & Cleaning needs exactly one. Centralising the Google Maps loader access,
- * Autocomplete setup, and current-location handling avoids per-page wiring and keeps
- * the `places` library isolated from the property flows that don't need it.
+ * place selection, and current-location handling avoids per-page wiring.
  */
 export default function LocationSearchField({
   value,
@@ -61,8 +60,6 @@ export default function LocationSearchField({
     getGoogleMapsServicesLoaderOptions(apiKey),
   );
 
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [text, setText] = useState(value?.label ?? "");
   const [locating, setLocating] = useState(false);
 
@@ -70,15 +67,61 @@ export default function LocationSearchField({
     setText(value?.label ?? "");
   }, [value?.label]);
 
-  const handlePlaceChanged = useCallback(() => {
-    const place = autocompleteRef.current?.getPlace();
-    if (!place?.geometry?.location) return;
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
-    const label = place.formatted_address ?? place.name ?? text;
-    onChange({ label, lat, lng, placeId: place.place_id });
-    setText(label);
-  }, [onChange, text]);
+  // Free-text commit (events forms): debounce so we don't push on every keystroke.
+  useEffect(() => {
+    if (!allowFreeText) return;
+    const trimmed = text.trim();
+    if (trimmed.length < 10) return;
+    if (value?.label === trimmed) return;
+    const timer = window.setTimeout(() => {
+      onChange({
+        label: trimmed,
+        lat: value?.lat && value.lng ? value.lat : 0,
+        lng: value?.lat && value.lng ? value.lng : 0,
+        placeId: value?.placeId,
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [allowFreeText, onChange, text, value]);
+
+  const handleTextChange = useCallback((next: string) => {
+    setText(next);
+  }, []);
+
+  const handlePlaceSelect = useCallback(
+    (place: {
+      label: string;
+      lat?: number;
+      lng?: number;
+      placeId?: string;
+    }) => {
+      if (
+        place.lat == null ||
+        place.lng == null ||
+        !Number.isFinite(place.lat) ||
+        !Number.isFinite(place.lng)
+      ) {
+        setText(place.label);
+        if (allowFreeText) {
+          onChange({
+            label: place.label,
+            lat: 0,
+            lng: 0,
+            placeId: place.placeId,
+          });
+        }
+        return;
+      }
+      setText(place.label);
+      onChange({
+        label: place.label,
+        lat: place.lat,
+        lng: place.lng,
+        placeId: place.placeId,
+      });
+    },
+    [allowFreeText, onChange],
+  );
 
   const useCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) return;
@@ -114,23 +157,7 @@ export default function LocationSearchField({
   const clear = useCallback(() => {
     onChange(null);
     setText("");
-    inputRef.current?.focus();
   }, [onChange]);
-
-  const commitFreeText = useCallback(() => {
-    if (!allowFreeText) return;
-    const trimmed = text.trim();
-    if (trimmed.length < 10) return;
-    if (value?.label === trimmed && value.lat !== 0 && value.lng !== 0) return;
-    // Keep existing pin if the label was only edited slightly; otherwise address-only.
-    if (value && value.label === trimmed) return;
-    onChange({
-      label: trimmed,
-      lat: value?.lat && value.lng ? value.lat : 0,
-      lng: value?.lat && value.lng ? value.lng : 0,
-      placeId: value?.placeId,
-    });
-  }, [allowFreeText, onChange, text, value]);
 
   const markerPosition = useMemo(() => {
     if (!value) return null;
@@ -153,47 +180,28 @@ export default function LocationSearchField({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="relative">
-        {isLoaded ? (
-          <Autocomplete
-            onLoad={(a) => {
-              autocompleteRef.current = a;
-              a.setFields([
-                "place_id",
-                "formatted_address",
-                "name",
-                "geometry.location",
-              ]);
-              a.setComponentRestrictions({ country: "in" });
-            }}
-            onPlaceChanged={handlePlaceChanged}
-            options={{ fields: ["place_id", "formatted_address", "name", "geometry.location"] }}
-          >
-            <Input
-              id={id}
-              ref={inputRef}
-              aria-label={ariaLabel}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onBlur={() => commitFreeText()}
-              placeholder={placeholder}
-              disabled={disabled}
-              className={cn("pr-20", error && "border-destructive")}
-              autoComplete="off"
-            />
-          </Autocomplete>
-        ) : (
-          <Input
-            id={id}
-            ref={inputRef}
-            aria-label={ariaLabel}
-            value={text}
-            readOnly
-            placeholder={loadError ? "Maps failed to load" : "Loading search…"}
-            className={cn("pr-20", error && "border-destructive")}
-          />
-        )}
+        <PlaceAutocompleteField
+          id={id}
+          ariaLabel={ariaLabel}
+          value={text}
+          onTextChange={handleTextChange}
+          onPlaceSelect={handlePlaceSelect}
+          placeholder={
+            loadError
+              ? "Maps failed to load"
+              : isLoaded
+                ? placeholder
+                : "Loading search…"
+          }
+          disabled={disabled || !isLoaded}
+          noInputIcon
+          className={cn(
+            "h-10 rounded-md border border-input bg-background pr-20 text-sm",
+            error && "border-destructive",
+          )}
+        />
 
-        <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1">
+        <div className="pointer-events-none absolute inset-y-0 right-2 z-10 flex items-center gap-1">
           {value ? (
             <button
               type="button"
