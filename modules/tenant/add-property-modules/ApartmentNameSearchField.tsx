@@ -67,9 +67,17 @@ export function ApartmentNameSearchField({
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const placesAttrRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  /** After a pick (or matching form value), skip reopening until the user edits the text. */
+  const committedQueryRef = useRef<string | null>(
+    value?.trim() ? value.trim() : null,
+  );
 
   useEffect(() => {
-    setText(value ?? "");
+    const next = value ?? "";
+    setText(next);
+    // External form value sync (navigate away/back) should not reopen the list.
+    if (next.trim()) committedQueryRef.current = next.trim();
   }, [value]);
 
   const searchViaClientPlaces = useEffectEvent(
@@ -171,16 +179,29 @@ export function ApartmentNameSearchField({
       }
 
       if (controller.signal.aborted) return;
+      // Selection / form remount can finish a search after commit — don't reopen.
+      if (committedQueryRef.current === query.trim()) {
+        setSuggestions([]);
+        setOpen(false);
+        return;
+      }
       setSuggestions(next);
       setHighlight(0);
-      if (next.length > 0) setOpen(true);
+      const focused = inputRef.current != null && document.activeElement === inputRef.current;
+      if (next.length > 0 && focused) setOpen(true);
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
+      if (committedQueryRef.current === query.trim()) {
+        setSuggestions([]);
+        setOpen(false);
+        return;
+      }
       try {
         const next = await searchViaClientPlaces(query, listingCity);
         setSuggestions(next);
         setHighlight(0);
-        if (next.length > 0) setOpen(true);
+        const focused = inputRef.current != null && document.activeElement === inputRef.current;
+        if (next.length > 0 && focused) setOpen(true);
       } catch {
         setSuggestions([]);
       }
@@ -192,11 +213,19 @@ export function ApartmentNameSearchField({
   useEffect(() => {
     if (!isListingCity(city)) {
       setSuggestions([]);
+      setOpen(false);
       return;
     }
     const q = text.trim();
     if (q.length < MIN_APARTMENT_PLACE_QUERY_LENGTH) {
       setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    // Do not refetch/reopen for an already-selected (or form-synced) apartment name.
+    if (committedQueryRef.current === q) {
+      setSuggestions([]);
+      setOpen(false);
       return;
     }
     const timer = setTimeout(() => {
@@ -249,10 +278,12 @@ export function ApartmentNameSearchField({
   };
 
   const selectSuggestion = async (item: ApartmentPlaceSuggestion) => {
+    committedQueryRef.current = item.name.trim();
     onChange(item.name);
     setText(item.name);
     setOpen(false);
     setSuggestions([]);
+    abortRef.current?.abort();
 
     if (!onPlaceSelected) return;
     try {
@@ -285,6 +316,7 @@ export function ApartmentNameSearchField({
       <div className="relative">
         <Input
           id={id}
+          ref={inputRef}
           value={text}
           disabled={disabled}
           placeholder={
@@ -297,16 +329,30 @@ export function ApartmentNameSearchField({
           autoComplete="off"
           className={cn("pr-9", rest["aria-invalid"] && "border-destructive")}
           onChange={(e) => {
-            setText(e.target.value);
+            const next = e.target.value;
+            // Editing after a pick unlocks search again.
+            if (committedQueryRef.current !== next.trim()) {
+              committedQueryRef.current = null;
+            }
+            setText(next);
             setOpen(true);
           }}
           onFocus={() => {
-            if (suggestions.length > 0) setOpen(true);
+            const q = text.trim();
+            if (
+              suggestions.length > 0 &&
+              committedQueryRef.current !== q
+            ) {
+              setOpen(true);
+            }
           }}
           onBlur={() => {
             blurCloseTimer.current = setTimeout(() => {
               setOpen(false);
               commitFreeText();
+              // Treat blur commit as locked so remount/focus doesn't reopen.
+              const q = text.trim();
+              if (q) committedQueryRef.current = q;
             }, 150);
           }}
           onKeyDown={(e) => {
