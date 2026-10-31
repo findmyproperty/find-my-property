@@ -8,7 +8,7 @@ export type ListingType = z.infer<typeof listingTypeSchema>;
 export const propertyTypeSchema = z.string().min(1);
 export type PropertyType = z.infer<typeof propertyTypeSchema>;
 
-export const propertyStatusSchema = z.enum(["Pending", "Approved", "Rejected"]);
+export const propertyStatusSchema = z.enum(["Draft", "Pending", "Approved", "Rejected"]);
 export type PropertyStatus = z.infer<typeof propertyStatusSchema>;
 
 /** Furnishing level — aligned with `FurnishingStatus` in `property-view-model`. */

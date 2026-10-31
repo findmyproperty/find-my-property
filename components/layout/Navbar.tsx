@@ -41,10 +41,11 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAuth, type UserRole } from "@/contexts/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
 import ThemeToggle from "@/components/ThemeToggle";
-import { SITE_NAME } from "@/lib/branding";
+import { BRAND_TAGLINE, SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { NavLoginRegisterLinks } from "@/components/layout/nav-login-register-links";
 import { MobileNavAutoClose } from "@/components/layout/mobile-nav-auto-close";
+import { SiteSearchDialog } from "@/components/layout/SiteSearchDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -231,22 +232,32 @@ const Navbar = () => {
                 className={cn(
                   "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl transition-all duration-300",
                   isHeroTransparent
-                    ? "h-14 w-28 md:h-16 md:w-32 bg-white/10 p-1 border border-white/20 shadow-sm backdrop-blur-md group-hover:bg-white/15"
-                    : "h-14 w-28 md:h-16 md:w-32 bg-black/3 dark:bg-white/5 p-1 border border-black/10 dark:border-white/10 shadow-xs group-hover:border-primary/40"
+                    ? "h-14 w-32 md:h-16 md:w-36 bg-white/10 p-1.5 border border-white/20 shadow-sm backdrop-blur-md group-hover:bg-white/15"
+                    : "h-10 w-24 md:h-11 md:w-28 bg-black/3 dark:bg-white/5 p-1 border border-black/10 dark:border-white/10 shadow-xs group-hover:border-primary/40"
                 )}
               >
                 <Image
                   src={logoUrl}
                   alt={siteName}
                   fill
-                  sizes="(min-width: 768px) 128px, 112px"
+                  sizes={isHeroTransparent ? "(min-width: 768px) 144px, 128px" : "(min-width: 768px) 112px, 96px"}
                   unoptimized
-                  className="object-contain"
+                  className="object-contain object-center p-0.5"
                 />
               </span>
             ) : (
-              <div className="hero-gradient flex size-10 shrink-0 items-center justify-center rounded-xl md:size-11 shadow-sm">
-                <Building2 className="size-5 text-primary-foreground md:size-6" />
+              <div
+                className={cn(
+                  "hero-gradient flex shrink-0 items-center justify-center rounded-xl shadow-sm transition-all duration-300",
+                  isHeroTransparent ? "size-10 md:size-11" : "size-9 md:size-10"
+                )}
+              >
+                <Building2
+                  className={cn(
+                    "text-primary-foreground transition-all duration-300",
+                    isHeroTransparent ? "size-5 md:size-6" : "size-4 md:size-5"
+                  )}
+                />
               </div>
             )}
             <div className="hidden sm:flex flex-col">
@@ -264,7 +275,7 @@ const Navbar = () => {
                   isHeroTransparent ? "text-white/60" : "text-muted-foreground"
                 )}
               >
-                Real Estate &amp; Advisory
+                {BRAND_TAGLINE}
               </span>
             </div>
           </Link>
@@ -371,21 +382,14 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-2.5 min-w-0 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className={cn(
+          <SiteSearchDialog
+            triggerClassName={cn(
               "size-9 rounded-full transition-all duration-200",
               isHeroTransparent
                 ? "text-white hover:bg-white/15 hover:text-white border border-white/15 bg-white/5"
                 : "text-foreground hover:bg-muted border border-border/60"
             )}
-          >
-            <Link href="/browse" aria-label="Search properties">
-              <Search className="size-4" />
-            </Link>
-          </Button>
+          />
           <ThemeToggle
             className={cn(
               "transition-all duration-200",
@@ -523,6 +527,10 @@ const Navbar = () => {
             </div>
 
             <div className="flex flex-col gap-2 border-b border-border pb-4">
+              <SiteSearchDialog
+                iconOnly={false}
+                triggerClassName="w-full justify-start rounded-lg border border-border px-3 py-2 h-auto text-sm font-medium"
+              />
               <Link
                 href="/browse"
                 className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary"

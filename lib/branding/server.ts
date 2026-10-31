@@ -25,7 +25,8 @@ function normalizeBranding(input: unknown): Branding {
   if (!parsed.success) return FALLBACK;
 
   return {
-    siteName: parsed.data.siteName?.trim() || FALLBACK.siteName,
+    // Brand name is compile-time locked; ignore DB/API siteName for display.
+    siteName: FALLBACK.siteName,
     primaryLogoUrl: parsed.data.primaryLogoUrl?.trim() || null,
     faviconUrl: parsed.data.faviconUrl?.trim() || null,
   };

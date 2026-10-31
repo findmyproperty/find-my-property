@@ -49,17 +49,36 @@ function parseAddressComponents(components: google.maps.GeocoderAddressComponent
 /** Parse lat,lng from common Google Maps URL patterns */
 function parseGoogleMapsUrl(url: string): LocationValue | null {
   const trimmed = url.trim();
-  const qMatch = trimmed.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (qMatch) {
-    const lat = parseFloat(qMatch[1]);
-    const lng = parseFloat(qMatch[2]);
+  const patterns = [
+    /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    /@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,
+    /[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    /\/maps\/place\/[^/@]*\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    /\/maps\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
+  ];
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (!match) continue;
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
     if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
   }
-  const atMatch = trimmed.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (atMatch) {
-    const lat = parseFloat(atMatch[1]);
-    const lng = parseFloat(atMatch[2]);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  return null;
+}
+
+async function resolveMapsLink(url: string): Promise<LocationValue | null> {
+  const direct = parseGoogleMapsUrl(url);
+  if (direct) return direct;
+  try {
+    const res = await fetch(`/api/expand-maps-link?url=${encodeURIComponent(url)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { lat?: number; lng?: number };
+    if (typeof data.lat === "number" && typeof data.lng === "number") {
+      return { lat: data.lat, lng: data.lng };
+    }
+  } catch {
+    /* ignore */
   }
   return null;
 }
@@ -91,6 +110,7 @@ const LocationPicker = ({
 }: LocationPickerProps) => {
   const [linkInput, setLinkInput] = useState("");
   const [linkError, setLinkError] = useState(false);
+  const [linkResolving, setLinkResolving] = useState(false);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded, loadError } = useJsApiLoader(getGoogleMapsLoaderOptions(apiKey));
@@ -135,14 +155,19 @@ const LocationPicker = ({
     [setLocationAndGeocode]
   );
 
-  const handleApplyLink = useCallback(() => {
-    const parsed = parseGoogleMapsUrl(linkInput);
-    if (parsed) {
-      setLocationAndGeocode(parsed);
-      setLinkError(false);
-      setLinkInput("");
-    } else {
-      setLinkError(true);
+  const handleApplyLink = useCallback(async () => {
+    setLinkResolving(true);
+    setLinkError(false);
+    try {
+      const parsed = await resolveMapsLink(linkInput);
+      if (parsed) {
+        setLocationAndGeocode(parsed);
+        setLinkInput("");
+      } else {
+        setLinkError(true);
+      }
+    } finally {
+      setLinkResolving(false);
     }
   }, [linkInput, setLocationAndGeocode]);
 
@@ -207,15 +232,17 @@ const LocationPicker = ({
             />
             <button
               type="button"
-              onClick={handleApplyLink}
-              className="px-3 py-2 rounded-md border border-border bg-muted hover:bg-muted/80 text-sm font-medium whitespace-nowrap"
+              onClick={() => void handleApplyLink()}
+              disabled={linkResolving || !linkInput.trim()}
+              className="px-3 py-2 rounded-md border border-border bg-muted hover:bg-muted/80 text-sm font-medium whitespace-nowrap disabled:opacity-50"
             >
-              Apply
+              {linkResolving ? "Reading…" : "Apply"}
             </button>
           </div>
           {linkError && (
             <p className="text-xs text-destructive">
-              Could not read coordinates from this link. Use a link with lat,lng (e.g. ?q=12.97,77.59).
+              Could not read coordinates from this link. Try a full Google Maps URL, or pin the
+              location on the map below.
             </p>
           )}
         </div>

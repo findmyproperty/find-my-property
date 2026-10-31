@@ -7,15 +7,25 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import type { PropertyFormValues } from "./schema";
+
+const ROOM_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: `${n} Room${n > 1 ? "s" : ""}`,
+}));
+
+const BATH_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: `${n}+ Bathrooms`,
+}));
+
+const FURNISHING_OPTIONS = [
+  { value: "unfurnished", label: "Unfurnished" },
+  { value: "semi-furnished", label: "Semi-furnished" },
+  { value: "furnished", label: "Furnished" },
+] as const;
 
 export const PropertyOverview = () => {
   const { control } = useFormContext<PropertyFormValues>();
@@ -26,25 +36,21 @@ export const PropertyOverview = () => {
         <FormField
           control={control}
           name="bedrooms"
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                 <Bed className="w-3.5 h-3.5" /> Rooms
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="BHK" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n} Room{n > 1 ? "s" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <Combobox
+                  options={ROOM_OPTIONS}
+                  value={field.value || null}
+                  onValueChange={field.onChange}
+                  placeholder="BHK"
+                  disableSearch
+                  aria-invalid={!!fieldState.error}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -52,25 +58,21 @@ export const PropertyOverview = () => {
         <FormField
           control={control}
           name="bathrooms"
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                 <Bath className="w-3.5 h-3.5" /> Bathrooms
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Bath" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n}+ Bathrooms
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <Combobox
+                  options={BATH_OPTIONS}
+                  value={field.value || null}
+                  onValueChange={field.onChange}
+                  placeholder="Bath"
+                  disableSearch
+                  aria-invalid={!!fieldState.error}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -109,23 +111,21 @@ export const PropertyOverview = () => {
       <FormField
         control={control}
         name="furnishing"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem className="max-w-md">
             <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
               <Sofa className="h-3.5 w-3.5" /> Furnishing
             </FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select furnishing" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="unfurnished">Unfurnished</SelectItem>
-                <SelectItem value="semi-furnished">Semi-furnished</SelectItem>
-                <SelectItem value="furnished">Furnished</SelectItem>
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <Combobox
+                options={FURNISHING_OPTIONS}
+                value={field.value}
+                onValueChange={field.onChange}
+                placeholder="Select furnishing"
+                disableSearch
+                aria-invalid={!!fieldState.error}
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

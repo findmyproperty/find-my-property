@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
@@ -25,13 +25,6 @@ export default function AboutPage({ siteName: ssrSiteName }: AboutPageProps = {}
   return (
     <main className="pb-20 pt-24">
       <div className="container mx-auto max-w-3xl px-4">
-        <Button variant="ghost" size="sm" asChild className="mb-8 -ml-2 text-muted-foreground">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to home
-          </Link>
-        </Button>
-
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}

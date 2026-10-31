@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { UserCog, Loader2 } from "lucide-react";
 import {
@@ -10,23 +11,27 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { useAgents } from "@/hooks/use-agents";
 import type { PropertyFormValues } from "./schema";
+
+const NONE = "__none__";
 
 /** Admin-only: assign which agent owns / manages this listing. */
 export const AdminAgentAssignment = () => {
   const { control } = useFormContext<PropertyFormValues>();
   const { data: agents, isLoading } = useAgents();
 
-  const options = agents?.filter((a) => a.isEmailVerified) ?? [];
-  const NONE = "__none__";
+  const agentOptions = useMemo(
+    () => [
+      { value: NONE, label: "— None —" },
+      ...(agents?.filter((a) => a.isEmailVerified) ?? []).map((agent) => ({
+        value: String(agent.id),
+        label: agent.name,
+      })),
+    ],
+    [agents],
+  );
 
   return (
     <div className="space-y-4 pb-2">
@@ -37,28 +42,20 @@ export const AdminAgentAssignment = () => {
       <FormField
         control={control}
         name="assignedAgentId"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Listing agent</FormLabel>
-            <Select
-              onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
-              value={field.value ? String(field.value) : NONE}
-              disabled={isLoading}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoading ? "Loading agents…" : "Select an agent"} />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value={NONE}>— None —</SelectItem>
-                {options.map((agent) => (
-                  <SelectItem key={agent.id} value={String(agent.id)}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <Combobox
+                options={agentOptions}
+                value={field.value ? String(field.value) : NONE}
+                onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
+                placeholder={isLoading ? "Loading agents…" : "Select an agent"}
+                searchPlaceholder="Search agents…"
+                disabled={isLoading}
+                aria-invalid={!!fieldState.error}
+              />
+            </FormControl>
             <FormDescription>Optional. Leave empty to assign later from approvals.</FormDescription>
             <FormMessage />
           </FormItem>

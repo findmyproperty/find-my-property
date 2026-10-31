@@ -14,6 +14,8 @@ export interface AuthUser {
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   onboardingCompleted: boolean;
+  /** True when a password hash is stored (never expose the hash itself). */
+  hasPassword: boolean;
   locationAddress?: string | null;
   locationCity?: string | null;
   locationState?: string | null;

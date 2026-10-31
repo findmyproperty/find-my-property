@@ -10,13 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import type { PropertyFormValues } from "./schema";
 import { CldUploadWidget } from "next-cloudinary";
 
@@ -28,7 +22,17 @@ const SUGGESTED_FLOOR_NAMES = [
   { value: "fourth", label: "Fourth" },
   { value: "basement", label: "Basement" },
   { value: "other", label: "Other" },
-];
+] as const;
+
+const FLOOR_ROOM_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: `${n} BHK`,
+}));
+
+const FLOOR_BATH_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: `${n} Bath${n > 1 ? "s" : ""}`,
+}));
 
 export const FloorPlansSection = () => {
   const { control, setValue, watch } = useFormContext<PropertyFormValues>();
@@ -81,20 +85,15 @@ export const FloorPlansSection = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Floor name (pick suggested)</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose floor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SUGGESTED_FLOOR_NAMES.map((f) => (
-                            <SelectItem key={f.value} value={f.value}>
-                              {f.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Combobox
+                          options={SUGGESTED_FLOOR_NAMES}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Choose floor"
+                          disableSearch
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -108,20 +107,15 @@ export const FloorPlansSection = () => {
                       <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                         <Bed className="w-3.5 h-3.5" /> Rooms (BHK)
                       </FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="BHK" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n} BHK
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Combobox
+                          options={FLOOR_ROOM_OPTIONS}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="BHK"
+                          disableSearch
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -135,20 +129,15 @@ export const FloorPlansSection = () => {
                       <FormLabel required className="flex items-center gap-1.5 text-muted-foreground">
                         <Bath className="w-3.5 h-3.5" /> Bath
                       </FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Bath" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n} Bath{n > 1 ? "s" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Combobox
+                          options={FLOOR_BATH_OPTIONS}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Bath"
+                          disableSearch
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

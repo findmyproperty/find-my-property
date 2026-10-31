@@ -67,6 +67,31 @@ export const stopSchema = z.object({
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
+/** Event venue: typed full address is enough; map pin optional. */
+export const eventLocationSchema = z
+  .object({
+    label: z.string().trim().min(10, "Enter a detailed venue address.").max(500),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+    placeId: z.string().optional(),
+    notes: z.string().trim().max(500).optional().or(z.literal("")),
+  })
+  .superRefine((value, ctx) => {
+    const hasPin =
+      typeof value.lat === "number" &&
+      typeof value.lng === "number" &&
+      Number.isFinite(value.lat) &&
+      Number.isFinite(value.lng) &&
+      !(value.lat === 0 && value.lng === 0);
+    if (!hasPin && value.label.trim().length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter a detailed address or pick a place from suggestions.",
+        path: ["label"],
+      });
+    }
+  });
+
 export type StopValue = z.infer<typeof stopSchema>;
 
 export const packersMoversSchema = baseSchema.extend({
@@ -166,9 +191,7 @@ export const eventManagementSchema = baseSchema.extend({
       ]),
     )
     .min(1, "Select at least one service."),
-  location: stopSchema.refine((v) => v.label.trim().length >= 3, {
-    message: "Select the event location.",
-  }),
+  location: eventLocationSchema,
   themeOrStyle: z.string().trim().max(160).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
@@ -267,6 +290,36 @@ export const SLOT_OPTIONS = [
   { value: "afternoon", label: "Afternoon (12pm - 4pm)" },
   { value: "evening", label: "Evening (4pm - 8pm)" },
 ] as const;
+
+/** Local hour when each slot ends (exclusive). Past slots are hidden for today. */
+const SLOT_END_HOUR: Record<(typeof SLOT_OPTIONS)[number]["value"], number> = {
+  morning: 12,
+  afternoon: 16,
+  evening: 20,
+};
+
+/** Slots still bookable for the given preferred date (YYYY-MM-DD or parseable). */
+export function availableSlotOptions(preferredDate?: string | null) {
+  if (!preferredDate?.trim()) return [...SLOT_OPTIONS];
+  const day = new Date(preferredDate);
+  if (Number.isNaN(day.getTime())) return [...SLOT_OPTIONS];
+
+  const now = new Date();
+  const sameDay =
+    day.getFullYear() === now.getFullYear() &&
+    day.getMonth() === now.getMonth() &&
+    day.getDate() === now.getDate();
+  if (!sameDay) {
+    // Future dates: all slots. Past calendar dates: none.
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    if (startOfDay < startOfToday) return [];
+    return [...SLOT_OPTIONS];
+  }
+
+  const hour = now.getHours() + now.getMinutes() / 60;
+  return SLOT_OPTIONS.filter((slot) => hour < SLOT_END_HOUR[slot.value]);
+}
 
 export const EVENT_TYPE_OPTIONS: Array<{
   value: EventManagementFormValues["eventType"];

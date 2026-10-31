@@ -17,6 +17,7 @@ import {
   INSTAGRAM_URL,
   PUBLIC_CONTACT_EMAIL,
   PUBLIC_CONTACT_PHONE,
+  BRAND_EXPANSION,
   SITE_NAME,
 } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
@@ -43,14 +44,14 @@ const Footer = () => {
           <div className="flex flex-col gap-3">
             <Link href="/" className="flex items-center gap-2">
               {logoUrl ? (
-                <span className="relative inline-flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden">
+                <span className="relative inline-flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden">
                   <Image
                     src={logoUrl}
                     alt={siteName}
                     fill
-                    sizes="128px"
+                    sizes="160px"
                     unoptimized
-                    className="object-contain"
+                    className="object-contain object-center p-1"
                   />
                 </span>
               ) : (
@@ -63,10 +64,11 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-xs font-medium uppercase tracking-wider text-primary">
-              Yashas Business Development &amp; Consultancy
+              {BRAND_EXPANSION}
             </p>
             <p className="text-sm text-muted-foreground max-w-xs wrap-break-word">
-              Browse property listings and explore related relocation, finance, and business services.
+              Connecting customers with verified real estate listings and verified service
+              professionals across relocation, finance, and enterprise development.
             </p>
           </div>
 
@@ -78,6 +80,7 @@ const Footer = () => {
               <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
               <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
               <li><Link href="/terms-and-conditions" className="hover:text-primary transition-colors">Terms &amp; Conditions</Link></li>
+              <li><Link href="/#faq" className="hover:text-primary transition-colors">FAQs</Link></li>
             </ul>
           </div>
 

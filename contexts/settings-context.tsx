@@ -25,7 +25,13 @@ export const SettingsProvider = ({
     queryFn: api.getSettings,
     staleTime: 10 * 60 * 1000,
   });
-  const effectiveSettings: Partial<Settings> | undefined = settings ?? initialBranding;
+  // Lock brand name to the compile-time constant even if the API still returns
+  // a settings.siteName value from an older admin edit.
+  const effectiveSettings: Partial<Settings> | undefined = settings
+    ? { ...settings, siteName: SITE_NAME }
+    : initialBranding
+      ? { ...initialBranding, siteName: SITE_NAME }
+      : undefined;
 
   useEffect(() => {
     if (effectiveSettings?.theme) {
@@ -37,22 +43,17 @@ export const SettingsProvider = ({
     applyFavicon(effectiveSettings?.faviconUrl);
   }, [effectiveSettings?.faviconUrl]);
 
-  // Keep the browser tab label in sync with the admin-provided site name.
-  // We only override when a siteName is configured — otherwise leave whatever
-  // the page's `<title>` from Next metadata set.
+  // Keep the browser tab label in sync with the locked site name.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const name = effectiveSettings?.siteName?.trim();
-    if (!name) return;
-    // Preserve any per-page prefix from Next's title template (`Something | Site`).
     const current = document.title;
     const separatorIdx = current.lastIndexOf(" | ");
     if (separatorIdx > 0) {
-      document.title = `${current.slice(0, separatorIdx)} | ${name}`;
-    } else if (current === SITE_NAME || current.trim() === "") {
-      document.title = name;
+      document.title = `${current.slice(0, separatorIdx)} | ${SITE_NAME}`;
+    } else if (current.trim() === "") {
+      document.title = SITE_NAME;
     }
-  }, [effectiveSettings?.siteName]);
+  }, []);
 
   return (
     <SettingsContext.Provider value={{ settings: effectiveSettings, isLoading }}>

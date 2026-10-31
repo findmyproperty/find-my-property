@@ -5,9 +5,16 @@
 
 export const PROPERTY_SECTORS = ["residential", "commercial", "plot"] as const;
 export const POSTING_TYPES = ["rent", "resale", "sale", "pg", "flatmates"] as const;
+/** Cities allowed when creating/editing a listing (choice step + locality). */
+export const LISTING_CITIES = ["Chennai", "Bengaluru"] as const;
 
 export type PropertySector = (typeof PROPERTY_SECTORS)[number];
 export type PostingType = (typeof POSTING_TYPES)[number];
+export type ListingCity = (typeof LISTING_CITIES)[number];
+
+export function isListingCity(value: string): value is ListingCity {
+  return (LISTING_CITIES as readonly string[]).includes(value);
+}
 
 const PAIRS: Record<PropertySector, readonly PostingType[]> = {
   residential: ["rent", "resale", "pg", "flatmates"],
@@ -85,10 +92,12 @@ export type ListingDetails = {
   preferredVisitEnd?: string;
   contactPreference?: string;
   contactAvailability?: string;
+  contactAvailabilityCustom?: string;
   whatsappUpdates?: string;
   preferredVisitDays?: string[];
   otherAmenities?: string[];
   apartmentType?: string;
+  apartmentTypeOther?: string;
   apartmentName?: string;
   numberOfFloors?: string;
   propertyAge?: string;
@@ -349,7 +358,7 @@ export function validateListingForm(values: ListingFormShape): FormIssue[] {
   if (text(values.title).length < 5) miss("title", "Title must be at least 5 characters.");
   if (text(values.address).length < 5) miss("address", "Address must be at least 5 characters.");
   if (text(values.locality).length < 2) miss("locality", "Locality is required.");
-  if (text(values.city).length < 2) miss("city", "City is required.");
+  if (!isListingCity(text(values.city))) miss("city", "Select Chennai or Bengaluru.");
   if (text(values.country).length < 2) miss("country", "Country is required.");
   if (text(values.description).length > 3000) miss("description", "Description is too long.");
 
@@ -404,9 +413,16 @@ function validateLegacy(values: ListingFormShape): FormIssue[] {
   if (!text(values.furnishing)) miss("furnishing", "Please select furnishing status.");
   if (text(values.address).length < 5) miss("address", "Address must be at least 5 characters.");
   if (text(values.locality).length < 2) miss("locality", "Locality is required.");
-  if (text(values.city).length < 2) miss("city", "City is required.");
+  if (!isListingCity(text(values.city))) miss("city", "Select Chennai or Bengaluru.");
   if (text(values.country).length < 2) miss("country", "Country is required.");
   return errors;
+}
+
+function isValidOptionalIndianMobile(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return true;
+  const national = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  return /^[6-9]\d{9}$/.test(national);
 }
 
 function apartmentShape(
@@ -416,11 +432,17 @@ function apartmentShape(
 ) {
   const kind = text(details.apartmentType);
   const allowed = resale
-    ? ["apartment", "independent_house", "gated_villa", "standalone_building"]
-    : ["apartment", "independent_house", "gated_villa"];
+    ? ["apartment", "independent_house", "gated_villa", "standalone_building", "other"]
+    : ["apartment", "independent_house", "gated_villa", "other"];
   if (!allowed.includes(kind)) miss("details.apartmentType", "Apartment type is required.");
+  if (kind === "other") {
+    const custom = text(details.apartmentTypeOther).slice(0, 60);
+    if (custom.length < 2) {
+      miss("details.apartmentTypeOther", "Please specify the apartment type (2–60 characters).");
+    }
+  }
   const hideFloor = kind === "independent_house" || kind === "gated_villa";
-  const showName = kind === "apartment" || kind === "gated_villa";
+  const showName = kind === "apartment" || kind === "gated_villa" || kind === "other";
   const showNumberOfFloors = kind === "independent_house" || kind === "gated_villa";
   if (!hideFloor && kind) {
     if (!text(details.floor)) miss("details.floor", "Floor is required.");
@@ -461,6 +483,9 @@ function validateRentForm(
   if (!yesNo(details.gym)) miss("details.gym", "Gym is required.");
   if (!yesNo(details.nonVegAllowed)) miss("details.nonVegAllowed", "Non-veg allowed is required.");
   if (!yesNo(details.gatedSecurity)) miss("details.gatedSecurity", "Gated security is required.");
+  if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
+    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+  }
 }
 
 function validateResaleForm(
@@ -487,6 +512,9 @@ function validateResaleForm(
   }
   if (!text(details.propertyTax)) miss("details.propertyTax", "Property tax is required.");
   if (!text(details.occupancyCertificate)) miss("details.occupancyCertificate", "Occupancy certificate is required.");
+  if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
+    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+  }
 }
 
 function validatePgForm(details: ListingDetails, miss: (path: string, message: string) => void) {
@@ -526,6 +554,9 @@ function validateFlatmatesForm(
   if (!yesNo(details.gym)) miss("details.gym", "Gym is required.");
   if (!yesNo(details.gatedSecurity)) miss("details.gatedSecurity", "Gated security is required.");
   if (!text(details.whoWillShow)) miss("details.whoWillShow", "Who will show the property is required.");
+  if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
+    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+  }
 }
 
 function validateCommercialForm(
@@ -557,6 +588,9 @@ function validateCommercialForm(
   if (!positive(details.superBuiltUpArea)) miss("details.superBuiltUpArea", "Built up area is required.");
   if (!text(details.furnishing)) miss("details.furnishing", "Furnishing is required.");
   if (!text(details.contactPreference)) miss("details.contactPreference", "Contact preference is required.");
+  if (text(details.contactAvailability) === "custom" && text(details.contactAvailabilityCustom).length < 2) {
+    miss("details.contactAvailabilityCustom", "Please describe your custom availability.");
+  }
   const description = text(values.description);
   if (description.length < 50 || description.length > 3000) {
     miss("description", "Description must be between 50 and 3000 characters.");
@@ -611,13 +645,18 @@ function propertyTypeLabel(sector: string, posting: string, details: ListingDeta
     };
     return labels[text(details.commercialPropertyType)] || "Commercial";
   }
+  const kind = text(details.apartmentType);
+  if (kind === "other") {
+    const custom = text(details.apartmentTypeOther).slice(0, 60);
+    return custom || fallback || "Residential";
+  }
   const homes: Record<string, string> = {
     apartment: "Apartment",
     independent_house: "Independent House/Villa",
     gated_villa: "Gated Community Villa",
     standalone_building: "Standalone Building",
   };
-  return homes[text(details.apartmentType)] || fallback || "Residential";
+  return homes[kind] || fallback || "Residential";
 }
 
 function serializeDetails(details: ListingDetails): Record<string, unknown> {
@@ -667,6 +706,16 @@ function lowestPgRent(details: ListingDetails) {
     .map((roomType) => numberOf(details.rooms?.[roomType]?.rent))
     .filter((n) => Number.isFinite(n) && n > 0);
   return rents.length ? Math.min(...rents) : 0;
+}
+
+/** Soft gate before saving a draft — need at least a city or title. */
+export function canSavePropertyDraft(values: ListingFormShape): boolean {
+  return text(values.city).length >= 2 || text(values.title).length >= 1;
+}
+
+/** Same shape as publish payload; backend fills placeholders for empty required columns. */
+export function buildPropertyDraftPayload(values: ListingFormShape): Record<string, unknown> {
+  return buildPropertyPayload(values);
 }
 
 export function buildPropertyPayload(values: ListingFormShape): Record<string, unknown> {
@@ -871,7 +920,9 @@ const DETAIL_LABELS: Record<string, string> = {
   otherFeatures: "Other features",
   contactPreference: "Contact preference",
   contactAvailability: "Contact availability",
+  contactAvailabilityCustom: "Custom availability",
   apartmentType: "Apartment type",
+  apartmentTypeOther: "Specify apartment type",
   apartmentName: "Apartment name",
   numberOfFloors: "Number of floors",
   propertyAge: "Property age",

@@ -22,6 +22,8 @@ const Onboarding = () => {
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
   const [locationCity, setLocationCity] = useState("");
   const [locationState, setLocationState] = useState("");
@@ -29,6 +31,7 @@ const Onboarding = () => {
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [savingProfile, setSavingProfile] = useState(false);
+  const needsPassword = !user?.hasPassword;
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -119,10 +122,30 @@ const Onboarding = () => {
       return;
     }
 
+    if (needsPassword) {
+      if (password.trim().length < 8 || password.trim().length > 72) {
+        toast({
+          title: "Invalid password",
+          description: "Password must be between 8 and 72 characters.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast({
+          title: "Passwords do not match",
+          description: "Confirm password must match your new password.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSavingProfile(true);
     const result = await updateProfile({
       email: email.trim(),
       name: name.trim(),
+      ...(needsPassword ? { password: password.trim() } : {}),
       locationAddress: locationAddress.trim(),
       locationCity: locationCity.trim(),
       locationState: locationState.trim(),
@@ -133,7 +156,15 @@ const Onboarding = () => {
     setSavingProfile(false);
 
     if (!result.success) {
-      toast({ title: "Profile update failed", description: result.error, variant: "destructive" });
+      const emailTaken =
+        typeof result.error === "string" &&
+        /email/i.test(result.error) &&
+        /already/i.test(result.error);
+      toast({
+        title: emailTaken ? "Email already taken" : "Profile update failed",
+        description: result.error,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -160,7 +191,9 @@ const Onboarding = () => {
           </div>
           <div>
             <h1 className="font-heading text-2xl font-bold text-foreground">Complete Your Profile</h1>
-            <p className="text-sm text-muted-foreground">Add email, name, and your full location. All fields are required.</p>
+            <p className="text-sm text-muted-foreground">
+              Add email, name,{needsPassword ? " password," : ""} and your full location. All fields are required.
+            </p>
           </div>
         </div>
 
@@ -198,6 +231,39 @@ const Onboarding = () => {
                     autoComplete="name"
                   />
                 </div>
+
+                {needsPassword ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="onboarding-password">Password</Label>
+                      <Input
+                        id="onboarding-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="At least 8 characters"
+                        required
+                        minLength={8}
+                        maxLength={72}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="onboarding-confirm-password">Confirm password</Label>
+                      <Input
+                        id="onboarding-confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        required
+                        minLength={8}
+                        maxLength={72}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="flex gap-3 flex-wrap items-center">
                   <Button type="button" variant="outline" onClick={handleDetectLocation} disabled={detectingLocation}>

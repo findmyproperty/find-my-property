@@ -31,25 +31,28 @@ export function OtpField({
   }, [active]);
 
   return (
-    <div className="space-y-2 overflow-hidden">
+    <div className="space-y-2">
       <label className="ml-1 text-sm font-medium leading-none text-foreground">
         One-Time Password
       </label>
-      <InputOTP
-        ref={otpInputRef}
-        maxLength={6}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        containerClassName="w-full"
-        autoFocus
-      >
-        <InputOTPGroup className="w-full gap-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <InputOTPSlot key={index} index={index} className={OTP_SLOT_CLASS} />
-          ))}
-        </InputOTPGroup>
-      </InputOTP>
+      {/* Padding so the active ring is not clipped on the left/edges */}
+      <div className="overflow-visible p-1 -m-1">
+        <InputOTP
+          ref={otpInputRef}
+          maxLength={6}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          containerClassName="w-full"
+          autoFocus
+        >
+          <InputOTPGroup className="w-full gap-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <InputOTPSlot key={index} index={index} className={OTP_SLOT_CLASS} />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
+      </div>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );

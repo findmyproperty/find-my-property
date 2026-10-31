@@ -44,7 +44,15 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   profile: UserProfile;
-  requestPhoneOtp: (phone: string) => Promise<{ success: true } | FailedResult>;
+  requestPhoneOtp: (
+    phone: string,
+    intent?: "login" | "register",
+  ) => Promise<{ success: true } | FailedResult>;
+  requestEmailOtp: (email: string) => Promise<{ success: true } | FailedResult>;
+  verifyEmailOtp: (
+    email: string,
+    code: string,
+  ) => Promise<AuthResult>;
   loginWithPhone: (
     phone: string,
     code: string,
@@ -54,13 +62,20 @@ interface AuthContextType {
       businessName?: string;
       categoryIds?: number[];
     },
+    intent?: "login" | "register",
   ) => Promise<AuthResult>;
+  loginWithPassword: (phone: string, password: string) => Promise<AuthResult>;
+  changePassword: (input: {
+    currentPassword?: string;
+    newPassword: string;
+  }) => Promise<AuthResult>;
   refreshUser: () => Promise<void>;
   updateProfile: (payload: {
     email?: string;
     name?: string;
     role?: UserRole;
     phone?: string;
+    password?: string;
     otp?: string;
     avatarUrl?: string | null;
     locationAddress?: string;
@@ -136,14 +151,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setFmpRoleCookieClient(nextUser.role);
   };
 
-  const requestPhoneOtp = async (phone: string) => {
+  const requestPhoneOtp = async (
+    phone: string,
+    intent: "login" | "register" = "login",
+  ) => {
     try {
-      await api.requestPhoneOtp(phone);
+      await api.requestPhoneOtp(phone, intent);
       return { success: true as const };
     } catch (error) {
       return {
         success: false as const,
         error: error instanceof Error ? error.message : "Unable to send phone OTP",
+      };
+    }
+  };
+
+  const requestEmailOtp = async (email: string) => {
+    try {
+      await api.requestEmailOtp(email);
+      return { success: true as const };
+    } catch (error) {
+      return {
+        success: false as const,
+        error: error instanceof Error ? error.message : "Unable to send email OTP",
+      };
+    }
+  };
+
+  const verifyEmailOtp = async (email: string, code: string): Promise<AuthResult> => {
+    try {
+      const result = await api.verifyEmailOtp({ email, code });
+      persistSession(result.user, result.accessToken);
+      return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unable to verify email OTP",
       };
     }
   };
@@ -157,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       businessName?: string;
       categoryIds?: number[];
     },
+    intent: "login" | "register" = "login",
   ): Promise<AuthResult> => {
     try {
       const result = await api.verifyPhoneOtp({
@@ -164,6 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         code,
         name,
         role,
+        intent,
         businessName: vendorSignup?.businessName,
         categoryIds: vendorSignup?.categoryIds,
       });
@@ -173,6 +218,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unable to authenticate with phone",
+      };
+    }
+  };
+
+  const loginWithPassword = async (
+    phone: string,
+    password: string,
+  ): Promise<AuthResult> => {
+    try {
+      const result = await api.loginWithPassword(phone, password);
+      persistSession(result.user, result.accessToken);
+      return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Unable to authenticate with password",
+      };
+    }
+  };
+
+  const changePassword = async (input: {
+    currentPassword?: string;
+    newPassword: string;
+  }): Promise<AuthResult> => {
+    try {
+      const result = await api.changePassword(input);
+      persistSession(result.user, result.accessToken);
+      return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unable to change password",
       };
     }
   };
@@ -222,6 +300,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     name?: string;
     role?: UserRole;
     phone?: string;
+    password?: string;
     otp?: string;
     avatarUrl?: string | null;
     locationAddress?: string;
@@ -290,7 +369,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         token,
         profile,
         requestPhoneOtp,
+        requestEmailOtp,
+        verifyEmailOtp,
         loginWithPhone,
+        loginWithPassword,
+        changePassword,
         refreshUser,
         updateProfile,
         deleteAccount,

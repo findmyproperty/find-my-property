@@ -32,7 +32,9 @@ export function ListingManagementCard({
   const facts = listingFacts(p).map((f) => f.text).join(" · ");
   const isApproved = p.status === PropertyStatus.APPROVED;
   const isRejected = p.status === PropertyStatus.REJECTED;
+  const isDraft = p.status === PropertyStatus.DRAFT;
   const reason = p.rejectionReason?.trim();
+  const editLabel = isDraft ? "Continue editing" : "Edit";
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-card">
@@ -56,8 +58,10 @@ export function ListingManagementCard({
                 <Badge variant="outline" className="text-[10px]">{p.categoryLabel}</Badge>
               ) : null}
               <Badge
-                variant={isApproved ? "default" : isRejected ? "destructive" : "secondary"}
-                className="text-[10px]"
+                variant={
+                  isApproved ? "default" : isRejected ? "destructive" : isDraft ? "outline" : "secondary"
+                }
+                className={`text-[10px] ${isDraft ? "text-muted-foreground" : ""}`}
               >
                 {p.status || PropertyStatus.PENDING}
               </Badge>
@@ -77,10 +81,14 @@ export function ListingManagementCard({
           </div>
 
           <div className="flex shrink-0 flex-col items-stretch gap-3 md:w-44 md:items-end">
-            <p className="font-heading text-xl font-bold tabular-nums text-foreground md:text-right">
-              {p.price}
-              <span className="text-sm font-medium text-muted-foreground">{p.priceLabel}</span>
-            </p>
+            {!isDraft ? (
+              <p className="font-heading text-xl font-bold tabular-nums text-foreground md:text-right">
+                {p.price}
+                <span className="text-sm font-medium text-muted-foreground">{p.priceLabel}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground md:text-right">Draft — not submitted</p>
+            )}
 
             <div className="hidden items-center justify-end gap-2 md:flex">
               {isApproved ? (
@@ -94,7 +102,7 @@ export function ListingManagementCard({
               <Button size="sm" asChild>
                 <Link href={`/edit-property/${p.id}`}>
                   <Edit className="size-3.5" />
-                  Edit
+                  {editLabel}
                 </Link>
               </Button>
               <DropdownMenu>
@@ -110,7 +118,7 @@ export function ListingManagementCard({
                     onClick={onDelete}
                   >
                     <Trash2 className="size-4" />
-                    {deleting ? "Deleting…" : "Delete listing"}
+                    {deleting ? "Deleting…" : isDraft ? "Delete draft" : "Delete listing"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -133,7 +141,7 @@ export function ListingManagementCard({
         <Button size="sm" variant="outline" asChild className="min-h-11">
           <Link href={`/edit-property/${p.id}`}>
             <Edit className="mr-1 size-3.5" />
-            Edit
+            {editLabel}
           </Link>
         </Button>
         <Button

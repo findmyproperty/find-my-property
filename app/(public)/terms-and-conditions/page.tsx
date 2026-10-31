@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { ArrowLeft, FileText, Mail, ShieldCheck } from "lucide-react";
+import { FileText, Mail, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SUPPORT_EMAIL } from "@/lib/branding";
 import { getBranding } from "@/lib/branding/server";
@@ -120,9 +118,10 @@ export default async function TermsAndConditionsPage() {
           </p>
           <p>
             Vendors are independent service providers unless explicitly identified as our
-            employees or representatives. Verification labels, profile reviews, or
-            onboarding checks are informational controls and do not guarantee a
-            provider&apos;s quality, availability, licensing, conduct, or outcome.
+            employees or representatives. Where we label a provider as a verified vendor,
+            that means they have completed our onboarding checks. Verification does not
+            guarantee a provider&apos;s quality, availability, licensing, conduct, or outcome
+            of any engagement.
           </p>
           <p>
             Customers should confirm the provider&apos;s identity, scope, pricing,
@@ -355,14 +354,7 @@ export default async function TermsAndConditionsPage() {
     <main className="pb-20 pt-24">
       <section className="border-b border-border bg-muted/25">
         <div className="container mx-auto max-w-[1200px] px-4 py-14 sm:py-20">
-          <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground">
-            <Link href="/">
-              <ArrowLeft data-icon="inline-start" aria-hidden />
-              Back to home
-            </Link>
-          </Button>
-
-          <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_0.7fr] lg:items-end">
+          <div className="grid gap-10 lg:grid-cols-[1fr_0.7fr] lg:items-end">
             <div>
               <Badge variant="outline" className="text-primary">
                 <FileText data-icon="inline-start" aria-hidden />
@@ -372,7 +364,7 @@ export default async function TermsAndConditionsPage() {
                 Terms &amp; Conditions
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-                The rules for using {siteName} across property listings, service requests,
+                The norms for using {siteName} across property listings, service requests,
                 vendor interactions, finance and career assistance, and account features.
               </p>
             </div>

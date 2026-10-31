@@ -7,6 +7,7 @@ export type BackendProperty = PropertyWithRelations;
 
 /** Admin / filters — aligned with `propertyStatusSchema`. */
 export const PropertyStatus = {
+  DRAFT: "Draft",
   PENDING: "Pending",
   APPROVED: "Approved",
   REJECTED: "Rejected",

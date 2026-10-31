@@ -337,7 +337,7 @@ export default function Index({
       {popularCitiesContent}
 
       {/* 08. INSTITUTIONAL FAQ & CLARITY */}
-      <section className="bg-muted/20 py-20 sm:py-28 border-b border-border/80">
+      <section id="faq" className="bg-muted/20 py-20 sm:py-28 border-b border-border/80 scroll-mt-24">
         <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">

@@ -12,13 +12,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
 import LocationPicker, { type LocationValue, type AddressComponents } from "@/modules/properties/LocationPicker";
+import { LISTING_CITIES, isListingCity } from "@/lib/property-posting";
 import type { PropertyFormValues } from "./schema";
 import { useToast } from "@/hooks/use-toast";
 import { useDetectCurrentLocation } from "@/hooks/use-detect-current-location";
 
-export const LocationSection = () => {
-  const { control, setValue } = useFormContext<PropertyFormValues>();
+export const LocationSection = ({ lockCity = false }: { lockCity?: boolean }) => {
+  const { control, setValue, getValues } = useFormContext<PropertyFormValues>();
   const { toast } = useToast();
   const { run: detectLocation, isPending: detectingLocation } = useDetectCurrentLocation();
   const [mapLocation, setMapLocation] = useState<LocationValue | null>(null);
@@ -63,11 +65,15 @@ export const LocationSection = () => {
       if (!addr) return;
       if (addr.address != null) setValue("address", addr.address, { shouldValidate: true, shouldDirty: true });
       if (addr.locality != null) setValue("locality", addr.locality, { shouldValidate: true, shouldDirty: true });
-      if (addr.city != null) setValue("city", addr.city, { shouldValidate: true, shouldDirty: true });
+      const currentCity = getValues("city");
+      // Keep allowlist city from the listing-type step; do not overwrite with reverse-geocode.
+      if (addr.city != null && !isListingCity(currentCity)) {
+        setValue("city", addr.city, { shouldValidate: true, shouldDirty: true });
+      }
       if (addr.state != null) setValue("state", addr.state, { shouldValidate: true, shouldDirty: true });
       if (addr.country != null) setValue("country", addr.country, { shouldValidate: true, shouldDirty: true });
     },
-    [setValue],
+    [getValues, setValue],
   );
 
   const handleAddressFromMap = applyAddressComponents;
@@ -173,9 +179,21 @@ export const LocationSection = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel required>City</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Bengaluru" {...field} />
-                </FormControl>
+                {lockCity ? (
+                  <FormControl>
+                    <Input {...field} readOnly aria-readonly="true" className="bg-muted/40" />
+                  </FormControl>
+                ) : (
+                  <FormControl>
+                    <Combobox
+                      options={LISTING_CITIES.map((item) => ({ value: item, label: item }))}
+                      value={isListingCity(field.value) ? field.value : null}
+                      onValueChange={field.onChange}
+                      placeholder="Select city"
+                      disableSearch
+                    />
+                  </FormControl>
+                )}
                 <FormMessage />
               </FormItem>
             )}

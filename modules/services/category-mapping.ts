@@ -9,9 +9,9 @@ export type ServiceCategoryOption = {
 };
 
 export const SERVICE_OPTIONS_LOADING_PLACEHOLDER = "Loading services…";
-export const SERVICE_OPTIONS_UNAVAILABLE_PLACEHOLDER = "No services available";
+export const SERVICE_OPTIONS_UNAVAILABLE_PLACEHOLDER = "No services mapped yet";
 export const SERVICE_OPTIONS_UNAVAILABLE_MESSAGE =
-  "No services are available right now. Please check back later.";
+  "No service options are mapped for this form yet. An admin must assign categories under Category Management (this is configuration, not a form bug).";
 
 function normalizeCategoryKey(value: string) {
   return slugify(value).replace(/-/g, "_");

@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import type { PublicVendorOption } from "@/schema/vendor";
 
 function vendorDisplayName(vendor: PublicVendorOption) {
-  return vendor.businessName?.trim() || vendor.vendorName?.trim() || "Verified partner";
+  return vendor.businessName?.trim() || vendor.vendorName?.trim() || "Verified vendor";
 }
 
 function vendorProfileHref(vendor: PublicVendorOption) {

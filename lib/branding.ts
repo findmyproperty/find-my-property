@@ -1,10 +1,12 @@
 /**
- * Compile-time fallback for the brand name. The runtime source of truth is the
- * admin-editable `settings.site_name` row in the backend; this constant only
- * fills in when the API is unreachable or before SSR data has resolved.
+ * Locked brand name for The YBDC. Not admin-editable — UI and SSR always use
+ * this constant (settings.site_name in the DB is ignored for display).
  */
 export const DEFAULT_SITE_NAME = "The YBDC";
-export const BRAND_EXPANSION = "Yashas Business Development & Consultancy";
+export const BRAND_EXPANSION = "The Yashas Business Development & Consultancy";
+
+/** Navbar / header tagline under the site name. */
+export const BRAND_TAGLINE = "Real Estate & Consultancy";
 
 /** Backwards-compatible alias — many call sites still import `SITE_NAME`. */
 export const SITE_NAME = DEFAULT_SITE_NAME;

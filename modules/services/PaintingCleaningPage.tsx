@@ -40,12 +40,12 @@ import {
 } from "./category-mapping";
 import {
   PROPERTY_TYPE_OPTIONS,
-  SLOT_OPTIONS,
   SUB_TYPE_OPTIONS,
   paintingCleaningSchema,
   type PaintingCleaningFormValues,
   type StopValue,
 } from "./schemas";
+import { PreferredSlotField } from "./PreferredSlotField";
 import { ServiceHero } from "./ServiceHero";
 import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
@@ -71,7 +71,7 @@ const STEPS: HowItWorksStep[] = [
     icon: PhoneCall,
     title: "We call you back",
     description:
-      "A supervisor confirms scope, visits if needed, and shares a transparent quote.",
+      "A supervisor confirms scope, visits if needed, and shares a transparent quotation.",
   },
   {
     icon: CalendarCheck,
@@ -217,7 +217,7 @@ export default function PaintingCleaningPage() {
               Book painting or cleaning
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Share a few details and we&apos;ll call you back with a transparent quote.
+              Share a few details and we&apos;ll call you back with a transparent quotation.
             </p>
           </div>
 
@@ -530,26 +530,7 @@ export default function PaintingCleaningPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="preferredSlot"
-                      render={({ field, fieldState }) => (
-                        <FormItem>
-                          <FormLabel>Preferred slot</FormLabel>
-                          <FormControl>
-                            <Combobox
-                              options={SLOT_OPTIONS}
-                              value={field.value ?? ""}
-                              onValueChange={field.onChange}
-                              placeholder="Anytime"
-                              disableSearch
-                              aria-invalid={!!fieldState.error}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <PreferredSlotField />
                   </div>
 
                   <FormField

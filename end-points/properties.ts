@@ -115,8 +115,26 @@ export const properties = {
     return mapBackendProperty(created);
   },
 
+  async createPropertyDraft(input: Record<string, unknown>) {
+    const created = await request<BackendProperty>("/properties/draft", {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+    return mapBackendProperty(created);
+  },
+
   async updateProperty(id: string, input: Record<string, unknown>) {
     const updated = await request<BackendProperty>(`/properties/${id}`, {
+      method: "PATCH",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+    return mapBackendProperty(updated);
+  },
+
+  async updatePropertyDraft(id: string, input: Record<string, unknown>) {
+    const updated = await request<BackendProperty>(`/properties/${id}/draft`, {
       method: "PATCH",
       token: getStoredToken(),
       body: JSON.stringify(input),

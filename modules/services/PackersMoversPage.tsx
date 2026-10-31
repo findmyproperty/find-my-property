@@ -43,11 +43,11 @@ import {
   BHK_OPTIONS,
   MAX_DROPS,
   MOVE_TYPE_OPTIONS,
-  SLOT_OPTIONS,
   packersMoversSchema,
   type PackersMoversFormValues,
   type StopValue,
 } from "./schemas";
+import { PreferredSlotField } from "./PreferredSlotField";
 import { ServiceHero } from "./ServiceHero";
 import { SERVICE_IMAGES } from "./service-images";
 import { HowItWorks, type HowItWorksStep } from "./HowItWorks";
@@ -68,7 +68,7 @@ const STEPS: HowItWorksStep[] = [
     icon: PhoneCall,
     title: "We call you back",
     description:
-      "Our move specialist confirms scope, dates, and gives you a transparent quote.",
+      "Our move specialist confirms scope, dates, and gives you a transparent quotation.",
   },
   {
     icon: CalendarCheck,
@@ -216,7 +216,7 @@ export default function PackersMoversPage() {
 
       <HowItWorks
         heading="How your move works"
-        subheading="From the first quote to the last carton — four steps, zero surprises."
+        subheading="From the first quotation to the last carton — four steps, zero surprises."
         steps={STEPS}
       />
 
@@ -224,7 +224,7 @@ export default function PackersMoversPage() {
         <div className="container mx-auto max-w-3xl px-4">
           <div className="mb-10 text-center">
             <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">
-              Get a free moving quote
+              Get a free moving quotation
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Fill a few details below. Our team typically calls back within 30 minutes on business hours.
@@ -513,26 +513,7 @@ export default function PackersMoversPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="preferredSlot"
-                      render={({ field, fieldState }) => (
-                        <FormItem>
-                          <FormLabel>Preferred slot</FormLabel>
-                          <FormControl>
-                            <Combobox
-                              options={SLOT_OPTIONS}
-                              value={field.value ?? ""}
-                              onValueChange={field.onChange}
-                              placeholder="Anytime"
-                              disableSearch
-                              aria-invalid={!!fieldState.error}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <PreferredSlotField />
                   </div>
 
                   <div className="mt-5">

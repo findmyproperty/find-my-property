@@ -30,12 +30,14 @@ const TenantListings = () => {
     let approved = 0;
     let pending = 0;
     let rejected = 0;
+    let draft = 0;
     for (const p of listings) {
       if (p.status === PropertyStatus.APPROVED) approved++;
       else if (p.status === PropertyStatus.REJECTED) rejected++;
+      else if (p.status === PropertyStatus.DRAFT) draft++;
       else pending++;
     }
-    return { approved, pending, rejected };
+    return { approved, pending, rejected, draft };
   }, [listings]);
 
   const handleDelete = async (id: string) => {
@@ -77,6 +79,11 @@ const TenantListings = () => {
               <Badge variant="outline" className="font-normal">
                 {counts.pending} pending
               </Badge>
+              {counts.draft > 0 ? (
+                <Badge variant="outline" className="font-normal text-muted-foreground">
+                  {counts.draft} draft
+                </Badge>
+              ) : null}
               {counts.rejected > 0 ? (
                 <Badge variant="destructive" className="font-normal">
                   {counts.rejected} rejected

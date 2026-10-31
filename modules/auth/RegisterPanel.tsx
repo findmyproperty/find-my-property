@@ -71,7 +71,7 @@ export default function RegisterPanel({
     }
 
     setSendingOtp(true);
-    const result = await requestPhoneOtp(formattedPhone);
+    const result = await requestPhoneOtp(formattedPhone, "register");
     setSendingOtp(false);
 
     if (!result.success) {
@@ -96,7 +96,7 @@ export default function RegisterPanel({
     }
 
     setVerifyingOtp(true);
-    const result = await loginWithPhone(phone, otp, name);
+    const result = await loginWithPhone(phone, otp, name, undefined, undefined, "register");
     setVerifyingOtp(false);
 
     if (!result.success) {
@@ -211,7 +211,7 @@ export default function RegisterPanel({
 
       <div className={`text-center text-sm ${isModal ? "mt-4" : "mt-6"}`}>
         <Link href="/register-vendor" className="text-primary font-medium hover:underline">
-          Register as FMP partner (vendor)
+          Register as FMP vendor
         </Link>
       </div>
 

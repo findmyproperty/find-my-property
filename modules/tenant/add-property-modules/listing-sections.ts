@@ -33,7 +33,8 @@ export type FieldKind =
   | "date"
   | "time"
   | "stepper"
-  | "pgRooms";
+  | "pgRooms"
+  | "apartmentNameSearch";
 
 export type ListingField = {
   name: string;
@@ -63,8 +64,11 @@ const titleField: ListingField = {
 const hideFloor = (details: ListingDetails) =>
   details.apartmentType === "independent_house" || details.apartmentType === "gated_villa";
 
+/** Other behaves like Apartment for dependent fields. */
 const showName = (details: ListingDetails) =>
-  details.apartmentType === "apartment" || details.apartmentType === "gated_villa";
+  details.apartmentType === "apartment" ||
+  details.apartmentType === "gated_villa" ||
+  details.apartmentType === "other";
 
 function homeTypeFields(resale: boolean): ListingField[] {
   const types = [
@@ -72,13 +76,22 @@ function homeTypeFields(resale: boolean): ListingField[] {
     opt("independent_house", "Independent House/Villa"),
     opt("gated_villa", "Gated Community Villa"),
     ...(resale ? [opt("standalone_building", "Standalone Building")] : []),
+    opt("other", "Other"),
   ];
   return [
     { name: "details.apartmentType", label: "Apartment type", kind: "select", required: true, options: types },
     {
+      name: "details.apartmentTypeOther",
+      label: "Specify apartment type",
+      kind: "text",
+      required: true,
+      show: (details) => details.apartmentType === "other",
+      placeholder: "e.g. Builder floor, Studio",
+    },
+    {
       name: "details.apartmentName",
       label: "Apartment name",
-      kind: "text",
+      kind: "apartmentNameSearch",
       required: true,
       show: showName,
       placeholder: "Society or apartment name",
@@ -395,6 +408,14 @@ function commercialSections(posting: string): ListingSection[] {
           label: "Contact availability",
           kind: "select",
           options: [opt("anytime", "Anytime"), opt("business_hours", "Business hours"), opt("custom", "Custom")],
+        },
+        {
+          name: "details.contactAvailabilityCustom",
+          label: "Custom availability",
+          kind: "text",
+          required: true,
+          show: (d) => d.contactAvailability === "custom",
+          placeholder: "e.g. Weekdays 6–9pm, Weekends anytime",
         },
       ],
     },

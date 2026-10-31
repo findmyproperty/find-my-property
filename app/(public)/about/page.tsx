@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   Building2,
@@ -46,7 +45,7 @@ export default async function AboutPage() {
     {
       icon: BadgeCheck,
       title: "Verify before we connect",
-      description: `Every partner on ${siteName} goes through a transparent verification process before being recommended to a customer.`,
+      description: `Every vendor on ${siteName} goes through a transparent verification process before being recommended to a customer.`,
     },
     {
       icon: Scale,
@@ -60,7 +59,7 @@ export default async function AboutPage() {
     },
     {
       icon: Network,
-      title: "Grow our partners",
+      title: "Grow our vendors",
       description: "Help verified businesses scale through quality leads and long-term customer relationships.",
     },
     {
@@ -79,14 +78,7 @@ export default async function AboutPage() {
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_18%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_30%),linear-gradient(to_bottom,var(--background),color-mix(in_oklab,var(--muted)_30%,var(--background)))]"
         />
         <div className="container mx-auto max-w-300 px-4 py-14 sm:py-20">
-          <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground">
-            <Link href="/">
-              <ArrowLeft data-icon="inline-start" aria-hidden />
-              Back to home
-            </Link>
-          </Button>
-
-          <div className="mt-14 grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+          <div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
               <Badge variant="outline" className="text-primary mb-4">
                 About {siteName}
@@ -128,7 +120,7 @@ export default async function AboutPage() {
                 <p className="leading-7 text-muted-foreground">
                   Spanning personal loans, home loans, business loans, real estate, and a growing
                   network of professional services, and beyond. We connect genuine customers with
-                  trusted businesses while helping partners grow.
+                  trusted businesses while helping vendors grow.
                 </p>
               </CardContent>
               <CardFooter className="p-7 pt-3 md:p-10 md:pt-4">
@@ -163,7 +155,7 @@ export default async function AboutPage() {
               <CardFooter className="p-7 pt-3 md:p-10 md:pt-4">
                 <Button asChild>
                   <Link href="/register-vendor">
-                    Join as partner
+                    Join as vendor
                     <ArrowRight data-icon="inline-end" aria-hidden />
                   </Link>
                 </Button>

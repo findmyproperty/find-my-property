@@ -62,12 +62,21 @@ export default function RolesRoutesShell({
   const isPropertyPage = pathname.startsWith("/property/")
 
   useLayoutEffect(() => {
+    if (!isAuthReady) return
+
     if (role != null && user && role !== user.role) {
-      logout().then(() => {
-        router.refresh()
+      void logout().then(() => {
+        router.replace("/login")
       })
+      return
     }
-  }, [role, user, logout, router])
+
+    // Protected routes under this shell: after logout (or cold visit without session),
+    // children/RequireAuth are not mounted while we show the spinner — redirect here.
+    if (!isAuthenticated && !marketplace) {
+      router.replace(`/login?from=${encodeURIComponent(pathname)}`)
+    }
+  }, [isAuthReady, isAuthenticated, marketplace, pathname, role, user, logout, router])
 
   if (showSidebar && user) {
     const groups = getNavGroupsForRole(user.role)

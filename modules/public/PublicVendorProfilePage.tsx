@@ -75,14 +75,14 @@ export default function PublicVendorProfilePage({
     );
   }
 
-  const name = profile.businessName?.trim() || "Verified partner";
+  const name = profile.businessName?.trim() || "Verified vendor";
   const categories = profile.categories ?? [];
   const ratingText =
     profile.overallRating && profile.reviewCount
       ? `${profile.overallRating.toFixed(1)} (${profile.reviewCount} review${
           profile.reviewCount === 1 ? "" : "s"
         })`
-      : "New partner";
+      : "New vendor";
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 sm:py-14 mt-20">
@@ -96,7 +96,7 @@ export default function PublicVendorProfilePage({
             ))}
           </div>
         ) : (
-          <Badge variant="secondary">Verified partner</Badge>
+          <Badge variant="secondary">Verified vendor</Badge>
         )}
         <h1 className="text-3xl font-bold tracking-tight">{name}</h1>
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">

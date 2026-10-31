@@ -50,12 +50,12 @@ import {
   BUDGET_RANGE_OPTIONS,
   EVENT_SERVICE_OPTIONS,
   EVENT_TYPE_OPTIONS,
-  SLOT_OPTIONS,
   VENUE_TYPE_OPTIONS,
   eventManagementSchema,
   type EventManagementFormValues,
   type StopValue,
 } from "./schemas";
+import { PreferredSlotField } from "./PreferredSlotField";
 
 const EMPTY_LOCATION: StopValue = { label: "", lat: 0, lng: 0, notes: "" };
 const EVENT_SERVICE_OPTIONS_BASE = EVENT_TYPE_OPTIONS;
@@ -172,8 +172,8 @@ export default function EventManagementPage() {
         services: values.services,
         location: {
           label: values.location.label.trim(),
-          lat: values.location.lat,
-          lng: values.location.lng,
+          lat: values.location.lat ?? 0,
+          lng: values.location.lng ?? 0,
           placeId: values.location.placeId,
           notes: values.location.notes?.trim() || undefined,
         },
@@ -459,8 +459,8 @@ export default function EventManagementPage() {
                               field.value?.label
                                 ? {
                                     label: field.value.label,
-                                    lat: field.value.lat,
-                                    lng: field.value.lng,
+                                    lat: field.value.lat ?? 0,
+                                    lng: field.value.lng ?? 0,
                                     placeId: field.value.placeId,
                                   }
                                 : null
@@ -478,7 +478,8 @@ export default function EventManagementPage() {
                                 notes: field.value?.notes ?? "",
                               });
                             }}
-                            placeholder="Search venue, home, office or area..."
+                            placeholder="Search venue or type a full address..."
+                            allowFreeText
                             showMapPreview
                             mapPreviewHeight={160}
                             error={
@@ -586,26 +587,7 @@ export default function EventManagementPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="preferredSlot"
-                      render={({ field, fieldState }) => (
-                        <FormItem>
-                          <FormLabel>Preferred slot</FormLabel>
-                          <FormControl>
-                            <Combobox
-                              options={SLOT_OPTIONS}
-                              value={field.value ?? ""}
-                              onValueChange={field.onChange}
-                              placeholder="Anytime"
-                              disableSearch
-                              aria-invalid={!!fieldState.error}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <PreferredSlotField />
                     <FormField
                       control={form.control}
                       name="pincode"

@@ -13,6 +13,7 @@ interface BackendAuthUser {
   isEmailVerified?: boolean;
   isPhoneVerified?: boolean;
   onboardingCompleted?: boolean;
+  hasPassword?: boolean;
   locationAddress?: string | null;
   locationCity?: string | null;
   locationState?: string | null;
@@ -57,6 +58,7 @@ function mapAuthUser(user: BackendAuthUser): AuthUser {
     isEmailVerified: Boolean(user.isEmailVerified),
     isPhoneVerified: Boolean(user.isPhoneVerified),
     onboardingCompleted: Boolean(user.onboardingCompleted),
+    hasPassword: Boolean(user.hasPassword),
     locationAddress: user.locationAddress ?? null,
     locationCity: user.locationCity ?? null,
     locationState: user.locationState ?? null,
@@ -85,10 +87,13 @@ export const auth = {
     });
   },
 
-  async requestPhoneOtp(phone: string) {
+  async requestPhoneOtp(
+    phone: string,
+    intent: "login" | "register" = "login",
+  ) {
     return request<{ message: string; status: string }>("/auth/phone-otp/request", {
       method: "POST",
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, intent }),
     });
   },
 
@@ -97,6 +102,7 @@ export const auth = {
     code: string;
     name?: string;
     role?: UserRole;
+    intent?: "login" | "register";
     businessName?: string;
     categoryIds?: number[];
   }) {
@@ -105,6 +111,50 @@ export const auth = {
       body: JSON.stringify(input),
     });
     return mapAuthResponse(response);
+  },
+
+  async loginWithPassword(phone: string, password: string) {
+    const response = await request<AuthApiResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ phone, password }),
+    });
+    return mapAuthResponse(response);
+  },
+
+  async changePassword(input: {
+    currentPassword?: string;
+    newPassword: string;
+  }) {
+    const response = await request<AuthApiResponse>("/auth/password/change", {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+    return mapAuthResponse(response);
+  },
+
+  async forgotPasswordRequest(phone: string) {
+    return request<{ message: string }>("/auth/password/forgot/request", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    });
+  },
+
+  async forgotPasswordVerify(phone: string, code: string) {
+    return request<{ message: string; resetToken: string }>(
+      "/auth/password/forgot/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ phone, code }),
+      },
+    );
+  },
+
+  async forgotPasswordReset(resetToken: string, newPassword: string) {
+    return request<{ message: string }>("/auth/password/forgot/reset", {
+      method: "POST",
+      body: JSON.stringify({ resetToken, newPassword }),
+    });
   },
 
   async getMe(token?: string) {
@@ -120,6 +170,8 @@ export const auth = {
     name?: string;
     role?: UserRole;
     phone?: string;
+    /** First-time password during onboarding only. */
+    password?: string;
     /** OTP sent to `phone` via `requestPhoneOtp` — required when updating phone while logged in. */
     otp?: string;
     /** Pass `null` to clear the existing avatar. */
@@ -133,6 +185,23 @@ export const auth = {
   }) {
     const response = await request<AuthApiResponse>("/auth/me", {
       method: "PATCH",
+      token: getStoredToken(),
+      body: JSON.stringify(input),
+    });
+    return mapAuthResponse(response);
+  },
+
+  async requestEmailOtp(email: string) {
+    return request<{ message: string; devCode?: string }>("/auth/email-otp/request", {
+      method: "POST",
+      token: getStoredToken(),
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async verifyEmailOtp(input: { email: string; code: string }) {
+    const response = await request<AuthApiResponse>("/auth/email-otp/verify", {
+      method: "POST",
       token: getStoredToken(),
       body: JSON.stringify(input),
     });

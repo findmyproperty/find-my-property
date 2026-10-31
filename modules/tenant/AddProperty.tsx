@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { revalidatePropertyListingCache } from "@/lib/server/revalidate-property-cache";
@@ -10,9 +10,18 @@ import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, ArrowLeft, Upload, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
 import { api } from "@/lib/api";
 import type { BackendProperty } from "@/lib/property-mapper";
 import { Form } from "@/components/ui/form";
@@ -29,18 +38,26 @@ import { listingSections, type ListingSection } from "./add-property-modules/lis
 import { PropertyWizardNav, type WizardStep } from "./add-property-modules/PropertyWizardNav";
 import {
   EMPTY_LISTING_DETAILS,
+  LISTING_CITIES,
   POSTING_LABELS,
   SECTOR_LABELS,
   PROPERTY_SECTORS,
+  buildPropertyDraftPayload,
   buildPropertyPayload,
+  canSavePropertyDraft,
   isAllowedPair,
+  isListingCity,
   postingOptionsFor,
   validateListingForm,
+  type ListingCity,
   type PostingType,
   type PropertySector,
 } from "@/lib/property-posting";
 
 const CHOICE_STEP: WizardStep = { id: "choice", title: "Listing type", fields: [] };
+
+/** Set when user discards a new listing so remount / browser-back starts empty. */
+const ADD_PROPERTY_DISCARD_KEY = "fmp-add-property-discard";
 
 const LEGACY_WIZARD_STEPS: WizardStep[] = [
   { id: "basic", title: "Basic Information", fields: [], legacy: true },
@@ -61,6 +78,13 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   const [step, setStep] = useState(0);
   /** Step indices with validation errors (quick nav shows X); cleared on success or sector/listing change */
   const [errorStepIndices, setErrorStepIndices] = useState<number[]>([]);
+  const [draftPropertyId, setDraftPropertyId] = useState<string | null>(
+    initialData?.status === "Draft" && initialData.id != null ? String(initialData.id) : null,
+  );
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const allowLeaveRef = useRef(false);
+  const pendingLeaveHref = useRef("/listings");
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -72,7 +96,9 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
 
   const sector = useWatch({ control: form.control, name: "propertySector" }) || "";
   const posting = useWatch({ control: form.control, name: "postingType" }) || "";
+  const city = useWatch({ control: form.control, name: "city" }) || "";
   const isCategorized = isAllowedPair(sector, posting);
+  const hasListingCity = isListingCity(city);
   const sections = useMemo(() => (isCategorized ? listingSections(sector, posting) : []), [isCategorized, sector, posting]);
 
   const steps = useMemo((): WizardStep[] => {
@@ -93,7 +119,34 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     const defaults = getDefaultValues(initialData);
     initialSnapshotRef.current = JSON.stringify(defaults);
     setRejectAlertDismissed(false);
-  }, [isEdit, initialData?.id]);
+    if (initialData.status === "Draft") {
+      setDraftPropertyId(String(initialData.id));
+    }
+  }, [isEdit, initialData?.id, initialData?.status]);
+
+  /** After Discard on create, clear any restored form (soft nav / bfcache). */
+  useEffect(() => {
+    if (isEdit) return;
+    const clearIfDiscarded = () => {
+      try {
+        if (sessionStorage.getItem(ADD_PROPERTY_DISCARD_KEY) !== "1") return;
+        sessionStorage.removeItem(ADD_PROPERTY_DISCARD_KEY);
+      } catch {
+        return;
+      }
+      form.reset(getDefaultValues());
+      setDraftPropertyId(null);
+      setStep(0);
+      setErrorStepIndices([]);
+      initialSnapshotRef.current = null;
+    };
+    clearIfDiscarded();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) clearIfDiscarded();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [isEdit, form]);
 
   const hasChanges =
     isEdit &&
@@ -101,6 +154,9 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     JSON.stringify(formValues) !== initialSnapshotRef.current;
 
   const canUpdate = isEdit && (isDirty || hasChanges);
+  const isDraftListing = initialData?.status === "Draft" || Boolean(draftPropertyId);
+  const allowsDraftSave = !isEdit || isDraftListing;
+  const hasUnsavedWork = isDirty || hasChanges;
   const rejectReason =
     initialData?.status === "Rejected" && initialData.reason?.trim()
       ? initialData.reason.trim()
@@ -112,7 +168,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
 
   useEffect(() => {
     setErrorStepIndices([]);
-  }, [sector, posting]);
+  }, [sector, posting, city]);
 
   /** Drop X markers for steps that no longer fail validation (e.g. after fixing fields and using quick navigate). */
   useEffect(() => {
@@ -138,6 +194,107 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     if (index >= 0) setStep(index);
   };
 
+  const requestLeave = useCallback(
+    (href = "/listings") => {
+      if (!hasUnsavedWork || allowLeaveRef.current) {
+        allowLeaveRef.current = false;
+        router.push(href);
+        return;
+      }
+      pendingLeaveHref.current = href;
+      setLeaveOpen(true);
+    },
+    [hasUnsavedWork, router],
+  );
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedWork || allowLeaveRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedWork]);
+
+  const persistDraft = async (navigateAfter: boolean) => {
+    const values = form.getValues();
+    if (!canSavePropertyDraft(values)) {
+      toast({
+        variant: "destructive",
+        title: "Add a city or title first",
+        description: "Choose a city or enter a title before saving a draft.",
+      });
+      return false;
+    }
+
+    setDraftSaving(true);
+    try {
+      const payload = buildPropertyDraftPayload(values);
+      let savedId = draftPropertyId;
+      if (savedId) {
+        await api.updatePropertyDraft(savedId, payload);
+        const fresh = await api.getRawProperty(savedId);
+        const nextDefaults = getDefaultValues(fresh);
+        form.reset(nextDefaults);
+        initialSnapshotRef.current = JSON.stringify(nextDefaults);
+      } else {
+        const created = await api.createPropertyDraft(payload);
+        savedId = created.id;
+        setDraftPropertyId(savedId);
+        const fresh = await api.getRawProperty(savedId);
+        const nextDefaults = getDefaultValues(fresh);
+        form.reset(nextDefaults);
+        initialSnapshotRef.current = JSON.stringify(nextDefaults);
+        router.replace(`/edit-property/${savedId}`);
+      }
+      await revalidatePropertyListingCache(savedId);
+      await invalidatePropertyQueries(queryClient, savedId);
+      toast({
+        variant: "success",
+        title: "Draft saved",
+        description: "You can finish it anytime from My Listings.",
+      });
+      if (navigateAfter) {
+        allowLeaveRef.current = true;
+        setLeaveOpen(false);
+        router.push(pendingLeaveHref.current || "/listings");
+      }
+      return true;
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not save draft",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+      });
+      return false;
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
+  const discardAndLeave = () => {
+    allowLeaveRef.current = true;
+    setLeaveOpen(false);
+    if (!isEdit) {
+      form.reset(getDefaultValues());
+      setDraftPropertyId(null);
+      setStep(0);
+      setErrorStepIndices([]);
+      initialSnapshotRef.current = null;
+      try {
+        sessionStorage.setItem(ADD_PROPERTY_DISCARD_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+    } else {
+      const defaults = getDefaultValues(initialData);
+      form.reset(defaults);
+      initialSnapshotRef.current = JSON.stringify(defaults);
+    }
+    router.push(pendingLeaveHref.current || "/listings");
+  };
+
   const save = async (data: PropertyFormValues) => {
     const issues = validateListingForm(data);
     if (issues.length > 0) {
@@ -156,14 +313,22 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     try {
       const payload = buildPropertyPayload(data);
       let propertyIdForCache: string | undefined;
-      if (initialData?.id) {
-        await api.updateProperty(String(initialData.id), payload);
-        const fresh = await api.getRawProperty(String(initialData.id));
+      const existingId = draftPropertyId || (initialData?.id != null ? String(initialData.id) : null);
+      if (existingId) {
+        await api.updateProperty(existingId, payload);
+        const fresh = await api.getRawProperty(existingId);
         const nextDefaults = getDefaultValues(fresh);
         form.reset(nextDefaults);
         initialSnapshotRef.current = JSON.stringify(nextDefaults);
-        propertyIdForCache = String(initialData.id);
-        toast({ variant: "success", title: "Property updated", description: "Your listing has been saved successfully." });
+        propertyIdForCache = existingId;
+        setDraftPropertyId(null);
+        toast({
+          variant: "success",
+          title: isDraftListing ? "Listing submitted" : "Property updated",
+          description: isDraftListing
+            ? "Your draft was submitted for review."
+            : "Your listing has been saved successfully.",
+        });
       } else {
         const created = await api.createProperty(payload);
         propertyIdForCache = created.id;
@@ -171,8 +336,9 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
       }
       await revalidatePropertyListingCache(propertyIdForCache);
       await invalidatePropertyQueries(queryClient, propertyIdForCache);
+      allowLeaveRef.current = true;
       router.refresh();
-      if (!initialData?.id) router.push("/listings");
+      if (!initialData?.id || isDraftListing) router.push("/listings");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -218,6 +384,11 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     form.setValue("details", { ...EMPTY_LISTING_DETAILS, rooms: {} }, { shouldDirty: true });
   };
 
+  const onCity = (next: ListingCity) => {
+    if (next === form.getValues("city")) return;
+    form.setValue("city", next, { shouldDirty: true, shouldValidate: true });
+  };
+
   const handleSave = form.handleSubmit(
     (data) => save(data),
     (fieldErrors) => {
@@ -242,8 +413,18 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
   };
 
   const showNext = step < steps.length - 1;
-  const nextDisabled = !isEdit && step === 0 && !isCategorized;
+  const nextDisabled = !isEdit && !draftPropertyId && step === 0 && (!hasListingCity || !isCategorized);
   const progressPct = steps.length > 0 ? Math.round(((step + 1) / steps.length) * 100) : 0;
+  const submitLabel = isDraftListing
+    ? "Submit for review"
+    : isEdit
+      ? "Update Property"
+      : "Create Property";
+  const submitDisabled =
+    isSubmitting ||
+    draftSaving ||
+    (!isEdit && !draftPropertyId && (!hasListingCity || !isCategorized)) ||
+    (isEdit && !isDraftListing && !canUpdate);
 
   return (
     <div
@@ -251,17 +432,26 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
     >
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" asChild>
-            <Link href="/listings">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 shrink-0"
+            aria-label="Back to listings"
+            onClick={() => requestLeave("/listings")}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h2 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              {initialData ? "Edit Property" : "Add Property"}
+              {isDraftListing ? "Continue draft" : initialData ? "Edit Property" : "Add Property"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {initialData ? "Update your listing step by step" : "Choose a sector, then complete each section"}
+              {isDraftListing
+                ? "Finish your draft, or save it again and come back later"
+                : initialData
+                  ? "Update your listing step by step"
+                  : "Choose city and sector, then complete each section"}
             </p>
           </div>
         </div>
@@ -347,8 +537,11 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
                     step={activeStep}
                     sector={sector}
                     posting={posting}
+                    city={city}
+                    isEdit={isEdit}
                     onSector={onSector}
                     onPosting={onPosting}
+                    onCity={onCity}
                   />
                 </div>
               </div>
@@ -374,18 +567,27 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
                     type="button"
                     size="lg"
                     className="min-w-32 flex-1 rounded-lg sm:flex-none"
-                    disabled={isSubmitting || (!isEdit && !isCategorized) || (isEdit && !canUpdate)}
+                    disabled={submitDisabled}
                     onClick={() => void handleSave()}
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    {isSubmitting ? "Saving…" : isEdit ? "Update Property" : "Create Property"}
+                    {isSubmitting ? "Saving…" : submitLabel}
                   </Button>
                 )}
-                {!isEdit ? (
-                  <Button type="button" variant="outline" size="lg" asChild>
-                    <Link href="/listings">Cancel</Link>
+                {allowsDraftSave ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    disabled={isSubmitting || draftSaving}
+                    onClick={() => void persistDraft(false)}
+                  >
+                    {draftSaving ? "Saving draft…" : "Save draft"}
                   </Button>
                 ) : null}
+                <Button type="button" variant="outline" size="lg" onClick={() => requestLeave("/listings")}>
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>
@@ -394,21 +596,59 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
             <div
               className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
             >
-              <div className="mx-auto flex max-w-6xl justify-center">
+              <div className="mx-auto flex max-w-6xl justify-center gap-3">
+                {allowsDraftSave ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full max-w-[10rem]"
+                    disabled={isSubmitting || draftSaving}
+                    onClick={() => void persistDraft(false)}
+                  >
+                    {draftSaving ? "Saving…" : "Save draft"}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="lg"
                   className="w-full max-w-md"
-                  disabled={isSubmitting}
+                  disabled={submitDisabled}
                   onClick={() => void handleSave()}
                 >
-                  <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : "Update Property"}
+                  <Upload className="mr-2 h-4 w-4" /> {isSubmitting ? "Saving…" : submitLabel}
                 </Button>
               </div>
             </div>
           ) : null}
         </motion.form>
       </Form>
+
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save your listing as a draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Save a draft to finish later, or discard and leave.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel disabled={draftSaving}>Keep editing</AlertDialogCancel>
+            <Button type="button" variant="outline" disabled={draftSaving} onClick={discardAndLeave}>
+              Discard
+            </Button>
+            {allowsDraftSave ? (
+              <Button
+                type="button"
+                disabled={draftSaving}
+                onClick={() => void persistDraft(true)}
+              >
+                {draftSaving ? "Saving…" : "Save draft"}
+              </Button>
+            ) : null}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -423,20 +663,40 @@ const choiceTileClass = (selected: boolean) =>
   ].join(" ");
 
 function ChoiceFields({
+  city,
   sector,
   posting,
+  onCity,
   onSector,
   onPosting,
 }: {
+  city: string;
   sector: string;
   posting: string;
+  onCity: (value: ListingCity) => void;
   onSector: (value: PropertySector) => void;
   onPosting: (value: PostingType) => void;
 }) {
   const options = postingOptionsFor(sector);
+  const citySelected = isListingCity(city);
   return (
     <div className="space-y-8">
       <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold text-foreground">City</legend>
+        <p className="text-sm text-muted-foreground">Select the city where this property is located.</p>
+        <Combobox
+          className="max-w-sm"
+          options={LISTING_CITIES.map((item) => ({ value: item, label: item }))}
+          value={citySelected ? city : null}
+          onValueChange={(value) => {
+            if (isListingCity(value)) onCity(value);
+          }}
+          placeholder="Select city"
+          disableSearch
+          id="listing-city"
+        />
+      </fieldset>
+      <fieldset className={`space-y-3 ${citySelected ? "" : "pointer-events-none opacity-50"}`}>
         <legend className="text-sm font-semibold text-foreground">Property sector</legend>
         <p className="text-sm text-muted-foreground">Select the category that best describes your listing.</p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -444,6 +704,7 @@ function ChoiceFields({
             <button
               key={item}
               type="button"
+              disabled={!citySelected}
               aria-pressed={sector === item}
               onClick={() => onSector(item)}
               className={choiceTileClass(sector === item)}
@@ -454,7 +715,7 @@ function ChoiceFields({
         </div>
       </fieldset>
       {options.length > 0 ? (
-        <fieldset className="space-y-3">
+        <fieldset className={`space-y-3 ${citySelected ? "" : "pointer-events-none opacity-50"}`}>
           <legend className="text-sm font-semibold text-foreground">Listing type</legend>
           <p className="text-sm text-muted-foreground">
             Steps and fields depend on this choice—pick the option that matches how you want to list.
@@ -464,6 +725,7 @@ function ChoiceFields({
               <button
                 key={item}
                 type="button"
+                disabled={!citySelected}
                 aria-pressed={posting === item}
                 onClick={() => onPosting(item)}
                 className={[
@@ -484,11 +746,11 @@ function ChoiceFields({
   );
 }
 
-function SectionBody({ section }: { section: ListingSection }) {
+function SectionBody({ section, lockCity }: { section: ListingSection; lockCity: boolean }) {
   return (
     <div className="space-y-5">
       <ListingFields fields={section.fields} />
-      {section.extras?.includes("location") ? <LocationSection /> : null}
+      {section.extras?.includes("location") ? <LocationSection lockCity={lockCity} /> : null}
       {section.extras?.includes("images") ? <PropertyImagesSection /> : null}
       {section.extras?.includes("video") ? <VideoSection /> : null}
       {section.extras?.includes("floorplans") ? <FloorPlansSection /> : null}
@@ -496,14 +758,14 @@ function SectionBody({ section }: { section: ListingSection }) {
   );
 }
 
-function LegacyStepBody({ stepId }: { stepId: string }) {
+function LegacyStepBody({ stepId, lockCity }: { stepId: string; lockCity: boolean }) {
   switch (stepId) {
     case "basic":
       return <BasicInformation />;
     case "overview":
       return <PropertyOverview />;
     case "location":
-      return <LocationSection />;
+      return <LocationSection lockCity={lockCity} />;
     case "description":
       return <DescriptionFields />;
     case "amenities":
@@ -523,26 +785,42 @@ function WizardStepBody({
   step,
   sector,
   posting,
+  city,
+  isEdit,
   onSector,
   onPosting,
+  onCity,
 }: {
   step: WizardStep;
   sector: string;
   posting: string;
+  city: string;
+  isEdit: boolean;
   onSector: (value: PropertySector) => void;
   onPosting: (value: PostingType) => void;
+  onCity: (value: ListingCity) => void;
 }) {
+  const lockCity = !isEdit;
   if (step.id === "choice") {
-    return <ChoiceFields sector={sector} posting={posting} onSector={onSector} onPosting={onPosting} />;
+    return (
+      <ChoiceFields
+        city={city}
+        sector={sector}
+        posting={posting}
+        onCity={onCity}
+        onSector={onSector}
+        onPosting={onPosting}
+      />
+    );
   }
   if (step.legacy) {
-    return <LegacyStepBody stepId={step.id} />;
+    return <LegacyStepBody stepId={step.id} lockCity={lockCity} />;
   }
-  return <SectionBody section={step} />;
+  return <SectionBody section={step} lockCity={lockCity} />;
 }
 
 function sectionHasPath(step: WizardStep, path: string) {
-  if (step.id === "choice") return path === "propertySector" || path === "postingType";
+  if (step.id === "choice") return path === "city" || path === "propertySector" || path === "postingType";
   if (step.legacy) {
     if (step.id === "images" && (path === "propertyImages" || path === "thumbnailUrl")) return true;
     if (step.id === "video" && path === "videoUrl") return true;

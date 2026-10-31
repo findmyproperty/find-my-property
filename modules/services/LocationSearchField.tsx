@@ -31,6 +31,8 @@ export interface LocationSearchFieldProps {
   id?: string;
   ariaLabel?: string;
   className?: string;
+  /** Allow committing a typed address without picking a Places suggestion (events). */
+  allowFreeText?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export default function LocationSearchField({
   id,
   ariaLabel,
   className,
+  allowFreeText = false,
 }: LocationSearchFieldProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded, loadError } = useJsApiLoader(
@@ -114,10 +117,27 @@ export default function LocationSearchField({
     inputRef.current?.focus();
   }, [onChange]);
 
-  const markerPosition = useMemo(
-    () => (value ? { lat: value.lat, lng: value.lng } : null),
-    [value],
-  );
+  const commitFreeText = useCallback(() => {
+    if (!allowFreeText) return;
+    const trimmed = text.trim();
+    if (trimmed.length < 10) return;
+    if (value?.label === trimmed && value.lat !== 0 && value.lng !== 0) return;
+    // Keep existing pin if the label was only edited slightly; otherwise address-only.
+    if (value && value.label === trimmed) return;
+    onChange({
+      label: trimmed,
+      lat: value?.lat && value.lng ? value.lat : 0,
+      lng: value?.lat && value.lng ? value.lng : 0,
+      placeId: value?.placeId,
+    });
+  }, [allowFreeText, onChange, text, value]);
+
+  const markerPosition = useMemo(() => {
+    if (!value) return null;
+    if (!Number.isFinite(value.lat) || !Number.isFinite(value.lng)) return null;
+    if (value.lat === 0 && value.lng === 0) return null;
+    return { lat: value.lat, lng: value.lng };
+  }, [value]);
 
   if (!apiKey) {
     return (
@@ -154,6 +174,7 @@ export default function LocationSearchField({
               aria-label={ariaLabel}
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onBlur={() => commitFreeText()}
               placeholder={placeholder}
               disabled={disabled}
               className={cn("pr-20", error && "border-destructive")}

@@ -15,6 +15,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/sitemap.xml") return true;
   if (pathname === "/logout") return true;
   if (pathname === "/login") return true;
+  if (pathname === "/forgot-password") return true;
   if (pathname.startsWith("/register")) return true;
   if (pathname.startsWith("/onboarding")) return true;
   if (pathname.startsWith("/verify-agent")) return true;
@@ -35,6 +36,8 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/loans/")) return true;
   if (pathname === "/job-consultancy") return true;
   if (pathname.startsWith("/vendors/")) return true;
+  // Short Maps link resolver used by LocationPicker (auth not required).
+  if (pathname === "/api/expand-maps-link") return true;
 
   return false;
 }

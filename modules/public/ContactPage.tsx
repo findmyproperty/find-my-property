@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   ArrowRight,
   Building2,
   ClipboardList,
@@ -175,14 +174,7 @@ export default function ContactPage({ siteName: ssrSiteName }: ContactPageProps 
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_12%,color-mix(in_oklab,var(--primary)_15%,transparent),transparent_30%),linear-gradient(to_bottom,var(--background),color-mix(in_oklab,var(--muted)_32%,var(--background)))]"
         />
         <div className="container mx-auto max-w-[1200px] px-4 py-14 sm:py-20">
-          <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground">
-            <Link href="/">
-              <ArrowLeft data-icon="inline-start" aria-hidden />
-              Back to home
-            </Link>
-          </Button>
-
-          <div className="mt-12 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}

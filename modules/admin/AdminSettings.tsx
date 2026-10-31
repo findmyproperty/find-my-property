@@ -56,7 +56,6 @@ import {
  * intentionally excluded so PATCH never clobbers them. */
 type SettingsFormValues = Pick<
   Settings,
-  | "siteName"
   | "supportEmail"
   | "supportPhone"
   | "primaryLogoUrl"
@@ -67,7 +66,6 @@ type SettingsFormValues = Pick<
 >;
 
 const FORM_DEFAULTS: SettingsFormValues = {
-  siteName: "",
   supportEmail: "",
   supportPhone: "",
   primaryLogoUrl: null,
@@ -79,7 +77,6 @@ const FORM_DEFAULTS: SettingsFormValues = {
 
 function toFormValues(settings: Settings): SettingsFormValues {
   return {
-    siteName: settings.siteName ?? "",
     supportEmail: settings.supportEmail ?? "",
     supportPhone: settings.supportPhone ?? "",
     primaryLogoUrl: settings.primaryLogoUrl ?? null,
@@ -123,12 +120,11 @@ const AdminSettings = () => {
 
   const onSubmit = handleSubmit(async (values) => {
     // settingsUpdateSchema is settingsSchema.partial() — every field is optional
-    // but still validated when present. Empty strings on required fields (siteName,
-    // supportEmail) would fail min(1)/email() checks, so strip them to undefined
-    // so Zod treats them as "not sent" rather than "invalid".
+    // but still validated when present. Empty supportEmail would fail email(), so
+    // strip it to undefined so Zod treats it as "not sent" rather than "invalid".
+    // siteName is intentionally omitted — brand name is compile-time locked.
     // vendorCommissionPercent is intentionally omitted — commission lives on categories.
     const payload: Partial<Settings> = {
-      siteName:                values.siteName?.trim()     || undefined,
       supportEmail:            values.supportEmail?.trim() || undefined,
       supportPhone:            values.supportPhone?.trim() || null,
       primaryLogoUrl:          values.primaryLogoUrl       || null,
@@ -231,18 +227,6 @@ const AdminSettings = () => {
             subtitle="How customers see your brand across the site and in notifications."
           >
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Site name" htmlFor="site-name" required>
-                <Input
-                  id="site-name"
-                  placeholder="The YBDC"
-                  maxLength={255}
-                  {...register("siteName", {
-                    required: "Site name is required",
-                    minLength: { value: 1, message: "Site name is required" },
-                  })}
-                />
-              </Field>
-
               <Field
                 label="Support email"
                 htmlFor="support-email"

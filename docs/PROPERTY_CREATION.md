@@ -1,5 +1,7 @@
 # Property creation — user manual
 
+**End users:** see [USER_GUIDE.md](./USER_GUIDE.md) for a plain-language guide (browse, list property, services, and partners).
+
 A listing is created from **My Listings**. Tenants, agents, and admins use the same form. After you submit, tenants and agents wait for an admin to approve it. An admin’s own listing goes live immediately.
 
 ## Who can create a listing

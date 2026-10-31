@@ -15,7 +15,7 @@ node scripts/run-vendor-migration.js
 
 ## 2. Admin verification
 
-- [ ] Admin → **Vendor Partners** (`/admin/vendors`)
+- [ ] Admin → **Vendors** (`/admin/vendors`)
 - [ ] All admins with emails receive **Vendor KYC pending** mail when partner submits/resubmits profile (business name + category)
 - [ ] Approve vendor; vendor receives alert (if logged in, check `/alerts`)
 - [ ] Reject flow (optional): rejection reason visible on vendor profile

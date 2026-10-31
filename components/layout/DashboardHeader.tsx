@@ -29,7 +29,7 @@ export default function DashboardHeader({ title }: DashboardHeaderProps) {
 
   const handleLogout = () => {
     logout().then(() => {
-      router.refresh();
+      router.replace("/login");
     });
   };
 

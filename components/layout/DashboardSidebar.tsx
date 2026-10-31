@@ -99,7 +99,7 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
   const handleLogout = async () => {
     closeMobileSidebar()
     await logout()
-    router.refresh()
+    router.replace("/login")
   }
 
   const toggleGroup = (title: string) => {
@@ -125,16 +125,16 @@ const DashboardSidebar = ({ groups }: DashboardSidebarProps) => {
                   <span
                     className={cn(
                       "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card ring-1 ring-border/70",
-                      collapsed ? "size-8" : "h-11 w-16"
+                      collapsed ? "size-8" : "h-12 w-20"
                     )}
                   >
                     <Image
                       src={logoUrl}
                       alt={siteName}
                       fill
-                      sizes={collapsed ? "32px" : "64px"}
+                      sizes={collapsed ? "32px" : "80px"}
                       unoptimized
-                      className="object-contain"
+                      className="object-contain object-center p-0.5"
                     />
                   </span>
                 ) : (

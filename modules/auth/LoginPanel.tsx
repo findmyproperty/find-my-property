@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Smartphone } from "lucide-react";
+import { Lock, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -35,11 +36,13 @@ export default function LoginPanel({
   onSwitchToRegister,
 }: LoginPanelProps) {
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const { loginWithPhone, requestPhoneOtp } = useAuth();
+  const [loggingIn, setLoggingIn] = useState(false);
+  const { loginWithPhone, loginWithPassword, requestPhoneOtp } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,6 +52,61 @@ export default function LoginPanel({
   const siteName = settings?.siteName?.trim() || SITE_NAME;
   const logoUrl = settings?.primaryLogoUrl?.trim() || null;
   const isModal = variant === "modal";
+
+  const finishAuth = (requiresOnboarding: boolean) => {
+    if (requiresOnboarding) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    if (isModal) {
+      toast({ title: "Signed in", description: "Returning to your request…" });
+      onAuthSuccess?.();
+      return;
+    }
+
+    const nextUser = JSON.parse(localStorage.getItem("nb_user") || "null") as User | null;
+    const from = new URLSearchParams(window.location.search).get("from");
+    const safeFrom = parseSafeReturnPath(from);
+    router.replace(safeFrom || getPostAuthRoute(nextUser));
+  };
+
+  const handlePasswordLogin = async (e?: React.SubmitEvent<HTMLFormElement>) => {
+    e?.preventDefault();
+    const formattedPhone = normalizePhone(phone);
+    if (!formattedPhone) {
+      toast({
+        title: "Phone number required",
+        description: "Enter a valid phone number with country code.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (password.trim().length < 8) {
+      toast({
+        title: "Password required",
+        description: "Enter your password (at least 8 characters).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoggingIn(true);
+    const result = await loginWithPassword(formattedPhone, password.trim());
+    setLoggingIn(false);
+
+    if (!result.success) {
+      toast({
+        title: "Login failed",
+        description: result.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPhone(formattedPhone);
+    finishAuth(result.requiresOnboarding);
+  };
 
   const handleSendOtp = async (e?: React.SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -108,22 +166,16 @@ export default function LoginPanel({
       return;
     }
 
-    if (result.requiresOnboarding) {
-      router.replace("/onboarding");
-      return;
-    }
-
-    if (isModal) {
-      toast({ title: "Signed in", description: "Returning to your request…" });
-      onAuthSuccess?.();
-      return;
-    }
-
-    const nextUser = JSON.parse(localStorage.getItem("nb_user") || "null") as User | null;
-    const from = new URLSearchParams(window.location.search).get("from");
-    const safeFrom = parseSafeReturnPath(from);
-    router.replace(safeFrom || getPostAuthRoute(nextUser));
+    finishAuth(result.requiresOnboarding);
   };
+
+  const forgotHref = (() => {
+    const params = new URLSearchParams();
+    const from = searchParams.get("from");
+    if (from) params.set("from", from);
+    const qs = params.toString();
+    return qs ? `/forgot-password?${qs}` : "/forgot-password";
+  })();
 
   const form = (
     <>
@@ -132,74 +184,136 @@ export default function LoginPanel({
           <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your phone number to login or securely create a new account.
+            Log in with your phone and password, or use a one-time code.
           </p>
         </div>
       ) : (
         <p className="mb-5 text-sm text-muted-foreground">
-          Log in with your phone to request a callback. We&apos;ll bring you right back to this form.
+          Log in to request a callback. We&apos;ll bring you right back to this form.
         </p>
       )}
 
-      <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-6">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
-            <div className="relative">
-              <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                placeholder="+91"
-                value={phone}
-                inputMode="numeric"
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
-                disabled={otpSent || sendingOtp}
-                required
-              />
+      <Tabs defaultValue="password" className="w-full">
+        <TabsList className="mb-5 grid w-full grid-cols-2">
+          <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsTrigger value="otp">OTP</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="password" className="space-y-6">
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
+              <div className="relative">
+                <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+                <Input
+                  placeholder="+91"
+                  value={phone}
+                  inputMode="numeric"
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
+                  disabled={loggingIn}
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          {otpSent ? (
-            <OtpField
-              value={otp}
-              onChange={setOtp}
-              disabled={verifyingOtp}
-              active={otpSent}
-              hint={`Enter the 6-digit code sent to ${phone}.`}
-            />
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <label className="ml-1 text-sm font-medium leading-none text-foreground">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+                <Input
+                  type="password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
+                  disabled={loggingIn}
+                  autoComplete="current-password"
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>
 
-        {!otpSent ? (
-          <Button
-            type="button"
-            className="h-12 w-full rounded-xl text-base font-semibold shadow-md transition-all active:scale-[0.98]"
-            onClick={() => void handleSendOtp()}
-            disabled={sendingOtp || !phone.trim()}
-          >
-            {sendingOtp ? "Sending OTP..." : "Continue with Phone"}
-          </Button>
-        ) : (
-          <div className="space-y-3">
+            <div className="flex justify-end">
+              <Link
+                href={forgotHref}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <Button
               type="submit"
               className="h-12 w-full rounded-xl text-base font-semibold shadow-md transition-all active:scale-[0.98]"
-              disabled={verifyingOtp || otp.length < 4}
+              disabled={loggingIn || !phone.trim() || password.trim().length < 8}
             >
-              {verifyingOtp ? "Verifying..." : "Verify & Login"}
+              {loggingIn ? "Signing in..." : "Sign in"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 w-full rounded-xl text-sm text-muted-foreground hover:bg-muted/50"
-              onClick={() => void handleSendOtp()}
-              disabled={sendingOtp}
-            >
-              {sendingOtp ? "Sending..." : "Didn't receive code? Resend"}
-            </Button>
-          </div>
-        )}
-      </form>
+          </form>
+        </TabsContent>
+
+        <TabsContent value="otp" className="space-y-6">
+          <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
+            <div className="space-y-2">
+              <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
+              <div className="relative">
+                <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+                <Input
+                  placeholder="+91"
+                  value={phone}
+                  inputMode="numeric"
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
+                  disabled={otpSent || sendingOtp}
+                  required
+                />
+              </div>
+            </div>
+
+            {otpSent ? (
+              <OtpField
+                value={otp}
+                onChange={setOtp}
+                disabled={verifyingOtp}
+                active={otpSent}
+                hint={`Enter the 6-digit code sent to ${phone}.`}
+              />
+            ) : null}
+
+            {!otpSent ? (
+              <Button
+                type="button"
+                className="h-12 w-full rounded-xl text-base font-semibold shadow-md transition-all active:scale-[0.98]"
+                onClick={() => void handleSendOtp()}
+                disabled={sendingOtp || !phone.trim()}
+              >
+                {sendingOtp ? "Sending OTP..." : "Continue with Phone"}
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <Button
+                  type="submit"
+                  className="h-12 w-full rounded-xl text-base font-semibold shadow-md transition-all active:scale-[0.98]"
+                  disabled={verifyingOtp || otp.length < 4}
+                >
+                  {verifyingOtp ? "Verifying..." : "Verify & Login"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-10 w-full rounded-xl text-sm text-muted-foreground hover:bg-muted/50"
+                  onClick={() => void handleSendOtp()}
+                  disabled={sendingOtp}
+                >
+                  {sendingOtp ? "Sending..." : "Didn't receive code? Resend"}
+                </Button>
+              </div>
+            )}
+          </form>
+        </TabsContent>
+      </Tabs>
 
       <div className={`text-center text-sm ${isModal ? "mt-6" : "mt-8"}`}>
         <span className="text-muted-foreground">New to {siteName}? </span>

@@ -1,6 +1,11 @@
 import { z } from "zod";
 import type { BackendProperty } from "@/lib/property-mapper";
-import { EMPTY_LISTING_DETAILS, type ListingDetails, type RoomPanel } from "@/lib/property-posting";
+import {
+  EMPTY_LISTING_DETAILS,
+  isListingCity,
+  type ListingDetails,
+  type RoomPanel,
+} from "@/lib/property-posting";
 
 const listingTypeOptions = ["Rent", "Sale", "Lease"] as const;
 
@@ -45,7 +50,9 @@ export const propertyFormSchema = z.object({
 
   address: z.string().min(5, "Address must be at least 5 characters."),
   locality: z.string().min(2, "Locality is required."),
-  city: z.string().min(2, "City is required."),
+  city: z.string().refine((value) => isListingCity(value), {
+    message: "Select Chennai or Bengaluru.",
+  }),
   state: z.string().optional(),
   country: z.string().min(2, "Country is required."),
 

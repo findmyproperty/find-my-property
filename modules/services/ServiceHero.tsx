@@ -7,7 +7,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DEFAULT_TRUST = [
-  { icon: BadgeCheck, label: "Verified partners" },
+  { icon: BadgeCheck, label: "Verified vendors" },
   { icon: Clock, label: "On-time, every time" },
   { icon: Wallet, label: "Transparent pricing" },
 ] satisfies Array<{ icon: LucideIcon; label: string }>;
@@ -147,15 +147,6 @@ export function ServiceHero({
           >
             <p className="text-xs font-medium text-muted-foreground">Avg. response</p>
             <p className="font-heading text-lg font-bold text-foreground">Within 30 min</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="absolute -top-4 right-6 z-10 rounded-xl bg-card px-4 py-3 shadow-xl ring-1 ring-border"
-          >
-            <p className="text-xs font-medium text-muted-foreground">Customer rating</p>
-            <p className="font-heading text-lg font-bold text-foreground">4.8 / 5</p>
           </motion.div>
         </motion.div>
       </div>

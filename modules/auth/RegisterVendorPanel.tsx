@@ -90,7 +90,7 @@ export default function RegisterVendorPanel() {
       return;
     }
     setSendingOtp(true);
-    const result = await requestPhoneOtp(formattedPhone);
+    const result = await requestPhoneOtp(formattedPhone, "register");
     setSendingOtp(false);
     if (!result.success) {
       toast({ title: "OTP failed", description: result.error, variant: "destructive" });
@@ -116,6 +116,7 @@ export default function RegisterVendorPanel() {
         businessName: businessName.trim(),
         categoryIds: selectedCategoryIds,
       },
+      "register",
     );
     setVerifying(false);
     if (!result.success) {
@@ -272,9 +273,18 @@ export default function RegisterVendorPanel() {
             </Button>
           ) : (
             <Button className="w-full" onClick={handleVerify} disabled={verifying}>
-              {verifying ? "Verifying…" : "Create partner account"}
+              {verifying ? "Verifying…" : "Create vendor account"}
             </Button>
           )}
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <Button variant="outline" asChild>
+              <Link href="/">Home</Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link href="/#services">Exit</Link>
+            </Button>
+          </div>
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}

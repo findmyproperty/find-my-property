@@ -4,14 +4,16 @@ import { useFormContext, useWatch, type FieldPath } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import type { ApartmentPlaceDetail } from "@/lib/apartment-places";
 import type { PropertyFormValues } from "./schema";
 import type { ListingDetails } from "@/lib/property-posting";
 import { PG_ROOM_AMENITIES, PG_ROOM_TYPES, pgRuleOptions } from "./listing-options";
 import type { ListingField } from "./listing-sections";
+import { ApartmentNameSearchField } from "./ApartmentNameSearchField";
 
 function visible(field: ListingField, details: ListingDetails) {
   return field.show ? field.show(details) : true;
@@ -35,15 +37,30 @@ export function ListingFields({ fields }: { fields: ListingField[] }) {
 }
 
 function ListingControl({ field, details }: { field: ListingField; details: ListingDetails }) {
-  const { control } = useFormContext<PropertyFormValues>();
+  const { control, getValues, setValue } = useFormContext<PropertyFormValues>();
   const name = field.name as FieldPath<PropertyFormValues>;
   const options = field.name === "details.rules" ? pgRuleOptions(details.availableFor) : field.options;
+  const city = useWatch({ control, name: "city" }) ?? "";
+
+  const applyPlaceDetail = (detail: ApartmentPlaceDetail) => {
+    setValue("latitude", detail.lat, { shouldDirty: true, shouldValidate: true });
+    setValue("longitude", detail.lng, { shouldDirty: true, shouldValidate: true });
+
+    const address = getValues("address");
+    const locality = getValues("locality");
+    if (!String(address ?? "").trim() && detail.formattedAddress) {
+      setValue("address", detail.formattedAddress, { shouldDirty: true, shouldValidate: true });
+    }
+    if (!String(locality ?? "").trim() && detail.locality) {
+      setValue("locality", detail.locality, { shouldDirty: true, shouldValidate: true });
+    }
+  };
 
   return (
     <FormField
       control={control}
       name={name}
-      render={({ field: formField }) => (
+      render={({ field: formField, fieldState }) => (
         <FormItem>
           <FormLabel required={field.required}>{field.label}</FormLabel>
           {field.kind === "textarea" ? (
@@ -62,21 +79,28 @@ function ListingControl({ field, details }: { field: ListingField; details: List
               />
             </FormControl>
           ) : null}
+          {field.kind === "apartmentNameSearch" ? (
+            <FormControl>
+              <ApartmentNameSearchField
+                value={stringValue(formField.value)}
+                onChange={formField.onChange}
+                city={city}
+                onPlaceSelected={applyPlaceDetail}
+                placeholder={field.placeholder}
+                aria-invalid={!!fieldState.error}
+              />
+            </FormControl>
+          ) : null}
           {field.kind === "select" ? (
-            <Select value={stringValue(formField.value) || undefined} onValueChange={formField.onChange}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {(options ?? []).map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <Combobox
+                options={options ?? []}
+                value={stringValue(formField.value) || null}
+                onValueChange={formField.onChange}
+                placeholder="Select"
+                disableSearch
+              />
+            </FormControl>
           ) : null}
           {field.kind === "radio" || field.kind === "yesno" ? (
             <FormControl>
