@@ -15,7 +15,10 @@ const nextConfig = {
     /** Enables `"use cache"`, `cacheTag`, `cacheLife`, and tag invalidation via `revalidateTag`. */
     cacheComponents: true,
     /** Tree-shake icon/barrel packages (lucide) without deep import paths. */
-    optimizePackageImports: ["lucide-react"],
+
+    experimental: {
+        optimizePackageImports: ["lucide-react"],
+    },
     images: {
         remotePatterns: [
             {
