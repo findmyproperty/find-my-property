@@ -41,12 +41,16 @@ export function useAdminProperties(options?: { enabled?: boolean }) {
   });
 }
 
-export function useProperties(options?: { enabled?: boolean }) {
+export function useProperties(options?: {
+  enabled?: boolean;
+  initialData?: Awaited<ReturnType<typeof api.getProperties>>;
+}) {
   return useQuery({
     queryKey: ["properties"],
     queryFn: api.getProperties,
     staleTime: 60_000,
     enabled: options?.enabled ?? true,
+    initialData: options?.initialData,
   });
 }
 
@@ -58,11 +62,15 @@ export function useMyProperties() {
   });
 }
 
-export function useProperty(id?: string) {
+export function useProperty(
+  id?: string,
+  options?: { initialData?: Awaited<ReturnType<typeof api.getProperty>> },
+) {
   return useQuery({
     queryKey: ["property", id],
     queryFn: () => api.getProperty(id as string),
     enabled: Boolean(id),
     staleTime: 60_000,
+    initialData: options?.initialData,
   });
 }

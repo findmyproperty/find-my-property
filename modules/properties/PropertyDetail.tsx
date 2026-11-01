@@ -24,58 +24,50 @@ import { useCreateLead } from "@/hooks/use-leads";
 import { normalizeContactPhone } from "@/lib/contact-links";
 
 import { parsePropertyIdFromSlugParam } from "@/lib/property-slug";
-
+import type { Property } from "@/lib/property-view-model";
 
 import { PropertyPriceStrip } from "@/modules/properties/listing-ui";
 
 import {
-
   AgentContactCard,
-
   AmenitiesSection,
-
   DescriptionSection,
-
   FloorPlansSection,
-
   HeroSection,
-
   LocationMapSection,
-
   OwnerContactCard,
-
   OverviewSection,
-
   PropertyDetailNotFound,
-
   PropertyMobileContactBar,
-
   LoanServiceSidebarCard,
-
   SimilarListingsSidebar,
-
   VideoSection,
-
 } from "@/modules/properties/detail";
 
 import { detailRows, showsFloorPlans } from "@/lib/property-posting";
 
+type PropertyDetailProps = {
+  /** SSR seed so listing HTML + first paint don’t wait on a client refetch. */
+  initialProperty?: Property;
+  initialProperties?: Property[];
+};
 
-
-const PropertyDetail = () => {
-
+const PropertyDetail = ({ initialProperty, initialProperties }: PropertyDetailProps = {}) => {
   const params = useParams<{ slug: string }>();
-
   const pathname = usePathname();
-
   const id = params.slug ? parsePropertyIdFromSlugParam(params.slug) : null;
 
   const { user, isAuthReady, isAuthenticated } = useAuth();
   const { settings, isLoading: areSettingsLoading } = useSettings();
 
-  const { data: properties } = useProperties();
+  const { data: properties } = useProperties({
+    initialData: initialProperties,
+  });
 
-  const { data: propertyData, isLoading } = useProperty(id ?? undefined);
+  const { data: propertyData, isLoading } = useProperty(id ?? undefined, {
+    initialData:
+      initialProperty && id && initialProperty.id === id ? initialProperty : undefined,
+  });
 
   const createLead = useCreateLead();
 

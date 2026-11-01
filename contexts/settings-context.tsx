@@ -24,6 +24,9 @@ export const SettingsProvider = ({
     queryKey: ["global-settings"],
     queryFn: api.getSettings,
     staleTime: 10 * 60 * 1000,
+    // Branding is already SSR'd — don't block first paint waiting on settings.
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   // Lock brand name to the compile-time constant even if the API still returns
   // a settings.siteName value from an older admin edit.

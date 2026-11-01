@@ -30,11 +30,13 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       title: siteName,
       description: SITE_DESCRIPTION,
+      images: [{ url: "/images/about-journey.jpg", width: 1200, height: 630, alt: siteName }],
     },
     twitter: {
       card: "summary_large_image",
       title: siteName,
       description: SITE_DESCRIPTION,
+      images: ["/images/about-journey.jpg"],
     },
     robots: { index: true, follow: true },
     icons: { icon: iconUrl, shortcut: iconUrl, apple: iconUrl },

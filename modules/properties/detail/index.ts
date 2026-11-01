@@ -17,4 +17,5 @@ export { OwnerContactCard } from "./owner-contact-card";
 export { SimilarListingsSection } from "./similar-listings-section";
 export { SimilarListingsSidebar } from "./similar-listings-sidebar";
 export { LoanServiceSidebarCard } from "./loan-service-sidebar-card";
+export { PropertyListingArticle } from "./property-listing-article";
 export { PropertyDetailNotFound } from "./not-found-state";

@@ -23,7 +23,8 @@ export function HeroSection({
         {images.length > 0 ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote listing URLs vary by host
           <img
-            loading="lazy"
+            loading={mainImageIndex === 0 ? "eager" : "lazy"}
+            fetchPriority={mainImageIndex === 0 ? "high" : "auto"}
             src={images[mainImageIndex] ?? images[0]}
             alt={property.title}
             className="h-full w-full object-cover"

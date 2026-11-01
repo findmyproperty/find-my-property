@@ -355,10 +355,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfileState(next);
   };
 
+  // Defer /me refresh so public pages paint first; localStorage session stays usable immediately.
   useEffect(() => {
-    if (token) {
+    if (!token) return;
+    const run = () => {
       void refreshUser();
+    };
+    const ric = globalThis.requestIdleCallback?.bind(globalThis);
+    if (ric) {
+      const id = ric(run, { timeout: 2500 });
+      return () => globalThis.cancelIdleCallback?.(id);
     }
+    const t = globalThis.setTimeout(run, 1);
+    return () => globalThis.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 

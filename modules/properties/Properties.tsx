@@ -31,7 +31,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import PropertiesMap from "@/modules/properties/PropertiesMap";
+import dynamic from "next/dynamic";
+
+const PropertiesMap = dynamic(() => import("@/modules/properties/PropertiesMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[520px] w-full items-center justify-center rounded-2xl border border-border bg-muted/40 text-sm text-muted-foreground">
+      Loading map…
+    </div>
+  ),
+});
 import { useAuth } from "@/contexts/auth-context";
 import { buildAreaFilterOptions, matchesAreaFilter } from "@/lib/property-location-options";
 import { sortPropertiesByDistance, propertyDistanceKm } from "@/lib/property-distance";
