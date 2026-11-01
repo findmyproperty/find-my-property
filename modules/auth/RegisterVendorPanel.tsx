@@ -28,6 +28,7 @@ import { parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { AuthPhoneLabel } from "@/modules/auth/AuthPhoneLabel";
 import { OtpField } from "@/modules/auth/OtpField";
 import { useCategories } from "@/hooks/use-categories";
 
@@ -96,8 +97,15 @@ export default function RegisterVendorPanel() {
       toast({ title: "OTP failed", description: result.error, variant: "destructive" });
       return;
     }
+    setPhone(formattedPhone);
+    setOtp("");
     setOtpSent(true);
     toast({ title: "OTP sent" });
+  };
+
+  const handleEditPhone = () => {
+    setOtpSent(false);
+    setOtp("");
   };
 
   const handleVerify = async () => {
@@ -254,8 +262,13 @@ export default function RegisterVendorPanel() {
               </Popover>
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" />
+              <AuthPhoneLabel locked={otpSent} onEdit={handleEditPhone} label="Phone" />
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91…"
+                disabled={otpSent || sendingOtp}
+              />
             </div>
             {otpSent ? (
               <OtpField
@@ -263,6 +276,7 @@ export default function RegisterVendorPanel() {
                 onChange={setOtp}
                 disabled={verifying}
                 active={otpSent}
+                hint={`Enter the 6-digit code sent to ${phone}.`}
               />
             ) : null}
           </div>
@@ -272,9 +286,20 @@ export default function RegisterVendorPanel() {
               {sendingOtp ? "Sending…" : "Send OTP"}
             </Button>
           ) : (
-            <Button className="w-full" onClick={handleVerify} disabled={verifying}>
-              {verifying ? "Verifying…" : "Create vendor account"}
-            </Button>
+            <div className="space-y-3">
+              <Button className="w-full" onClick={handleVerify} disabled={verifying}>
+                {verifying ? "Verifying…" : "Create vendor account"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-sm text-muted-foreground"
+                onClick={() => void handleSendOtp()}
+                disabled={sendingOtp}
+              >
+                {sendingOtp ? "Sending…" : "Didn't receive code? Resend"}
+              </Button>
+            </div>
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">

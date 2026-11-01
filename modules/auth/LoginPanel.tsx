@@ -5,14 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Lock, Smartphone } from "lucide-react";
+import { Lock, Smartphone, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useAuth, type User } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
+import { AuthHomeLink } from "@/modules/auth/AuthHomeLink";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { AuthPhoneLabel } from "@/modules/auth/AuthPhoneLabel";
 import { OtpField } from "@/modules/auth/OtpField";
 
 const normalizePhone = (value: string) => {
@@ -21,6 +23,16 @@ const normalizePhone = (value: string) => {
   const digits = trimmed.replace(/\D/g, "");
   if (digits.length === 10) return `+91${digits}`;
   return trimmed;
+};
+
+const looksLikeEmail = (value: string) => value.trim().includes("@");
+
+/** Normalize password-login identifier: email stays lowercased; phone becomes E.164 when possible. */
+const normalizePasswordIdentifier = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (looksLikeEmail(trimmed)) return trimmed.toLowerCase();
+  return normalizePhone(trimmed);
 };
 
 type LoginPanelProps = {
@@ -35,6 +47,8 @@ export default function LoginPanel({
   onAuthSuccess,
   onSwitchToRegister,
 }: LoginPanelProps) {
+  /** Password tab: email or phone. OTP tab keeps its own phone field. */
+  const [passwordId, setPasswordId] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -73,11 +87,19 @@ export default function LoginPanel({
 
   const handlePasswordLogin = async (e?: React.SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
-    const formattedPhone = normalizePhone(phone);
-    if (!formattedPhone) {
+    const identifier = normalizePasswordIdentifier(passwordId);
+    if (!identifier) {
       toast({
-        title: "Phone number required",
-        description: "Enter a valid phone number with country code.",
+        title: "Email or phone required",
+        description: "Enter your email address or phone number with country code.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (looksLikeEmail(identifier) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+      toast({
+        title: "Invalid email",
+        description: "Enter a valid email address.",
         variant: "destructive",
       });
       return;
@@ -92,7 +114,7 @@ export default function LoginPanel({
     }
 
     setLoggingIn(true);
-    const result = await loginWithPassword(formattedPhone, password.trim());
+    const result = await loginWithPassword(identifier, password.trim());
     setLoggingIn(false);
 
     if (!result.success) {
@@ -104,7 +126,7 @@ export default function LoginPanel({
       return;
     }
 
-    setPhone(formattedPhone);
+    setPasswordId(identifier);
     finishAuth(result.requiresOnboarding);
   };
 
@@ -177,14 +199,19 @@ export default function LoginPanel({
     return qs ? `/forgot-password?${qs}` : "/forgot-password";
   })();
 
+  const handleEditPhone = () => {
+    setOtpSent(false);
+    setOtp("");
+  };
+
   const form = (
     <>
       {!isModal ? (
         <div className="mb-8 flex flex-col items-center text-center">
-          <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
+          <AuthLogo logoUrl={logoUrl} siteName={siteName} href="/" className="mb-6" />
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
           <p className="text-sm text-muted-foreground">
-            Log in with your phone and password, or use a one-time code.
+            Log in with email or phone and password, or use a one-time code.
           </p>
         </div>
       ) : (
@@ -202,14 +229,18 @@ export default function LoginPanel({
         <TabsContent value="password" className="space-y-6">
           <form onSubmit={handlePasswordLogin} className="space-y-4">
             <div className="space-y-2">
-              <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
+              <label className="ml-1 text-sm font-medium leading-none text-foreground">
+                Email or phone
+              </label>
               <div className="relative">
-                <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+                <UserRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
                 <Input
-                  placeholder="+91"
-                  value={phone}
-                  inputMode="numeric"
-                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="email@example.com or +91…"
+                  value={passwordId}
+                  type="text"
+                  inputMode="text"
+                  autoComplete="username"
+                  onChange={(e) => setPasswordId(e.target.value)}
                   className="h-12 w-full rounded-xl border-input bg-background pl-11 text-base shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
                   disabled={loggingIn}
                   required
@@ -247,7 +278,7 @@ export default function LoginPanel({
             <Button
               type="submit"
               className="h-12 w-full rounded-xl text-base font-semibold shadow-md transition-all active:scale-[0.98]"
-              disabled={loggingIn || !phone.trim() || password.trim().length < 8}
+              disabled={loggingIn || !passwordId.trim() || password.trim().length < 8}
             >
               {loggingIn ? "Signing in..." : "Sign in"}
             </Button>
@@ -257,7 +288,7 @@ export default function LoginPanel({
         <TabsContent value="otp" className="space-y-6">
           <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
             <div className="space-y-2">
-              <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
+              <AuthPhoneLabel locked={otpSent} onEdit={handleEditPhone} />
               <div className="relative">
                 <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
                 <Input
@@ -331,6 +362,8 @@ export default function LoginPanel({
           </Link>
         )}
       </div>
+
+      {!isModal ? <AuthHomeLink className="mt-5" /> : null}
     </>
   );
 

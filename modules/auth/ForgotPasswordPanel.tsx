@@ -10,7 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
 import { buildLoginAndRegisterHrefs } from "@/lib/auth-redirect";
+import { AuthHomeLink } from "@/modules/auth/AuthHomeLink";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { AuthPhoneLabel } from "@/modules/auth/AuthPhoneLabel";
 import { OtpField } from "@/modules/auth/OtpField";
 import { api } from "@/lib/api";
 import { usePathname } from "next/navigation";
@@ -140,10 +142,16 @@ export default function ForgotPasswordPanel() {
     }
   };
 
+  const handleEditPhone = () => {
+    setStep("phone");
+    setOtp("");
+    setResetToken("");
+  };
+
   return (
     <div className="w-full max-w-[400px] rounded-3xl border border-border/50 bg-background/60 p-8 shadow-2xl backdrop-blur-xl">
       <div className="mb-8 flex flex-col items-center text-center">
-        <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
+        <AuthLogo logoUrl={logoUrl} siteName={siteName} href="/" className="mb-6" />
         <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">
           Reset password
         </h1>
@@ -157,7 +165,7 @@ export default function ForgotPasswordPanel() {
       {step === "phone" ? (
         <form onSubmit={handleRequestOtp} className="space-y-6">
           <div className="space-y-2">
-            <label className="ml-1 text-sm font-medium text-foreground">Phone Number</label>
+            <AuthPhoneLabel />
             <div className="relative">
               <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
               <Input
@@ -179,6 +187,20 @@ export default function ForgotPasswordPanel() {
 
       {step === "otp" ? (
         <form onSubmit={handleVerifyOtp} className="space-y-6">
+          <div className="space-y-2">
+            <AuthPhoneLabel locked onEdit={handleEditPhone} />
+            <div className="relative">
+              <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+              <Input
+                placeholder="+91"
+                value={phone}
+                inputMode="numeric"
+                className="h-12 rounded-xl pl-11"
+                disabled
+                readOnly
+              />
+            </div>
+          </div>
           <OtpField
             value={otp}
             onChange={setOtp}
@@ -254,6 +276,7 @@ export default function ForgotPasswordPanel() {
           Back to login
         </Link>
       </div>
+      <AuthHomeLink className="mt-4" />
     </div>
   );
 }

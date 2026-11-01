@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const OTP_SLOT_CLASS =
-  "h-12 flex-1 min-w-0 max-w-12 rounded-xl border border-input shadow-sm first:rounded-xl last:rounded-xl first:border-l";
+  "h-12 w-full min-w-0 rounded-xl border border-input shadow-sm ring-offset-0 first:rounded-xl last:rounded-xl first:border-l";
 
 type OtpFieldProps = {
   value: string;
@@ -31,22 +31,22 @@ export function OtpField({
   }, [active]);
 
   return (
-    <div className="space-y-2">
+    <div className="w-full space-y-2">
       <label className="ml-1 text-sm font-medium leading-none text-foreground">
         One-Time Password
       </label>
-      {/* Padding so the active ring is not clipped on the left/edges */}
-      <div className="overflow-visible p-1 -m-1">
+      {/* Inset padding so the active ring stays inside the dialog without causing overflow scroll */}
+      <div className="min-w-0 w-full py-1">
         <InputOTP
           ref={otpInputRef}
           maxLength={6}
           value={value}
           onChange={onChange}
           disabled={disabled}
-          containerClassName="w-full"
+          containerClassName="w-full gap-0"
           autoFocus
         >
-          <InputOTPGroup className="w-full gap-2">
+          <InputOTPGroup className="grid w-full min-w-0 grid-cols-6 gap-2">
             {Array.from({ length: 6 }).map((_, index) => (
               <InputOTPSlot key={index} index={index} className={OTP_SLOT_CLASS} />
             ))}

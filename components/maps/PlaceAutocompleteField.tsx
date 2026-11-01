@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import { getGoogleMapsLoaderOptions } from "@/lib/google-maps-loader";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,12 @@ export type PlaceAutocompleteFieldProps = {
   onTextChange?: (text: string) => void;
   onPlaceSelect?: (place: PlaceAutocompleteSelection) => void;
   disabled?: boolean;
+  /**
+   * `group` (default) — shadcn InputGroup chrome + brand focus ring.
+   * `bare` — host only; use when a parent already wraps InputGroup.
+   */
+  chrome?: "group" | "bare";
+  /** Applied to InputGroup when chrome=group, otherwise to the host. */
   className?: string;
   id?: string;
   name?: string;
@@ -29,8 +36,10 @@ export type PlaceAutocompleteFieldProps = {
   countryCodes?: string[];
   noClearButton?: boolean;
   noInputIcon?: boolean;
-  /** When true, marks the host for shadcn InputGroup focus styling. */
+  /** When true, marks the host for parent InputGroup focus styling (chrome=bare). */
   inputGroupControl?: boolean;
+  startAddon?: ReactNode;
+  endAddon?: ReactNode;
 };
 
 type PlaceAutocompleteElementLike = HTMLElement & {
@@ -72,6 +81,7 @@ export function PlaceAutocompleteField({
   onTextChange,
   onPlaceSelect,
   disabled = false,
+  chrome = "group",
   className,
   id,
   name,
@@ -80,6 +90,8 @@ export function PlaceAutocompleteField({
   noClearButton = false,
   noInputIcon = false,
   inputGroupControl = false,
+  startAddon,
+  endAddon,
 }: PlaceAutocompleteFieldProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded, loadError } = useJsApiLoader(
@@ -89,6 +101,8 @@ export function PlaceAutocompleteField({
   const elementRef = useRef<PlaceAutocompleteElementLike | null>(null);
   const onTextChangeRef = useRef(onTextChange);
   const onPlaceSelectRef = useRef(onPlaceSelect);
+  const asGroup = chrome === "group";
+  const markControl = asGroup || inputGroupControl;
 
   useEffect(() => {
     onTextChangeRef.current = onTextChange;
@@ -225,37 +239,57 @@ export function PlaceAutocompleteField({
     el.disabled = disabled;
   }, [disabled]);
 
-  if (!apiKey) {
-    return (
-      <div className={cn("ybdc-place-autocomplete", className)}>
-        <input
-          disabled
-          placeholder="Add NEXT_PUBLIC_GOOGLE_MAP_KEY to enable search"
-          className="w-full bg-transparent text-sm outline-none"
-        />
-      </div>
-    );
-  }
+  const fallbackPlaceholder = !apiKey
+    ? "Add NEXT_PUBLIC_GOOGLE_MAP_KEY to enable search"
+    : loadError
+      ? "Maps failed to load"
+      : null;
 
-  if (loadError) {
-    return (
-      <div className={cn("ybdc-place-autocomplete", className)}>
+  const host = (
+    <div
+      ref={fallbackPlaceholder ? undefined : hostRef}
+      className={cn(
+        "ybdc-place-autocomplete text-sm",
+        asGroup
+          ? "min-h-0 min-w-0 flex-1 self-stretch [&_gmp-place-autocomplete]:h-full [&_gmp-place-autocomplete]:min-h-0"
+          : className,
+      )}
+      data-loading={!fallbackPlaceholder && !isLoaded ? "true" : undefined}
+      data-slot={markControl ? "input-group-control" : undefined}
+      tabIndex={markControl ? -1 : undefined}
+    >
+      {fallbackPlaceholder ? (
         <input
           disabled
-          placeholder="Maps failed to load"
+          placeholder={fallbackPlaceholder}
           className="w-full bg-transparent text-sm outline-none"
         />
-      </div>
-    );
+      ) : null}
+    </div>
+  );
+
+  if (!asGroup) {
+    return host;
   }
 
   return (
-    <div
-      ref={hostRef}
-      className={cn("ybdc-place-autocomplete", className)}
-      data-loading={!isLoaded ? "true" : undefined}
-      data-slot={inputGroupControl ? "input-group-control" : undefined}
-      tabIndex={inputGroupControl ? -1 : undefined}
-    />
+    <InputGroup
+      className={cn(
+        "h-10 w-full shadow-none",
+        "has-[[data-slot=input-group-control]:focus-visible]:border-primary",
+        "has-[[data-slot=input-group-control]:focus-visible]:ring-primary/30",
+        "focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/30",
+        className,
+      )}
+      data-disabled={disabled || undefined}
+    >
+      {host}
+      {startAddon ? (
+        <InputGroupAddon align="inline-start">{startAddon}</InputGroupAddon>
+      ) : null}
+      {endAddon ? (
+        <InputGroupAddon align="inline-end">{endAddon}</InputGroupAddon>
+      ) : null}
+    </InputGroup>
   );
 }

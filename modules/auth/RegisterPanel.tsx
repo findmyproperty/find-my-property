@@ -11,7 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { buildLoginAndRegisterHrefs, getPostAuthRoute, parseSafeReturnPath } from "@/lib/auth-redirect";
 import { SITE_NAME } from "@/lib/branding";
 import { useSettings } from "@/contexts/settings-context";
+import { AuthHomeLink } from "@/modules/auth/AuthHomeLink";
 import { AuthLogo } from "@/modules/auth/AuthLogo";
+import { AuthPhoneLabel } from "@/modules/auth/AuthPhoneLabel";
 import { OtpField } from "@/modules/auth/OtpField";
 
 const normalizePhone = (value: string) => {
@@ -121,11 +123,16 @@ export default function RegisterPanel({
     router.replace(safeFrom || getPostAuthRoute(nextUser));
   };
 
+  const handleEditPhone = () => {
+    setOtpSent(false);
+    setOtp("");
+  };
+
   const form = (
     <>
       {!isModal ? (
         <div className="mb-8 flex flex-col items-center text-center">
-          <AuthLogo logoUrl={logoUrl} siteName={siteName} className="mb-6" />
+          <AuthLogo logoUrl={logoUrl} siteName={siteName} href="/" className="mb-6" />
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight text-foreground">Create Account</h1>
           <p className="text-sm text-muted-foreground">Sign up securely with your phone number to get started.</p>
         </div>
@@ -153,7 +160,7 @@ export default function RegisterPanel({
           </div>
 
           <div className="space-y-2">
-            <label className="ml-1 text-sm font-medium leading-none text-foreground">Phone Number</label>
+            <AuthPhoneLabel locked={otpSent} onEdit={handleEditPhone} />
             <div className="relative">
               <Smartphone className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
               <Input
@@ -231,6 +238,8 @@ export default function RegisterPanel({
           </Link>
         )}
       </div>
+
+      {!isModal ? <AuthHomeLink className="mt-5" /> : null}
     </>
   );
 

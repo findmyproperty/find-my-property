@@ -64,7 +64,7 @@ interface AuthContextType {
     },
     intent?: "login" | "register",
   ) => Promise<AuthResult>;
-  loginWithPassword: (phone: string, password: string) => Promise<AuthResult>;
+  loginWithPassword: (identifier: string, password: string) => Promise<AuthResult>;
   changePassword: (input: {
     currentPassword?: string;
     newPassword: string;
@@ -223,11 +223,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginWithPassword = async (
-    phone: string,
+    identifier: string,
     password: string,
   ): Promise<AuthResult> => {
     try {
-      const result = await api.loginWithPassword(phone, password);
+      const trimmed = identifier.trim();
+      const payload = trimmed.includes("@")
+        ? ({ email: trimmed.toLowerCase() } as const)
+        : ({ phone: trimmed } as const);
+      const result = await api.loginWithPassword(payload, password);
       persistSession(result.user, result.accessToken);
       return { success: true, requiresOnboarding: !result.user.onboardingCompleted };
     } catch (error) {

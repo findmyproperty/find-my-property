@@ -8,6 +8,7 @@ import {
 } from "@react-google-maps/api";
 import { Loader2, LocateFixed, MapPin, X } from "lucide-react";
 import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
+import { InputGroupButton } from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getGoogleMapsServicesLoaderOptions } from "@/lib/google-maps-loader";
@@ -178,56 +179,51 @@ export default function LocationSearchField({
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="relative">
-        <PlaceAutocompleteField
-          id={id}
-          ariaLabel={ariaLabel}
-          value={text}
-          onTextChange={handleTextChange}
-          onPlaceSelect={handlePlaceSelect}
-          placeholder={
-            loadError
-              ? "Maps failed to load"
-              : isLoaded
-                ? placeholder
-                : "Loading search…"
-          }
-          disabled={disabled || !isLoaded}
-          noInputIcon
-          className={cn(
-            "h-10 rounded-md border border-input bg-background pr-20 text-sm",
-            error && "border-destructive",
-          )}
-        />
-
-        <div className="pointer-events-none absolute inset-y-0 right-2 z-10 flex items-center gap-1">
-          {value ? (
-            <button
+    <div className={cn("flex flex-col gap-2", className)}>
+      <PlaceAutocompleteField
+        id={id}
+        ariaLabel={ariaLabel}
+        value={text}
+        onTextChange={handleTextChange}
+        onPlaceSelect={handlePlaceSelect}
+        placeholder={
+          loadError
+            ? "Maps failed to load"
+            : isLoaded
+              ? placeholder
+              : "Loading search…"
+        }
+        disabled={disabled || !isLoaded}
+        noInputIcon
+        className={cn(
+          "h-10 rounded-md",
+          error && "border-destructive has-[[data-slot=input-group-control]:focus-visible]:border-destructive",
+        )}
+        endAddon={
+          <>
+            {value ? (
+              <InputGroupButton
+                type="button"
+                size="icon-xs"
+                aria-label="Clear location"
+                disabled={disabled}
+                onClick={clear}
+              >
+                <X />
+              </InputGroupButton>
+            ) : null}
+            <InputGroupButton
               type="button"
-              onClick={clear}
-              disabled={disabled}
-              aria-label="Clear location"
-              className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              size="icon-xs"
+              aria-label="Use my current location"
+              disabled={disabled || !isLoaded || locating}
+              onClick={useCurrentLocation}
             >
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={useCurrentLocation}
-            disabled={disabled || !isLoaded || locating}
-            aria-label="Use my current location"
-            className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-          >
-            {locating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <LocateFixed className="h-3.5 w-3.5" aria-hidden />
-            )}
-          </button>
-        </div>
-      </div>
+              {locating ? <Loader2 className="animate-spin" /> : <LocateFixed />}
+            </InputGroupButton>
+          </>
+        }
+      />
 
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
@@ -252,7 +248,7 @@ export default function LocationSearchField({
             />
           </GoogleMap>
           <div className="flex items-center gap-1.5 border-t border-border bg-muted/30 px-2 py-1 text-[11px] text-muted-foreground">
-            <MapPin className="h-3 w-3" aria-hidden />
+            <MapPin className="size-3" aria-hidden />
             <span className="truncate">{value?.label}</span>
           </div>
         </div>

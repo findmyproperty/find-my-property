@@ -314,9 +314,7 @@ export default function ModonHeroCarousel({
                   onSubmit={handleSearch}
                   className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center"
                 >
-                  <div className="relative flex-1">
-                    <MapPin className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-
+                  <div className="min-w-0 flex-1">
                     {apiKey ? (
                       <PlaceAutocompleteField
                         value={locationQuery}
@@ -328,7 +326,8 @@ export default function ModonHeroCarousel({
                             : "Enter city, locality, landmark, or project name..."
                         }
                         noInputIcon
-                        className="h-12 rounded-xl border border-border/70 bg-background pl-10 text-xs sm:text-sm"
+                        className="h-12 rounded-xl border-border/70 bg-background text-xs sm:text-sm"
+                        startAddon={<MapPin aria-hidden="true" />}
                       />
                     ) : (
                       <Input

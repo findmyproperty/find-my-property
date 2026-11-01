@@ -113,10 +113,13 @@ export const auth = {
     return mapAuthResponse(response);
   },
 
-  async loginWithPassword(phone: string, password: string) {
+  async loginWithPassword(
+    identifier: { phone: string; email?: never } | { email: string; phone?: never },
+    password: string,
+  ) {
     const response = await request<AuthApiResponse>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ ...identifier, password }),
     });
     return mapAuthResponse(response);
   },

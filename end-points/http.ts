@@ -1,3 +1,5 @@
+import { shouldRefreshOn401 as shouldRefreshOn401Policy } from "@/end-points/should-refresh-on-401";
+
 export const DEFAULT_LOCAL_API_URL = "http://localhost:3005";
 
 /** Thrown when `/auth/refresh` returns 401 — session cleared. */
@@ -65,10 +67,7 @@ function isBrowser() {
 }
 
 function shouldRefreshOn401(path: string, didRefresh: boolean | undefined): boolean {
-  if (!isBrowser() || didRefresh) return false;
-  if (path === "/auth/refresh" || path === "/auth/logout") return false;
-  if (path.startsWith("/auth/phone-otp")) return false;
-  return true;
+  return shouldRefreshOn401Policy(path, didRefresh, isBrowser());
 }
 
 type RefreshOutcome = "ok" | "invalid" | "failed";

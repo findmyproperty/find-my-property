@@ -611,7 +611,7 @@ const Properties = () => {
             }
             onPlaceSelect={(place) => handleAreaPlaceSelect(place.label)}
             noInputIcon
-            className="h-10 rounded-lg border border-border bg-muted/50 text-sm"
+            className="h-10 rounded-lg border-border bg-muted/50 text-sm"
           />
         ) : (
           <Input

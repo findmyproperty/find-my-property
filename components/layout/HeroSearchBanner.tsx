@@ -162,6 +162,7 @@ export default function HeroSearchBanner({ imageUrl }: { imageUrl?: string | nul
                 >
                   {apiKey ? (
                     <PlaceAutocompleteField
+                      chrome="bare"
                       id="hero-location-search"
                       ariaLabel="Search by location"
                       value={locationQuery}
