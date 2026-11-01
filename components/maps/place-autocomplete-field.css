@@ -13,6 +13,15 @@
   background-color: transparent;
   border: none;
   border-radius: inherit;
+  outline: none;
+  box-shadow: none;
+}
+
+.ybdc-place-autocomplete gmp-place-autocomplete:focus,
+.ybdc-place-autocomplete gmp-place-autocomplete:focus-visible,
+.ybdc-place-autocomplete gmp-place-autocomplete:focus-within {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Soften Google’s default chrome so the control can sit inside our inputs/cards */
@@ -25,4 +34,19 @@
   border: none;
   outline: none;
   box-shadow: none;
+}
+
+.ybdc-place-autocomplete gmp-place-autocomplete::part(input):focus,
+.ybdc-place-autocomplete gmp-place-autocomplete::part(input):focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+/*
+ * Google’s built-in blue focus ring (exposed CSS part).
+ * Parent InputGroup already shows brand focus via focus-within.
+ */
+.ybdc-place-autocomplete gmp-place-autocomplete::part(focus-ring) {
+  display: none;
 }

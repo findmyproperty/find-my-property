@@ -29,6 +29,8 @@ export type PlaceAutocompleteFieldProps = {
   countryCodes?: string[];
   noClearButton?: boolean;
   noInputIcon?: boolean;
+  /** When true, marks the host for shadcn InputGroup focus styling. */
+  inputGroupControl?: boolean;
 };
 
 type PlaceAutocompleteElementLike = HTMLElement & {
@@ -77,6 +79,7 @@ export function PlaceAutocompleteField({
   countryCodes = ["in"],
   noClearButton = false,
   noInputIcon = false,
+  inputGroupControl = false,
 }: PlaceAutocompleteFieldProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
   const { isLoaded, loadError } = useJsApiLoader(
@@ -251,6 +254,8 @@ export function PlaceAutocompleteField({
       ref={hostRef}
       className={cn("ybdc-place-autocomplete", className)}
       data-loading={!isLoaded ? "true" : undefined}
+      data-slot={inputGroupControl ? "input-group-control" : undefined}
+      tabIndex={inputGroupControl ? -1 : undefined}
     />
   );
 }

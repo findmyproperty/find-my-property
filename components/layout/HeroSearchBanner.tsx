@@ -7,7 +7,11 @@ import { MapPin, Search } from "lucide-react";
 
 import { PlaceAutocompleteField } from "@/components/maps/PlaceAutocompleteField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -144,42 +148,51 @@ export default function HeroSearchBanner({ imageUrl }: { imageUrl?: string | nul
             </div>
 
             <div className="grid grid-cols-1 items-center gap-2 pt-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
-              <div className="relative flex min-w-0 items-center my-2">
-                <MapPin
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3.5 z-10 size-4.5 text-slate-500"
-                />
+              <div className="my-2 min-w-0">
                 <label htmlFor="hero-location-search" className="sr-only">
                   Search by location
                 </label>
-                {apiKey ? (
-                  <PlaceAutocompleteField
-                    id="hero-location-search"
-                    ariaLabel="Search by location"
-                    value={locationQuery}
-                    onTextChange={setLocationQuery}
-                    onPlaceSelect={(place) => setLocationQuery(place.label)}
-                    placeholder="City, locality, landmark, or property ID"
-                    noInputIcon
-                    className="h-12 min-w-0 rounded-xl border border-slate-200 bg-transparent pl-11 text-sm text-slate-950 shadow-none sm:h-14 sm:text-base [&_gmp-place-autocomplete]:min-h-full [&_gmp-place-autocomplete]:pl-0"
-                  />
-                ) : (
-                  <Input
-                    id="hero-location-search"
-                    value={locationQuery}
-                    onChange={(event) => setLocationQuery(event.target.value)}
-                    placeholder="City, locality, landmark, or property ID"
-                    className="h-12 min-w-0 rounded-xl border border-slate-200 bg-transparent pl-11 text-sm text-slate-950 shadow-none placeholder:text-slate-500 focus-visible:border-primary focus-visible:ring-0 sm:h-14 sm:text-base"
-                    autoComplete="off"
-                  />
-                )}
+                <InputGroup
+                  className={cn(
+                    "h-12 min-w-0 rounded-xl border-slate-200 bg-transparent shadow-none sm:h-14",
+                    "has-[[data-slot=input-group-control]:focus-visible]:border-primary",
+                    "has-[[data-slot=input-group-control]:focus-visible]:ring-primary/30",
+                    "focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/30",
+                  )}
+                >
+                  {apiKey ? (
+                    <PlaceAutocompleteField
+                      id="hero-location-search"
+                      ariaLabel="Search by location"
+                      value={locationQuery}
+                      onTextChange={setLocationQuery}
+                      onPlaceSelect={(place) => setLocationQuery(place.label)}
+                      placeholder="City, locality, landmark, or property ID"
+                      noInputIcon
+                      inputGroupControl
+                      className="min-h-11 min-w-0 flex-1 text-sm text-slate-950 sm:min-h-12 sm:text-base [&_gmp-place-autocomplete]:min-h-full"
+                    />
+                  ) : (
+                    <InputGroupInput
+                      id="hero-location-search"
+                      value={locationQuery}
+                      onChange={(event) => setLocationQuery(event.target.value)}
+                      placeholder="City, locality, landmark, or property ID"
+                      className="h-full min-w-0 text-sm text-slate-950 placeholder:text-slate-500 sm:text-base"
+                      autoComplete="off"
+                    />
+                  )}
+                  <InputGroupAddon align="inline-start" className="text-slate-500">
+                    <MapPin aria-hidden="true" />
+                  </InputGroupAddon>
+                </InputGroup>
               </div>
 
               <Button
                 type="submit"
                 className="mt-2 h-12 w-full rounded-xl bg-primary px-7 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99] sm:mt-0 sm:h-14 sm:w-auto sm:min-w-44"
               >
-                <Search aria-hidden="true" className="mr-2 size-4" />
+                <Search aria-hidden="true" data-icon="inline-start" />
                 Search properties
               </Button>
             </div>
