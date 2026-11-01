@@ -1,5 +1,6 @@
 import type { AuthUser, UserRole } from "@/end-points/types";
 import { getStoredToken, request } from "@/end-points/http";
+import { buildVerifyAgentPath } from "@/lib/auth-storage";
 
 interface BackendAuthUser {
   id: number;
@@ -71,7 +72,6 @@ function mapAuthUser(user: BackendAuthUser): AuthUser {
 function mapAuthResponse(data: AuthApiResponse) {
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
     user: mapAuthUser(data.user),
   };
 }
@@ -219,7 +219,7 @@ export const auth = {
   },
 
   async verifyAgent(token: string): Promise<{ message: string }> {
-    return request<{ message: string }>(`/auth/verify?token=${token}`);
+    return request<{ message: string }>(buildVerifyAgentPath(token));
   },
 
   async logout() {

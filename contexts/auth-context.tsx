@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api, type AuthUser, type UserRole } from "@/lib/api";
 import { clearFmpRoleCookieClient, setFmpRoleCookieClient } from "@/lib/fmp-cookie";
+import { clearClientAuthStorage } from "@/lib/auth-storage";
 import { AUTH_ERROR_REFRESH_FAILED, AUTH_ERROR_SESSION_EXPIRED } from "@/end-points/http";
 
 export type { UserRole };
@@ -266,11 +267,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ...result.user,
         avatar: result.user.avatarUrl || undefined,
       };
+      // Refresh token stays in HttpOnly `fmp-rt` cookie from the API — never localStorage.
       persistSession(newUser, result.accessToken);
-      // Optionally store refresh if present
-      if (result.refreshToken) {
-        localStorage.setItem("nb_refresh_token", result.refreshToken);
-      }
       return { success: true, requiresOnboarding: !newUser.onboardingCompleted };
     } catch (error) {
       return {
@@ -343,8 +341,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearFmpRoleCookieClient();
     setUser(null);
     setToken(null);
-    localStorage.removeItem("nb_user");
-    localStorage.removeItem("nb_token");
+    clearClientAuthStorage();
     try {
       await api.logout();
     } catch {

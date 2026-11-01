@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { FMP_ROLE_COOKIE, FMP_RT_COOKIE } from "@/lib/fmp-cookie";
 import { parseSafeReturnPath } from "@/lib/auth-redirect";
+import { sanitizeAuthRole } from "@/lib/auth-storage";
 
 function hasReferenceToken(request: NextRequest): boolean {
   const v = request.cookies.get(FMP_RT_COOKIE)?.value;
@@ -59,12 +60,13 @@ function pathMatchesSet(pathname: string, prefixes: Set<string>) {
 }
 
 function role(request: NextRequest): string | undefined {
-  return request.cookies.get(FMP_ROLE_COOKIE)?.value;
+  return sanitizeAuthRole(request.cookies.get(FMP_ROLE_COOKIE)?.value) ?? undefined;
 }
 
 /**
- * Role guard using `fmp-role` cookie (set on login in `auth-context`).
- * Auth enforcement for API/data still happens server-side; this only steers navigation.
+ * Soft role guard using `fmp-role` (allowlisted values only; set on login).
+ * Does not authorize data access — APIs enforce JWT roles. The client shell also
+ * logs out when cookie role disagrees with `user.role` from the session.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

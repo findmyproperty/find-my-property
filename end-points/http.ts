@@ -1,4 +1,5 @@
 import { shouldRefreshOn401 as shouldRefreshOn401Policy } from "@/end-points/should-refresh-on-401";
+import { clearClientAuthStorage } from "@/lib/auth-storage";
 
 export const DEFAULT_LOCAL_API_URL = "http://localhost:3005";
 
@@ -49,12 +50,7 @@ export function getStoredToken() {
 
 function clearStoredSession() {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem("nb_token");
-    localStorage.removeItem("nb_user");
-  } catch {
-    /* ignore */
-  }
+  clearClientAuthStorage();
 }
 
 function redirectToLogout() {
