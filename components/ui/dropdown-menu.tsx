@@ -3,8 +3,15 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { DROPDOWN_MENU_MODAL_DEFAULT } from "@/lib/dashboard-chrome";
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+/** Defaults to non-modal so nested scrollports do not show a second page scrollbar. */
+function DropdownMenu({
+  modal = DROPDOWN_MENU_MODAL_DEFAULT,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root modal={modal} {...props} />;
+}
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 

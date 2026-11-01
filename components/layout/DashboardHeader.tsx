@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut } from "lucide-react";
 import { getProfileMenuItems } from "@/components/layout/Navbar";
+import { PROFILE_DROPDOWN_MODAL } from "@/lib/dashboard-chrome";
 
 interface DashboardHeaderProps {
   title?: string;
@@ -46,7 +47,7 @@ export default function DashboardHeader({ title }: DashboardHeaderProps) {
       <div className="flex items-center gap-2 shrink-0">
         <ThemeToggle />
         {user && (
-          <DropdownMenu>
+          <DropdownMenu modal={PROFILE_DROPDOWN_MODAL}>
             <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-full p-1 hover:bg-muted/50 transition-colors focus:outline-none">
               <UserAvatar
                 name={user.name ?? "User"}

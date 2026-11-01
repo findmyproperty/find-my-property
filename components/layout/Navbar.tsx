@@ -42,6 +42,7 @@ import { useAuth, type UserRole } from "@/contexts/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import { BRAND_TAGLINE, SITE_NAME } from "@/lib/branding";
+import { PROFILE_DROPDOWN_MODAL } from "@/lib/dashboard-chrome";
 import { useSettings } from "@/contexts/settings-context";
 import { NavLoginRegisterLinks } from "@/components/layout/nav-login-register-links";
 import { MobileNavAutoClose } from "@/components/layout/mobile-nav-auto-close";
@@ -415,7 +416,7 @@ const Navbar = () => {
                   <span>Dashboard</span>
                 </Link>
               </Button>
-              <DropdownMenu modal={false}>
+              <DropdownMenu modal={PROFILE_DROPDOWN_MODAL}>
                 <DropdownMenuTrigger
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all focus:outline-none",

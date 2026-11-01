@@ -13,6 +13,10 @@ import { getNavGroupsForRole, getDashboardTitleForRole } from "@/config/roleNav"
 import { UserRole } from "@/end-points/types"
 import { Spinner } from "../ui/spinner"
 import { cn } from "@/lib/utils"
+import {
+  getDashboardShellClassName,
+  getDashboardSidebarProviderClassName,
+} from "@/lib/dashboard-chrome"
 
 function isMarketplacePath(pathname: string) {
   return pathname === "/browse" || pathname.startsWith("/property/")
@@ -82,10 +86,10 @@ export default function RolesRoutesShell({
     const groups = getNavGroupsForRole(user.role)
     const title = getDashboardTitleForRole(user.role)
     return (
-      <SidebarProvider>
-        <div className="flex h-svh max-h-svh w-full bg-background">
+      <SidebarProvider className={getDashboardSidebarProviderClassName()}>
+        <div className={getDashboardShellClassName()}>
           <DashboardSidebar groups={groups} />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <DashboardHeader title={title} />
             {/* Bounded scrollport so property sidebar `position:sticky` can pin. */}
             <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
