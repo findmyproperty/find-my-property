@@ -80,7 +80,8 @@ export function AgentContactCard({
           Ref #{property.id} · {property.title}
         </p>
 
-        <div className="border-t border-border px-4 py-3">
+        {/* Mobile uses PropertyMobileContactBar — hide duplicate CTAs below lg. */}
+        <div className="hidden border-t border-border px-4 py-3 lg:block">
           {canEnquireAsTenant ? (
             <>
               <Button

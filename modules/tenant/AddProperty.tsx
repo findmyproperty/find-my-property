@@ -546,34 +546,36 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border/60 pt-6">
-                {step > 0 ? (
-                  <Button type="button" variant="outline" size="lg" onClick={() => setStep((current) => current - 1)}>
-                    Previous
-                  </Button>
-                ) : null}
-                {showNext ? (
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="min-w-32 flex-1 rounded-lg sm:flex-none"
-                    onClick={goNext}
-                    disabled={nextDisabled}
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="min-w-32 flex-1 rounded-lg sm:flex-none"
-                    disabled={submitDisabled}
-                    onClick={() => void handleSave()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isSubmitting ? "Saving…" : submitLabel}
-                  </Button>
-                )}
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  {step > 0 ? (
+                    <Button type="button" variant="outline" size="lg" onClick={() => setStep((current) => current - 1)}>
+                      Previous
+                    </Button>
+                  ) : null}
+                  {showNext ? (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="min-w-32 rounded-lg"
+                      onClick={goNext}
+                      disabled={nextDisabled}
+                    >
+                      Next
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="min-w-32 rounded-lg"
+                      disabled={submitDisabled}
+                      onClick={() => void handleSave()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {isSubmitting ? "Saving…" : submitLabel}
+                    </Button>
+                  )}
+                </div>
                 {allowsDraftSave ? (
                   <Button
                     type="button"
@@ -585,9 +587,6 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
                     {draftSaving ? "Saving draft…" : "Save draft"}
                   </Button>
                 ) : null}
-                <Button type="button" variant="outline" size="lg" onClick={() => requestLeave("/listings")}>
-                  Cancel
-                </Button>
               </div>
             </div>
           </div>
@@ -596,19 +595,7 @@ const AddProperty = ({ initialData }: { initialData?: BackendProperty }) => {
             <div
               className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
             >
-              <div className="mx-auto flex max-w-6xl justify-center gap-3">
-                {allowsDraftSave ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="lg"
-                    className="w-full max-w-[10rem]"
-                    disabled={isSubmitting || draftSaving}
-                    onClick={() => void persistDraft(false)}
-                  >
-                    {draftSaving ? "Saving…" : "Save draft"}
-                  </Button>
-                ) : null}
+              <div className="mx-auto flex max-w-6xl justify-center">
                 <Button
                   type="button"
                   size="lg"

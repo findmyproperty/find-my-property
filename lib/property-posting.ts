@@ -418,12 +418,31 @@ function validateLegacy(values: ListingFormShape): FormIssue[] {
   return errors;
 }
 
-function isValidOptionalIndianMobile(raw: string): boolean {
+/** Strip non-digits; allow bare 10-digit or `91` + 10 while typing. */
+export function normalizeIndianMobileInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("91")) return digits.slice(0, 12);
+  return digits.slice(0, 10);
+}
+
+/** National 10-digit form when input is `91…` or already 10 digits. */
+export function toNationalIndianMobile(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  return digits;
+}
+
+export function isValidOptionalIndianMobile(raw: string): boolean {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return true;
-  const national = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  const national = toNationalIndianMobile(digits);
   return /^[6-9]\d{9}$/.test(national);
 }
+
+export const SECONDARY_NUMBER_INVALID_MESSAGE =
+  "Enter a valid 10-digit Indian mobile number.";
 
 function apartmentShape(
   details: ListingDetails,
@@ -484,7 +503,7 @@ function validateRentForm(
   if (!yesNo(details.nonVegAllowed)) miss("details.nonVegAllowed", "Non-veg allowed is required.");
   if (!yesNo(details.gatedSecurity)) miss("details.gatedSecurity", "Gated security is required.");
   if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
-    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+    miss("details.secondaryNumber", SECONDARY_NUMBER_INVALID_MESSAGE);
   }
 }
 
@@ -513,7 +532,7 @@ function validateResaleForm(
   if (!text(details.propertyTax)) miss("details.propertyTax", "Property tax is required.");
   if (!text(details.occupancyCertificate)) miss("details.occupancyCertificate", "Occupancy certificate is required.");
   if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
-    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+    miss("details.secondaryNumber", SECONDARY_NUMBER_INVALID_MESSAGE);
   }
 }
 
@@ -555,7 +574,7 @@ function validateFlatmatesForm(
   if (!yesNo(details.gatedSecurity)) miss("details.gatedSecurity", "Gated security is required.");
   if (!text(details.whoWillShow)) miss("details.whoWillShow", "Who will show the property is required.");
   if (text(details.secondaryNumber) && !isValidOptionalIndianMobile(text(details.secondaryNumber))) {
-    miss("details.secondaryNumber", "Enter a valid 10-digit Indian mobile number.");
+    miss("details.secondaryNumber", SECONDARY_NUMBER_INVALID_MESSAGE);
   }
 }
 

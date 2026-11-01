@@ -11,6 +11,12 @@ import { Button } from "@/components/ui/button";
 import type { ApartmentPlaceDetail } from "@/lib/apartment-places";
 import type { PropertyFormValues } from "./schema";
 import type { ListingDetails } from "@/lib/property-posting";
+import {
+  isValidOptionalIndianMobile,
+  normalizeIndianMobileInput,
+  SECONDARY_NUMBER_INVALID_MESSAGE,
+  toNationalIndianMobile,
+} from "@/lib/property-posting";
 import { PG_ROOM_AMENITIES, PG_ROOM_TYPES, pgRuleOptions } from "./listing-options";
 import type { ListingField } from "./listing-sections";
 import { ApartmentNameSearchField } from "./ApartmentNameSearchField";
@@ -37,7 +43,7 @@ export function ListingFields({ fields }: { fields: ListingField[] }) {
 }
 
 function ListingControl({ field, details }: { field: ListingField; details: ListingDetails }) {
-  const { control, getValues, setValue } = useFormContext<PropertyFormValues>();
+  const { control, getValues, setValue, setError, clearErrors } = useFormContext<PropertyFormValues>();
   const name = field.name as FieldPath<PropertyFormValues>;
   const options = field.name === "details.rules" ? pgRuleOptions(details.availableFor) : field.options;
   const city = useWatch({ control, name: "city" }) ?? "";
@@ -66,6 +72,42 @@ function ListingControl({ field, details }: { field: ListingField; details: List
           {field.kind === "textarea" ? (
             <FormControl>
               <Textarea rows={4} placeholder={field.placeholder} {...formField} value={stringValue(formField.value)} />
+            </FormControl>
+          ) : null}
+          {field.kind === "phone" ? (
+            <FormControl>
+              <Input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder={field.placeholder ?? "10-digit mobile (optional)"}
+                aria-invalid={!!fieldState.error}
+                value={stringValue(formField.value)}
+                onBlur={() => {
+                  formField.onBlur();
+                  const raw = stringValue(formField.value).trim();
+                  if (!raw) {
+                    clearErrors(name);
+                    return;
+                  }
+                  if (!isValidOptionalIndianMobile(raw)) {
+                    setError(name, { message: SECONDARY_NUMBER_INVALID_MESSAGE });
+                    return;
+                  }
+                  const national = toNationalIndianMobile(raw);
+                  if (national !== raw) {
+                    formField.onChange(national);
+                  }
+                  clearErrors(name);
+                }}
+                onChange={(event) => {
+                  const next = normalizeIndianMobileInput(event.target.value);
+                  formField.onChange(next);
+                  if (!next || isValidOptionalIndianMobile(next)) {
+                    clearErrors(name);
+                  }
+                }}
+              />
             </FormControl>
           ) : null}
           {field.kind === "text" || field.kind === "number" || field.kind === "date" || field.kind === "time" ? (

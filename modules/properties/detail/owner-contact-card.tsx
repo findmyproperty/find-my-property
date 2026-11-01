@@ -116,7 +116,8 @@ export function OwnerContactCard({
 
 
 
-        <div className="border-t border-border px-4 py-3">
+        {/* Mobile uses PropertyMobileContactBar — hide duplicate CTAs below lg. */}
+        <div className="hidden border-t border-border px-4 py-3 lg:block">
 
           {hasPhone ? (
 

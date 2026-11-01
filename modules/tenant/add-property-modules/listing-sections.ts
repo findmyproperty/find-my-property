@@ -25,6 +25,7 @@ import {
 export type FieldKind =
   | "text"
   | "number"
+  | "phone"
   | "textarea"
   | "select"
   | "radio"
@@ -35,6 +36,13 @@ export type FieldKind =
   | "stepper"
   | "pgRooms"
   | "apartmentNameSearch";
+
+const SECONDARY_NUMBER_FIELD = {
+  name: "details.secondaryNumber",
+  label: "Secondary number",
+  kind: "phone" as const,
+  placeholder: "10-digit mobile (optional)",
+};
 
 export type ListingField = {
   name: string;
@@ -495,7 +503,7 @@ function flatmateSections(): ListingSection[] {
         { name: "details.gym", label: "Gym", kind: "yesno", required: true },
         { name: "details.gatedSecurity", label: "Gated security", kind: "yesno", required: true },
         { name: "details.whoWillShow", label: "Who will show the property", kind: "select", required: true, options: WHO_SHOWS },
-        { name: "details.secondaryNumber", label: "Secondary number", kind: "text" },
+        SECONDARY_NUMBER_FIELD,
         { name: "details.waterSupply", label: "Water supply", kind: "select", options: [opt("corporation", "Corporation")] },
         { name: "details.directionsTip", label: "Directions tip for tenants", kind: "textarea" },
         checks("details.amenityList", "Amenities", FLATMATE_AMENITIES),
@@ -552,7 +560,7 @@ function resaleSections(): ListingSection[] {
         { name: "details.gym", label: "Gym", kind: "yesno", required: true },
         { name: "details.gatedSecurity", label: "Gated security", kind: "yesno", required: true },
         { name: "details.whoWillShow", label: "Who will show the property", kind: "select", required: true, options: WHO_SHOWS },
-        { name: "details.secondaryNumber", label: "Secondary number", kind: "text" },
+        SECONDARY_NUMBER_FIELD,
         { name: "details.similarUnits", label: "Similar units available", kind: "yesno" },
         { name: "details.directionsTip", label: "Directions tip for buyers", kind: "textarea" },
         checks("details.amenityList", "Amenities", RESALE_AMENITIES),
@@ -630,7 +638,7 @@ function rentSections(): ListingSection[] {
             opt("need_help", "Need Help to Manage"),
           ],
         },
-        { name: "details.secondaryNumber", label: "Secondary number", kind: "text" },
+        SECONDARY_NUMBER_FIELD,
         { name: "details.similarUnits", label: "Similar units available", kind: "yesno" },
         { name: "details.directionsTip", label: "Directions tip for tenants", kind: "textarea" },
         checks("details.amenityList", "Amenities", RENT_AMENITIES),
