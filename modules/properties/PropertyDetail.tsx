@@ -25,7 +25,6 @@ import { normalizeContactPhone } from "@/lib/contact-links";
 
 import { parsePropertyIdFromSlugParam } from "@/lib/property-slug";
 
-import { getPriceStripExtras } from "@/lib/property-detail-highlights";
 
 import { PropertyPriceStrip } from "@/modules/properties/listing-ui";
 
@@ -161,9 +160,7 @@ const PropertyDetail = () => {
         isAdmin ? authorizedPropertyPhone : settings?.supportPhone,
       );
 
-  const { deposit, maintenance } = getPriceStripExtras(property);
-
-  const showPriceStrip = Boolean(deposit || maintenance);
+  // Always show the strip so rent/price + area catch the eye on mobile.
 
 
 
@@ -213,43 +210,27 @@ const PropertyDetail = () => {
 
 
   return (
-
-    <div className="pb-28 pt-6 lg:pb-20">
-
-      <div className="container mx-auto space-y-6">
-
+    <div className="pt-6 lg:pb-20">
+      {/* Extra bottom pad on mobile so Neighbourhood / last cards clear the fixed CTA bar. */}
+      <div className="container mx-auto space-y-6 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
         <HeroSection
-
           property={property}
-
           images={images}
-
           mainImageIndex={mainImageIndex}
-
           onMainImageChange={setMainImageIndex}
-
         />
 
+        <PropertyPriceStrip property={property} />
 
-
-        {showPriceStrip ? <PropertyPriceStrip property={property} /> : null}
-
-        <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-
+        {/* items-start is required — stretch makes position:sticky a no-op on the aside. */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
           <div className="order-2 min-w-0 flex-1 space-y-6 md:order-1">
-
             {(rows.length > 0 || !categorized) && (
-
               <OverviewSection
-
                 rows={rows}
-
                 property={property}
-
                 showLegacyFacts={!categorized}
-
               />
-
             )}
 
             <DescriptionSection property={property} />
@@ -259,89 +240,59 @@ const PropertyDetail = () => {
             <AmenitiesSection amenities={amenities} />
 
             {showsFloorPlans(property.propertySector, property.postingType) ? (
-
               <FloorPlansSection
-
                 floorPlans={floorPlans}
-
                 activeIndex={activeFloorIndex}
-
                 onFloorChange={setActiveFloorIndex}
-
               />
-
             ) : null}
 
             {property.videoUrl ? <VideoSection videoUrl={property.videoUrl} /> : null}
-
           </div>
 
-
-
           <aside
-            className="order-1 flex w-full shrink-0 flex-col gap-4 md:order-2 md:w-80 md:max-w-[38%] lg:w-96 xl:w-[26rem]"
+            className="order-1 flex w-full shrink-0 flex-col gap-4 md:sticky md:top-4 md:order-2 md:z-20 md:max-h-[calc(100dvh-2rem)] md:w-80 md:max-w-[38%] md:self-start md:overflow-y-auto md:overscroll-contain lg:w-96 xl:w-[26rem]"
           >
             {foldContactCard}
-
-            <div
-              className="hidden min-h-0 w-full flex-col gap-4 md:sticky md:top-20 md:z-20 md:flex md:max-h-[calc(100dvh-3.5rem)] md:self-start md:overflow-y-auto md:overscroll-contain xl:top-24 xl:max-h-[calc(100dvh-4.5rem)]"
-            >
+            <div className="hidden md:block">
+              <LoanServiceSidebarCard sticky />
+            </div>
+            <div className="hidden md:block">
               <SimilarListingsSidebar properties={similarProperties} variant="sidebar" />
-              <LoanServiceSidebarCard />
             </div>
           </aside>
-
         </div>
-
-
 
         <SimilarListingsSidebar properties={similarProperties} variant="bottom" />
 
         <div className="md:hidden">
-
           <LoanServiceSidebarCard />
-
         </div>
-
       </div>
 
-
-
       {isAgentOwner && !isAdmin ? (
-
         <PropertyMobileContactBar
-
           title={property.title}
-
           propertyId={property.id}
-
           phone={contactPhone}
-
           primaryLabel="Enquire"
-
-          onPrimaryAction={isAuthReady ? () => {
-            if (canEnquireAsTenant) setEnquiryOpen(true);
-            else window.location.href = loginHref;
-          } : undefined}
-
+          onPrimaryAction={
+            isAuthReady
+              ? () => {
+                  if (canEnquireAsTenant) setEnquiryOpen(true);
+                  else window.location.href = loginHref;
+                }
+              : undefined
+          }
         />
-
       ) : (
-
         <PropertyMobileContactBar
-
           title={property.title}
-
           propertyId={property.id}
-
           phone={contactPhone}
-
         />
-
       )}
-
     </div>
-
   );
 
 };

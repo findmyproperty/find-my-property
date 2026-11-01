@@ -13,6 +13,10 @@ type PropertyMobileContactBarProps = {
   primaryLabel?: string;
 };
 
+/**
+ * Fixed mobile CTA dock. Keep it to two equal actions only —
+ * rent already lives in the hero / price strip (avoids overflow + clutter).
+ */
 export function PropertyMobileContactBar({
   title,
   propertyId,
@@ -32,18 +36,19 @@ export function PropertyMobileContactBar({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md lg:hidden"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
     >
-      <div className="container mx-auto flex gap-2">
+      <div className="mx-auto flex w-full max-w-lg gap-2 px-3 pt-2.5">
         {onPrimaryAction ? (
-          <Button className="min-h-11 flex-1" size="lg" type="button" onClick={onPrimaryAction}>
+          <Button className="h-11 min-h-11 min-w-0 flex-1" size="lg" type="button" onClick={onPrimaryAction}>
             {primaryLabel}
           </Button>
         ) : hasPhone ? (
-          <Button className="min-h-11 flex-1" size="lg" asChild>
+          <Button className="h-11 min-h-11 min-w-0 flex-1" size="lg" asChild>
             <a href={buildTelHref(phone!)}>
-              <Phone className="size-4" />
-              {primaryLabel}
+              <Phone className="size-4 shrink-0" />
+              <span className="truncate">{primaryLabel}</span>
             </a>
           </Button>
         ) : null}
@@ -52,11 +57,11 @@ export function PropertyMobileContactBar({
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-11 flex-1 bg-[#25D366] text-white hover:bg-[#20BD5A] hover:text-white"
+            className="h-11 min-h-11 min-w-0 flex-1 border-transparent bg-[#25D366] text-white hover:bg-[#20BD5A] hover:text-white"
             onClick={openWhatsApp}
           >
-            <MessageCircle className="size-4" />
-            WhatsApp
+            <MessageCircle className="size-4 shrink-0" />
+            <span className="truncate">WhatsApp</span>
           </Button>
         ) : null}
       </div>

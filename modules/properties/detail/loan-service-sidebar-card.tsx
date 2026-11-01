@@ -5,14 +5,23 @@ import Link from "next/link";
 import { ArrowRight, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SERVICE_IMAGES } from "@/modules/services/service-images";
+import { cn } from "@/lib/utils";
+
+type LoanServiceSidebarCardProps = {
+  /** Stronger surface when pinned in the property sidebar. */
+  sticky?: boolean;
+};
 
 /** Compact loan CTA for property detail sidebar (and mobile stack). */
-export function LoanServiceSidebarCard() {
+export function LoanServiceSidebarCard({ sticky = false }: LoanServiceSidebarCardProps) {
   const { src, alt } = SERVICE_IMAGES.loans;
 
   return (
     <aside
-      className="w-full shrink-0 self-stretch overflow-hidden rounded-2xl border border-border bg-card"
+      className={cn(
+        "w-full shrink-0 self-stretch overflow-hidden rounded-2xl border border-border bg-card",
+        sticky && "shadow-sm ring-1 ring-border/60",
+      )}
       aria-labelledby="loan-sidebar-title"
     >
       <div className="relative h-16 w-full bg-muted/40">

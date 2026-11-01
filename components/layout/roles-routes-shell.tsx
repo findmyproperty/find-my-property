@@ -83,16 +83,12 @@ export default function RolesRoutesShell({
     const title = getDashboardTitleForRole(user.role)
     return (
       <SidebarProvider>
-        <div className="flex h-full w-full bg-background">
+        <div className="flex h-svh max-h-svh w-full bg-background">
           <DashboardSidebar groups={groups} />
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <DashboardHeader title={title} />
-            <main
-              className={cn(
-                "min-w-0 flex-1 p-4 sm:p-6",
-                isPropertyPage ? "overflow-x-clip" : "overflow-x-hidden",
-              )}
-            >
+            {/* Bounded scrollport so property sidebar `position:sticky` can pin. */}
+            <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
               {children}
             </main>
           </div>

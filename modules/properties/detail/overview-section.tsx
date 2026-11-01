@@ -78,6 +78,45 @@ function OverviewValue({ value }: { value: string }) {
   );
 }
 
+function displayOverviewValue(label: string, value: string) {
+  if (label === "Preferred guests" && value.trim().toLowerCase() === "both") {
+    return "Both";
+  }
+  return value;
+}
+
+/** Mobile: compact fact tile — value first so specs catch the eye while scrolling. */
+function OverviewMobileTile({ label, value }: DetailRow) {
+  const Icon = iconForOverviewLabel(label);
+  const preferredGuestsBoth =
+    label === "Preferred guests" && value.trim().toLowerCase() === "both";
+  const shown = displayOverviewValue(label, value);
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-xl bg-muted/40 px-3 py-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="size-3.5 shrink-0" aria-hidden />
+        <span className="truncate text-[11px] font-medium uppercase tracking-[0.06em]">
+          {label}
+        </span>
+        {preferredGuestsBoth ? (
+          <span
+            className="inline-flex shrink-0 cursor-help text-muted-foreground"
+            title="Students and working professionals"
+            aria-label="Both students and working professionals"
+            tabIndex={0}
+          >
+            <Info className="size-3.5" aria-hidden />
+          </span>
+        ) : null}
+      </div>
+      <p className="font-heading text-sm font-semibold leading-snug text-foreground" title={shown}>
+        <span className="line-clamp-2 break-words">{shown}</span>
+      </p>
+    </div>
+  );
+}
+
 function OverviewRow({ label, value }: DetailRow) {
   const Icon = iconForOverviewLabel(label);
   const preferredGuestsBoth =
@@ -143,15 +182,17 @@ export function OverviewSection({ rows, property, showLegacyFacts }: OverviewSec
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
       <PropertySection title="Overview" id="overview">
         <div className="min-w-0 md:hidden">
-          {mobileRows.map((row, i) => (
-            <OverviewRow key={`m-${row.label}-${i}`} {...row} />
-          ))}
+          <div className="grid grid-cols-2 gap-2">
+            {mobileRows.map((row, i) => (
+              <OverviewMobileTile key={`m-${row.label}-${i}`} {...row} />
+            ))}
+          </div>
           {mobileCollapsible ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-1 h-8 w-full gap-1 text-primary"
+              className="mt-2 h-9 w-full gap-1 text-primary"
               onClick={() => setMobileExpanded((v) => !v)}
             >
               {mobileExpanded ? "View less" : "View more"}
